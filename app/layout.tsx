@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+// 1. We import Lexend instead of Geist
+import { Lexend } from "next/font/google"; 
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 
@@ -9,14 +10,16 @@ const defaultUrl = process.env.VERCEL_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
-  title: "Next.js and Supabase Starter Kit",
-  description: "The fastest way to build apps with Next.js and Supabase",
+  // 2. Updated the title and description for your app
+  title: "Gr8Math", 
+  description: "Educational Math Application",
 };
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  display: "swap",
+// 3. We configure the Lexend font here
+const lexendFont = Lexend({
   subsets: ["latin"],
+  variable: '--font-lexend', // This must match what you put in Tailwind!
+  display: 'swap',
 });
 
 export default function RootLayout({
@@ -26,7 +29,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.className} antialiased`}>
+      {/* 4. We apply Lexend directly to the body! */}
+      <body className={`${lexendFont.className} antialiased`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
