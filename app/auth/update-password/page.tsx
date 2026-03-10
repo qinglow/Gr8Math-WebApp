@@ -220,7 +220,7 @@ export default function UpdatePasswordPage() {
               />
 
               <div className="mt-6">
-                <Gr8Button text="Save Password" onClick={handleSavePassword} variant="solid" />
+                <Gr8Button text="Verify" onClick={handleSavePassword} variant="solid" />
               </div>
             </div>
           )}
