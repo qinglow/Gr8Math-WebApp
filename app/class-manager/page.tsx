@@ -77,7 +77,6 @@ export default function ClassManagerPage() {
     <div className="flex h-screen bg-[#E2E7E9] font-sans overflow-hidden">
       
       {/* --- MOBILE BACKDROP --- */}
-      {/* This darkens the screen behind the sidebar on mobile devices */}
       {isSidebarOpen && (
         <div 
           className="md:hidden fixed inset-0 z-[40] bg-black/40 backdrop-blur-sm transition-opacity"
@@ -100,15 +99,16 @@ export default function ClassManagerPage() {
           </div>
 
           <div className="flex-1 flex flex-col gap-y-8 pt-10 px-8">
-            <button className="flex items-center justify-start w-full gap-x-4 text-[16px] font-bold text-[#222] hover:text-[#0A7F93] transition-colors bg-transparent border-none cursor-pointer p-0 text-left">
+            {/* Sidebar Buttons with hover shadow effect */}
+            <button className="flex items-center justify-start w-full gap-x-4 text-[16px] font-bold text-[#222] transition-all hover:drop-shadow-lg bg-transparent border-none cursor-pointer p-0 text-left">
               <Image src={termsIcon} alt="Terms and Conditions" width={24} height={24} className="object-contain shrink-0" />
               <span className="leading-tight">Terms and Conditions</span>
             </button>
-            <button className="flex items-center justify-start w-full gap-x-4 text-[16px] font-bold text-[#222] hover:text-[#0A7F93] transition-colors bg-transparent border-none cursor-pointer p-0 text-left">
+            <button className="flex items-center justify-start w-full gap-x-4 text-[16px] font-bold text-[#222] transition-all hover:drop-shadow-lg bg-transparent border-none cursor-pointer p-0 text-left">
               <Image src={privacyIcon} alt="Privacy Policy" width={24} height={24} className="object-contain shrink-0" />
               <span className="leading-tight">Privacy Policy</span>
             </button>
-            <button className="flex items-center justify-start w-full gap-x-4 text-[16px] font-bold text-[#222] hover:text-[#0A7F93] transition-colors bg-transparent border-none cursor-pointer p-0 text-left">
+            <button className="flex items-center justify-start w-full gap-x-4 text-[16px] font-bold text-[#222] transition-all hover:drop-shadow-lg bg-transparent border-none cursor-pointer p-0 text-left">
               <Image src={logoutIcon} alt="Logout" width={24} height={24} className="object-contain shrink-0" />
               <span className="leading-tight">Logout</span>
             </button>
@@ -121,9 +121,10 @@ export default function ClassManagerPage() {
       <div className="flex-1 flex flex-col relative overflow-hidden h-full">
         
         {/* RESPONSIVE TOP HEADER */}
-        {/* Uses flex-col on mobile to stack the search bar, flex-row on desktop */}
         <div className="p-4 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-x-4">
+            
+            {/* HAMBURGER BUTTON - DARK CYAN COLOR */}
             <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className="p-1.5 rounded hover:bg-black/5 transition-colors cursor-pointer outline-none focus:ring-2 focus:ring-[#0A7F93]/20"
@@ -134,6 +135,7 @@ export default function ClassManagerPage() {
                 <line x1="3" y1="18" x2="21" y2="18"></line>
               </svg>
             </button>
+
             <h1 className="text-[20px] font-extrabold m-0 text-[#222]">Class Manager</h1>
           </div>
 
@@ -144,13 +146,15 @@ export default function ClassManagerPage() {
               className="w-full py-2.5 pl-4 pr-10 text-sm bg-[#ECF1F4] border border-[#B0B8C1] rounded outline-none text-gray-800 placeholder-[#B0B8C1] transition-colors focus:border-[#0A7F93]" 
             />
             <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A7F93" strokeWidth="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A7F93" strokeWidth="2.5">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
             </div>
           </div>
         </div>
 
         {/* RESPONSIVE CLASS GRID */}
-        {/* Reduced padding and gaps for mobile (p-4, gap-4) */}
         <div className="px-4 md:px-8 pb-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 overflow-y-auto">
           {classesList.map((cls) => (
             <ClassCard 
@@ -176,7 +180,6 @@ export default function ClassManagerPage() {
         {/* RESPONSIVE MODAL SYSTEM */}
         {isModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-            {/* Modal shrinks to 90% width on very small screens */}
             <div className="bg-white rounded-xl shadow-2xl p-6 md:p-8 w-full max-w-[420px] relative animate-in zoom-in-95 duration-200">
               
               {!showSuccess ? (
