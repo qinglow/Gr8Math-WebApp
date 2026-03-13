@@ -30,13 +30,19 @@ type Lesson = {
 };
 
 export default function ClassPage() {
+  // --- HIGH-LEVEL VIEW STATE ---
   const [currentView, setCurrentView] = useState<'feed' | 'editor' | 'viewer'>('feed');
   const [viewingLesson, setViewingLesson] = useState<Lesson | null>(null);
 
+  // --- MOBILE RESPONSIVE STATE ---
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // --- FEED & SIDEBAR STATES ---
   const [activeTab, setActiveTab] = useState('class');
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('Login successful');
 
+  // --- MODAL & FLOW STATES ---
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedAddOption, setSelectedAddOption] = useState<string | null>(null);
   const [addStep, setAddStep] = useState<'select' | 'details'>('select');
@@ -46,19 +52,23 @@ export default function ClassPage() {
   const [hasDetailsError, setHasDetailsError] = useState(false);
   const [isDetailsLoading, setIsDetailsLoading] = useState(false);
 
+  // EDIT STATE MANAGEMENT
   const [isEditingLesson, setIsEditingLesson] = useState(false);
   const [editingLessonId, setEditingLessonId] = useState<number | null>(null);
 
+  // --- EDITOR STATES ---
   const [lessonContent, setLessonContent] = useState('');
   const [isDiscardModalOpen, setIsDiscardModalOpen] = useState(false);
   const [isSaveConfirmModalOpen, setIsSaveConfirmModalOpen] = useState(false); 
   const [isSavingLesson, setIsSavingLesson] = useState(false);
 
+  // --- DATABASE STATE ---
   const [courseContent, setCourseContent] = useState<Lesson[]>([
     { type: 'lesson', id: 1, week: 'Week 1', title: 'Lesson Title', description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris pretium non felis nec porta. Maecenas luctus lectus dui. Vestibulum accumsan sapien et ex varius, in rhoncus metus mollis. Aliquam turpis eros, fringilla convallis convallis eu, finibus at ligula.' },
     { type: 'assessment', id: 2, title: 'Assessment 1' },
   ]);
 
+  // --- ADD / EDIT FLOW HANDLERS ---
   const handleEditLesson = (lesson: Lesson) => {
     setIsEditingLesson(true);
     setEditingLessonId(lesson.id);
@@ -117,6 +127,7 @@ export default function ClassPage() {
     }, 200);
   };
 
+  // --- EDITOR HANDLERS ---
   const handleBackFromEditor = () => {
     if (lessonContent.trim().length > 0) {
       setIsDiscardModalOpen(true);
@@ -171,10 +182,18 @@ export default function ClassPage() {
     setEditingLessonId(null);
   };
 
+  // --- VIEWER HANDLER ---
   const handleOpenViewer = (lesson: Lesson) => {
     setViewingLesson(lesson);
     setCurrentView('viewer');
   };
+
+  // Helper to change tabs and auto-close sidebar on mobile
+  const handleTabClick = (tab: string) => {
+    setActiveTab(tab);
+    setIsSidebarOpen(false);
+  };
+
 
   // ============================================================================
   // VIEW 1: THE FULL SCREEN EDITOR
@@ -189,18 +208,20 @@ export default function ClassPage() {
           </div>
         )}
 
-        <div className="p-8 lg:p-12 pb-4 flex items-center max-w-6xl mx-auto w-full">
+        {/* FLUID FULL WIDTH: Removed max-w-6xl */}
+        <div className="p-4 md:p-8 lg:p-12 pb-4 flex items-center w-full mx-auto">
           <button onClick={handleBackFromEditor} className="flex items-center gap-x-3 group cursor-pointer outline-none">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#222" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="group-hover:-translate-x-1 transition-transform">
               <path d="M15 18l-6-6 6-6" />
             </svg>
-            <h1 className="text-[22px] font-black text-[#222] m-0 group-hover:text-[#0A7F93] transition-colors">
+            <h1 className="text-[20px] md:text-[22px] font-black text-[#222] m-0 group-hover:text-[#0A7F93] transition-colors">
               {isEditingLesson ? 'Edit Lesson' : 'Lesson Content'} 
             </h1>
           </button>
         </div>
 
-        <div className="flex-1 flex flex-col max-w-6xl mx-auto w-full px-8 lg:px-12 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        {/* FLUID FULL WIDTH: Removed max-w-6xl */}
+        <div className="flex-1 flex flex-col w-full mx-auto px-4 md:px-8 lg:px-12 pb-8 md:pb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="flex justify-end mb-3">
             <button className="flex items-center gap-x-2 text-[12px] font-extrabold text-[#0A7F93] hover:text-[#1A4C8B] transition-colors outline-none">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
@@ -212,14 +233,14 @@ export default function ClassPage() {
             value={lessonContent}
             onChange={(e) => setLessonContent(e.target.value)}
             placeholder="Lorem Ipsum..."
-            className="flex-1 w-full bg-white border border-[#D1D8DD] rounded-xl p-8 text-[14px] text-[#444] font-medium leading-relaxed resize-none outline-none transition-all focus:border-[#EBB637] focus:ring-4 focus:ring-[#EBB637]/20 shadow-sm whitespace-pre-wrap"
+            className="flex-1 w-full bg-white border border-[#D1D8DD] rounded-xl p-4 md:p-8 text-[14px] text-[#444] font-medium leading-relaxed resize-none outline-none transition-all focus:border-[#EBB637] focus:ring-4 focus:ring-[#EBB637]/20 shadow-sm whitespace-pre-wrap"
           />
 
-          <div className="flex justify-center mt-10">
+          <div className="flex justify-center mt-6 md:mt-10">
             <button 
               onClick={() => setIsSaveConfirmModalOpen(true)}
               disabled={!lessonContent.trim()}
-              className={`px-32 py-3.5 rounded-xl font-black text-[14px] uppercase tracking-wide transition-all shadow-md outline-none
+              className={`w-full md:w-auto md:px-32 py-3.5 rounded-xl font-black text-[14px] uppercase tracking-wide transition-all shadow-md outline-none
                 ${lessonContent.trim() ? 'bg-[#0A7F93] text-white hover:bg-[#086a7a] hover:shadow-lg hover:-translate-y-1' : 'bg-[#D1D8DD] text-gray-400 cursor-not-allowed shadow-none'}
               `}
             >
@@ -228,12 +249,11 @@ export default function ClassPage() {
           </div>
         </div>
 
+        {/* ... MODALS ... */}
         {isSaveConfirmModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-[400px] text-center animate-in zoom-in-95 duration-200">
-              <h2 className="text-[16px] font-extrabold text-[#222] mb-8">
-                Are you sure you want to {isEditingLesson ? 'update' : 'save'}?
-              </h2>
+            <div className="bg-white rounded-2xl shadow-2xl p-6 md:p-8 w-full max-w-[400px] text-center animate-in zoom-in-95 duration-200">
+              <h2 className="text-[16px] font-extrabold text-[#222] mb-8">Are you sure you want to {isEditingLesson ? 'update' : 'save'}?</h2>
               <div className="flex justify-center gap-x-12">
                 <button onClick={executeSaveLesson} className="text-[#ED1F24] font-black text-[15px] hover:opacity-70 transition-opacity outline-none">Yes</button>
                 <button onClick={() => setIsSaveConfirmModalOpen(false)} className="text-[#ED1F24] font-black text-[15px] hover:opacity-70 transition-opacity outline-none">No</button>
@@ -244,7 +264,7 @@ export default function ClassPage() {
 
         {isDiscardModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-[400px] text-center animate-in zoom-in-95 duration-200">
+            <div className="bg-white rounded-2xl shadow-2xl p-6 md:p-8 w-full max-w-[400px] text-center animate-in zoom-in-95 duration-200">
               <h2 className="text-[20px] font-extrabold text-[#222] mb-3">Discard Changes?</h2>
               <p className="text-[14px] text-[#666] font-medium leading-relaxed mb-8">You have unsaved content. If you go back, your changes will be lost.</p>
               <div className="flex justify-center gap-x-12">
@@ -266,23 +286,24 @@ export default function ClassPage() {
     return (
       <div className="flex flex-col h-screen bg-[#E2E7E9] font-sans relative overflow-y-auto">
         
-        <div className="p-8 lg:p-12 pb-6 flex flex-col max-w-5xl mx-auto w-full">
-          <button onClick={() => setCurrentView('feed')} className="flex items-center gap-x-2 group cursor-pointer outline-none w-fit mb-8">
+        {/* FLUID FULL WIDTH: Removed max-w-5xl */}
+        <div className="p-4 md:p-8 lg:p-12 pb-4 md:pb-6 flex flex-col w-full mx-auto">
+          <button onClick={() => setCurrentView('feed')} className="flex items-center gap-x-2 group cursor-pointer outline-none w-fit mb-6 md:mb-8">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#222" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:-translate-x-1 transition-transform">
               <polyline points="15 18 9 12 15 6"></polyline>
             </svg>
           </button>
           
           <div>
-            {/* UPDATED: text-[#000000] */}
             <span className="text-[12px] font-extrabold text-[#000000] uppercase tracking-wider">{viewingLesson.week}</span>
-            <h1 className="text-[32px] font-black text-[#222] mt-1 leading-none">{viewingLesson.title}</h1>
+            <h1 className="text-[24px] md:text-[32px] font-black text-[#222] mt-1 leading-none">{viewingLesson.title}</h1>
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col max-w-5xl mx-auto w-full px-8 lg:px-12 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="flex-1 w-full bg-white border border-[#D1D8DD] rounded-xl p-8 md:p-12 shadow-sm min-h-[50vh]">
-            <p className="text-[15px] text-[#444] font-medium leading-loose whitespace-pre-wrap">
+        {/* FLUID FULL WIDTH: Removed max-w-5xl */}
+        <div className="flex-1 flex flex-col w-full mx-auto px-4 md:px-8 lg:px-12 pb-8 md:pb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="flex-1 w-full bg-white border border-[#D1D8DD] rounded-xl p-6 md:p-12 shadow-sm min-h-[50vh]">
+            <p className="text-[14px] md:text-[15px] text-[#444] font-medium leading-loose whitespace-pre-wrap">
               {viewingLesson.description}
             </p>
           </div>
@@ -298,8 +319,22 @@ export default function ClassPage() {
   return (
     <div className="flex h-screen bg-[#E2E7E9] font-sans overflow-hidden">
       
-      {/* SIDEBAR */}
-      <div className="w-[280px] bg-[#E9E9E9] border-r border-[#D1D8DD] flex flex-col shrink-0">
+      {/* --- MOBILE BACKDROP --- */}
+      {isSidebarOpen && (
+        <div 
+          className="md:hidden fixed inset-0 z-[40] bg-black/40 backdrop-blur-sm transition-opacity"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* --- COLLAPSIBLE SIDEBAR --- */}
+      <div 
+        className={`
+          fixed md:relative z-[50] h-full
+          flex flex-col shrink-0 transition-transform duration-300 ease-in-out bg-[#E9E9E9] border-r border-[#D1D8DD] w-[280px]
+          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+        `}
+      >
         <div className="p-8 pb-4">
           <Link href="/class-manager" className="flex items-center gap-x-3 group cursor-pointer w-fit outline-none">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#222" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="group-hover:-translate-x-1 transition-transform">
@@ -312,33 +347,49 @@ export default function ClassPage() {
         </div>
 
         <div className="flex flex-col gap-y-3 px-6 pt-6">
-          <button onClick={() => setActiveTab('class')} className={`flex items-center gap-x-4 px-5 py-3.5 rounded-xl font-bold transition-all border outline-none ${activeTab === 'class' ? 'bg-[#EBB637]/10 border-[#EBB637]/30 text-[#EBB637] shadow-sm' : 'bg-transparent border-transparent text-[#0A7F93] hover:bg-[#D1D8DD]/50'}`}>
+          <button onClick={() => handleTabClick('class')} className={`flex items-center gap-x-4 px-5 py-3.5 rounded-xl font-bold transition-all border outline-none ${activeTab === 'class' ? 'bg-[#EBB637]/10 border-[#EBB637]/30 text-[#EBB637] shadow-sm' : 'bg-transparent border-transparent text-[#0A7F93] hover:bg-[#D1D8DD]/50'}`}>
             <Image src={activeTab === 'class' ? classActiveIcon : classInactiveIcon} alt="Class" width={24} height={24} className="object-contain" />
             <span className="text-[15px] tracking-wide">Class</span>
           </button>
-          
-          <button onClick={() => setActiveTab('participants')} className={`flex items-center gap-x-4 px-5 py-3.5 rounded-xl font-bold transition-all border outline-none ${activeTab === 'participants' ? 'bg-[#EBB637]/10 border-[#EBB637]/30 text-[#EBB637] shadow-sm' : 'bg-transparent border-transparent text-[#0A7F93] hover:bg-[#D1D8DD]/50'}`}>
+          <button onClick={() => handleTabClick('participants')} className={`flex items-center gap-x-4 px-5 py-3.5 rounded-xl font-bold transition-all border outline-none ${activeTab === 'participants' ? 'bg-[#EBB637]/10 border-[#EBB637]/30 text-[#EBB637] shadow-sm' : 'bg-transparent border-transparent text-[#0A7F93] hover:bg-[#D1D8DD]/50'}`}>
             <Image src={activeTab === 'participants' ? participantsActiveIcon : participantsIcon} alt="Participants" width={24} height={24} className="object-contain" />
             <span className="text-[15px] tracking-wide">Participants</span>
           </button>
-          
-          <button onClick={() => setActiveTab('notifications')} className={`flex items-center gap-x-4 px-5 py-3.5 rounded-xl font-bold transition-all border outline-none ${activeTab === 'notifications' ? 'bg-[#EBB637]/10 border-[#EBB637]/30 text-[#EBB637] shadow-sm' : 'bg-transparent border-transparent text-[#0A7F93] hover:bg-[#D1D8DD]/50'}`}>
+          <button onClick={() => handleTabClick('notifications')} className={`flex items-center gap-x-4 px-5 py-3.5 rounded-xl font-bold transition-all border outline-none ${activeTab === 'notifications' ? 'bg-[#EBB637]/10 border-[#EBB637]/30 text-[#EBB637] shadow-sm' : 'bg-transparent border-transparent text-[#0A7F93] hover:bg-[#D1D8DD]/50'}`}>
             <Image src={activeTab === 'notifications' ? notificationsActiveIcon : notificationsIcon} alt="Notifications" width={24} height={24} className="object-contain" />
             <span className="text-[15px] tracking-wide">Notifications</span>
           </button>
-          
-          <button onClick={() => setActiveTab('dll')} className={`flex items-center gap-x-4 px-5 py-3.5 rounded-xl font-bold transition-all border outline-none ${activeTab === 'dll' ? 'bg-[#EBB637]/10 border-[#EBB637]/30 text-[#EBB637] shadow-sm' : 'bg-transparent border-transparent text-[#0A7F93] hover:bg-[#D1D8DD]/50'}`}>
+          <button onClick={() => handleTabClick('dll')} className={`flex items-center gap-x-4 px-5 py-3.5 rounded-xl font-bold transition-all border outline-none ${activeTab === 'dll' ? 'bg-[#EBB637]/10 border-[#EBB637]/30 text-[#EBB637] shadow-sm' : 'bg-transparent border-transparent text-[#0A7F93] hover:bg-[#D1D8DD]/50'}`}>
             <Image src={activeTab === 'dll' ? dllActiveIcon : dllIcon} alt="DLL" width={24} height={24} className="object-contain" />
             <span className="text-[15px] tracking-wide">DLL</span>
           </button>
         </div>
       </div>
 
-      {/* FEED CONTENT */}
-      <div className="flex-1 relative flex flex-col overflow-y-auto">
-        <div className="p-8 lg:p-12 max-w-[900px]">
+      {/* MAIN CONTENT AREA */}
+      <div className="flex-1 relative flex flex-col overflow-hidden">
+        
+        {/* --- MOBILE TOP HEADER (Only visible on small screens) --- */}
+        <div className="md:hidden flex items-center justify-between p-4 bg-[#E9E9E9] border-b border-[#D1D8DD] shrink-0">
+          <div className="flex items-center gap-x-4">
+            <button onClick={() => setIsSidebarOpen(true)} className="p-1.5 rounded hover:bg-black/5 transition-colors outline-none">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0A7F93" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            </button>
+            <Link href="/class-manager" className="flex items-center gap-x-2 outline-none">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#222" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+              <h1 className="text-[18px] font-black text-[#222] m-0">Section 1</h1>
+            </Link>
+          </div>
+        </div>
+
+        {/* FEED CONTENT - FLUID FULL WIDTH (Removed max-w-6xl) */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 w-full">
           {activeTab === 'class' && (
-            <div className="flex flex-col gap-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 ease-out">
+            <div className="flex flex-col gap-y-4 md:gap-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 ease-out pb-20">
               {courseContent.map((item) => {
                 if (item.type === 'lesson') {
                   return (
@@ -369,10 +420,10 @@ export default function ClassPage() {
         </div>
 
         {/* FLOATING "ADD" BUTTON */}
-        <div className="absolute bottom-10 right-10 z-50">
+        <div className="absolute bottom-6 right-6 md:bottom-10 md:right-10 z-50">
           <button 
             onClick={() => setIsAddModalOpen(true)}
-            className="bg-[#1A4C8B] text-white px-8 py-3.5 rounded-full font-black text-[14px] uppercase tracking-wide shadow-lg hover:shadow-xl hover:-translate-y-1 hover:bg-[#153a6b] transition-all flex items-center gap-x-2 outline-none focus:ring-4 focus:ring-[#1A4C8B]/30"
+            className="bg-[#1A4C8B] text-white px-6 md:px-8 py-3 md:py-3.5 rounded-full font-black text-[14px] uppercase tracking-wide shadow-lg hover:shadow-xl hover:-translate-y-1 hover:bg-[#153a6b] transition-all flex items-center gap-x-2 outline-none focus:ring-4 focus:ring-[#1A4C8B]/30"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
               <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -504,8 +555,8 @@ export default function ClassPage() {
 
         {/* TOAST NOTIFICATION */}
         {showToast && (
-          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-[200] animate-in fade-in slide-in-from-bottom-4 duration-300 ease-out">
-              <div className="bg-[#0A7F93] text-white px-10 py-3 rounded shadow-xl flex items-center justify-center min-w-[240px]">
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 md:absolute md:bottom-10 z-[200] animate-in fade-in slide-in-from-bottom-4 duration-300 ease-out w-[90%] md:w-auto text-center">
+              <div className="bg-[#0A7F93] text-white px-6 md:px-10 py-3 rounded shadow-xl inline-flex items-center justify-center min-w-[200px]">
                   <span className="text-[14px] font-normal tracking-wide uppercase">
                     {toastMessage}
                   </span>
