@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import { login } from '../action';
 import { error } from 'console';
 import { Gr8Toast } from '@/components/Gr8Toast';
+import Link from 'next/link';
 
 export default function LoginPage() {
 
@@ -109,7 +110,9 @@ export default function LoginPage() {
             />
 
             <div className="flex justify-end mb-8 mt-[-8px]">
+              <Link href="/auth/update-password/">
               <Gr8Button text="Forgot Password?" variant="link" />
+              </Link>
             </div>
 
             <Gr8Button text="Login" type="submit" variant="solid" />
