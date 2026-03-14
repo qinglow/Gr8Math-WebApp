@@ -3,7 +3,7 @@
 
 import React from 'react';
 import Image from 'next/image';
-import errorIcon from '../app/auth/photos/error-icon.png'; 
+import errorIcon from '@/app/auth/photos/error-icon.png';
 
 interface Gr8SelectProps {
   label: string;
@@ -28,6 +28,7 @@ export const Gr8Select: React.FC<Gr8SelectProps> = ({
     <div className="w-full flex flex-col mb-4">
       <div className="relative w-full">
         <select
+          aria-label="Close modal"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onFocus={onFocus}
@@ -39,16 +40,16 @@ export const Gr8Select: React.FC<Gr8SelectProps> = ({
             <option key={opt} value={opt} className="text-gray-800 font-normal">{opt}</option>
           ))}
         </select>
-        
+
         <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none flex items-center gap-x-2">
           {hasError && <Image src={errorIcon} alt="Error" width={20} height={20} className="object-contain" />}
-          
+
           <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg" className="mr-1 relative">
-            <path d="M1 1L5 5L9 1" stroke="#888" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M1 1L5 5L9 1" stroke="#888" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
       </div>
-      
+
       {hasError && errorMessage && (
         <p className="text-[#ED1F24] text-[10px] font-normal mt-1 mb-0">
           {errorMessage}

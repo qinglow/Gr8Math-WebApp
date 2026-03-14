@@ -1,19 +1,19 @@
-// app/auth/update-password/page.tsx
 'use client';
 
 import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation'; // Correct import for App Router
+import { useRouter } from 'next/navigation';
 
 import logo from '../photos/logo.png';
 import backArrowIcon from '../photos/back-arrow.png';
 
-import { Gr8TextField } from '../../../components/Gr8TextField';
-import { Gr8Button } from '../../../components/Gr8Button';
-import { Gr8Toast } from '@/components/Gr8Toast';
+import { Gr8TextField } from '../../../components/ui/Gr8TextField';
+import { Gr8Button } from '../../../components/ui/Gr8Button';
+import { Gr8Toast } from '@/components/ui/Gr8Toast';
 import { sendResetCode, verifyResetCode, updatePassword } from '../action';
-import { counter } from '@/app/hooks/counter'; // Ensure this path is correct
+import { counter } from '@/app/hooks/counter';
+import { PasswordDetailsForm } from '@/components/form/password-form';
 
 export default function UpdatePasswordPage() {
   const router = useRouter();
@@ -161,13 +161,13 @@ export default function UpdatePasswordPage() {
       <div className="w-full lg:w-1/2 flex-1 bg-[#FDF8F2] flex justify-center items-center relative p-6 lg:p-16">
         <div className="w-full max-w-[450px] bg-white rounded-2xl shadow-xl p-8 lg:p-10 border border-gray-100 animate-in fade-in zoom-in-95 slide-in-from-bottom-8 duration-1000 ease-out">
           <div className="flex items-center mb-8 gap-x-4">
-            <button type="button" onClick={handleCancel} className="hover:opacity-70 transition-opacity flex items-center justify-center bg-transparent border-none p-0 cursor-pointer">
+            <button type="button" aria-label="Close Modal" onClick={handleCancel} className="hover:opacity-70 transition-opacity flex items-center justify-center bg-transparent border-none p-0 cursor-pointer">
               <Image src={backArrowIcon} alt="Back to Login" width={20} height={20} className="object-contain" />
             </button>
             <h2 className="text-[22px] font-bold text-[#222] m-0">Change Password</h2>
           </div>
 
-          {/* STEP 1: REQUEST CODE */}
+          {/* REQUEST CODE */}
           {step === 'request' && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-500">
               <p className="text-[12px] font-semibold text-[#222] mb-4">A verification code will be sent to your email.</p>
@@ -184,7 +184,7 @@ export default function UpdatePasswordPage() {
             </div>
           )}
 
-          {/* STEP 2: ENTER CODE*/}
+          {/* ENTER CODE*/}
           {step === 'verify' && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-500">
               <p className="text-[12px] font-semibold text-[#222] mb-4">A verification code will be sent to your email.</p>
@@ -201,27 +201,21 @@ export default function UpdatePasswordPage() {
             </div>
           )}
 
-          {/* STEP 3: NEW PASSWORD */}
+          {/* NEW PASSWORD */}
           {step === 'new-password' && (
-            <div className="animate-in fade-in slide-in-from-right-4 duration-500">
-              <div className="text-[11px] font-semibold text-[#222] mb-6 leading-relaxed">
-                <p className="mb-1">Please create a new password. The password needs to follow the following requirements:</p>
-                <ul className="list-none p-0 m-0 text-[10px]">
-                  <li>- Minimum of 8 and maximum of 16 characters</li>
-                  <li>- At least one uppercase letter</li>
-                  <li>- At least one number and one special character</li>
-                </ul>
-              </div>
-              <Gr8TextField label="New Password" type="password" value={newPassword} onChange={(val) => { setNewPassword(val); setPasswordError(false); }} isActive={activeField === 'newPassword'} onFocus={() => setActiveField('newPassword')} onBlur={() => setActiveField(null)} hasError={passwordError} errorMessage={passwordErrorMessage} />
-              <Gr8TextField label="Re-enter Password" type="password" value={confirmPassword} onChange={(val) => { setConfirmPassword(val); setPasswordError(false); }} isActive={activeField === 'confirmPassword'} onFocus={() => setActiveField('confirmPassword')} onBlur={() => setActiveField(null)} hasError={passwordError} errorMessage={passwordErrorMessage} />
-              <div className="mt-6">
-                <Gr8Button
-                  type="button"
-                  text="Save Password"
-                  onClick={handleSavePassword}
-                  variant="solid" disabled={loading} />
-              </div>
-            </div>
+            <PasswordDetailsForm
+              passwordValue={newPassword}
+              confirmValue={confirmPassword}
+              onPasswordChange={(val) => { setNewPassword(val); setPasswordError(false); }}
+              onConfirmChange={(val) => { setConfirmPassword(val); setPasswordError(false); }}
+              onSubmit={handleSavePassword}
+              isLoading={loading}
+              buttonText="Save Password"
+              error={passwordError}
+              errorMessage={passwordErrorMessage}
+              activeField={activeField}
+              setActiveField={setActiveField}
+            />
           )}
         </div>
         <Gr8Toast message={toastError} isVisible={!!toastError} />

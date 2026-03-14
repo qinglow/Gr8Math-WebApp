@@ -3,9 +3,9 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { Gr8TextField } from '@/components/Gr8TextField';
-import { Gr8TimePicker } from '@/components/Gr8TimePicker';
-import { ClassCard } from '@/components/ClassCard';
+import { Gr8TextField } from '@/components/ui/Gr8TextField';
+import { Gr8TimePicker } from '@/components/ui/Gr8TimePicker';
+import { ClassCard } from '@/components/card/ClassCard';
 
 // --- SIDEBAR IMAGE IMPORTS ---
 import profileIcon from './photos/DefaultTemporaryProfile.png';
@@ -125,7 +125,8 @@ export default function ClassManagerPage() {
           <div className="flex items-center gap-x-4">
             
             {/* HAMBURGER BUTTON - DARK CYAN COLOR */}
-            <button 
+            <button
+            aria-label="Hamburger"
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className="p-1.5 rounded hover:bg-black/5 transition-colors cursor-pointer outline-none focus:ring-2 focus:ring-[#0A7F93]/20"
             >
@@ -221,7 +222,7 @@ export default function ClassManagerPage() {
                     <p className="text-[10px] font-bold text-[#A0A0A0] uppercase mb-2">Class Code</p>
                     <div className="flex items-center justify-center gap-x-4">
                       <span className="text-3xl md:text-4xl font-black text-[#222] tracking-wider">{generatedCode}</span>
-                      <button onClick={handleCopyCode} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                      <button aria-label="Close modal" onClick={handleCopyCode} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A4C8B" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                           <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>

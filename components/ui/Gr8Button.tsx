@@ -8,7 +8,8 @@ interface Gr8ButtonProps {
   onClick?: () => void;
   variant?: 'solid' | 'link';
   type?: 'button' | 'submit';
-  isLocked?: boolean; // New prop!
+  isLocked?: boolean; 
+  disabled?: boolean;
 }
 
 export const Gr8Button: React.FC<Gr8ButtonProps> = ({ 

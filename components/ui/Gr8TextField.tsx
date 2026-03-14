@@ -3,11 +3,11 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import eyeOpen from '../app/auth/photos/eye-open.png';
-import eyeClosed from '../app/auth/photos/eye-closed.png';
-import errorIcon from '../app/auth/photos/error-icon.png';
-import lockIcon from '../app/auth/photos/lock.png'; 
-import calendarIcon from '../app/auth/photos/calendar.png'; 
+import eyeOpen from '@/app/auth/photos/eye-open.png';
+import eyeClosed from '@/app/auth/photos/eye-closed.png';
+import calendarIcon from '@/app/auth/photos/calendar.png';
+import errorIcon from '@/app/auth/photos/error-icon.png';
+import  lockIcon from '@/app/auth/photos/lock.png';
 
 interface Gr8TextFieldProps {
   label: string;
@@ -94,7 +94,6 @@ export const Gr8TextField: React.FC<Gr8TextFieldProps> = ({
           onBlur={handleBlur}
           readOnly={isLocked || disabled} 
           placeholder={showTopLabel ? '' : label}
-          // I removed the hardcoded hover:border-gray-400 from here so it doesn't break the yellow
           className={`w-full pl-4 py-2.5 text-[14px] bg-[#F4F6F8] border rounded outline-none transition-all duration-200 ${borderClass} ${textClass} placeholder-gray-400 ${inputPaddingRight} ${disabled ? 'opacity-50' : ''}`}
         />
         
@@ -113,7 +112,7 @@ export const Gr8TextField: React.FC<Gr8TextFieldProps> = ({
           )}
 
           {showPasswordToggle && (
-            <button type="button" onClick={() => setIsPasswordVisible(!isPasswordVisible)} className="bg-transparent border-none cursor-pointer flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity p-0 relative">
+            <button type="button" aria-label="Show Password" onClick={() => setIsPasswordVisible(!isPasswordVisible)} className="bg-transparent border-none cursor-pointer flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity p-0 relative">
               <Image src={eyeOpen} alt="Open" width={20} height={20} className={isPasswordVisible ? 'object-contain' : 'hidden'} />
               <Image src={eyeClosed} alt="Closed" width={20} height={20} className={!isPasswordVisible ? 'object-contain' : 'hidden'} />
             </button>
