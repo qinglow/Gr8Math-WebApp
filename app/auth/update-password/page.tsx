@@ -13,7 +13,7 @@ import { Gr8Button } from '../../../components/ui/Gr8Button';
 import { Gr8Toast } from '@/components/ui/Gr8Toast';
 import { sendResetCode, verifyResetCode, updatePassword } from '../action';
 import { counter } from '@/app/hooks/counter';
-import { PasswordDetailsForm } from '@/components/form/password-form';
+import { PasswordDetailsForm } from '@/components/form/PasswordForm';
 
 export default function UpdatePasswordPage() {
   const router = useRouter();

@@ -118,7 +118,7 @@ function LoginForm() {
             </div>
 
             <Gr8Button
-              text={loading ? "Logging in..." : "Login"}
+              text="Login"
               type="submit"
               variant="solid"
               disabled={loading}

@@ -18,7 +18,7 @@ interface FormProps {
   extraFieldOptions?: string[];
   activeField: string | null;
   setActiveField: (val: string | null) => void;
-  errorMessages?: Record<string, string>; // The custom messages from your SignUpPage
+  errorMessages?: Record<string, string>; 
 }
 
 export const RegistrationDetailsForm = ({
@@ -33,7 +33,7 @@ export const RegistrationDetailsForm = ({
   extraFieldOptions = [],
   activeField,
   setActiveField,
-  errorMessages = {} // Destructure and default to empty object
+  errorMessages = {} 
 }: FormProps) => {
   return (
     <div className="animate-in fade-in slide-in-from-right-4 duration-500">
@@ -84,7 +84,6 @@ export const RegistrationDetailsForm = ({
           errorMessage={errorMessages.lastName || "Required"}
         />
 
-        {/* Dynamic Extra Field (LRN or Position) */}
         {extraFieldType === 'select' ? (
           <Gr8Select
             label={extraFieldLabel}
@@ -110,7 +109,6 @@ export const RegistrationDetailsForm = ({
           />
         )}
 
-        {/* Gender Selection */}
         <div className="flex items-start mb-2">
           <span className="w-[90px] text-[14px] font-extrabold text-[#222] mt-3">Gender</span>
           <div className="flex-1">
@@ -128,7 +126,6 @@ export const RegistrationDetailsForm = ({
           </div>
         </div>
 
-        {/* Birthdate Selection */}
         <div className="flex items-start">
           <span className="w-[90px] text-[14px] font-extrabold text-[#222] mt-3">Birthdate</span>
           <div className="flex-1">

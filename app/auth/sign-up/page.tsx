@@ -13,12 +13,11 @@ import teacherRoleIconActive from '@/app/auth/photos/role-teacher-active.png';
 import studentRoleIconActive from '@/app/auth/photos/role-student-active.png';
 
 import { Gr8Button } from '@/components/ui/Gr8Button';
-import { Gr8TextField } from '@/components/ui/Gr8TextField';
-import { RegistrationDetailsForm } from '@/components/form/registration-form';
+import { RegistrationDetailsForm } from '@/components/form/RegistrationForm';
 import { ROLES, ROLE_CONFIGS, type Role } from '@/app/constant/registration';
 import { register, checkAvailability } from '../action';
 import { Gr8Toast } from '@/components/ui/Gr8Toast';
-import { PasswordDetailsForm } from '@/components/form/password-form';
+import { PasswordDetailsForm } from '@/components/form/PasswordForm';
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -190,7 +189,7 @@ export default function SignUpPage() {
             {isLoading && (
             <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-50 flex items-center justify-center">
                <div className="bg-white px-6 py-4 rounded-lg shadow-lg flex items-center gap-x-3 border border-gray-100">
-                  <div className="w-5 h-5 border-2 border-[#1A4C8B] border-t-transparent rounded-full animate-spin"></div>
+                  <div className="w-5 h-5 border-2 border-[#2D00F7] border-t-transparent rounded-full animate-spin"></div>
                 <span className="text-sm font-bold text-[#222]">Loading...</span>
                </div>
             </div>
@@ -260,7 +259,7 @@ export default function SignUpPage() {
               confirmValue={formData.confirmPassword}
               onPasswordChange={(v) => updateField('password', v)}
               onConfirmChange={(v) => updateField('confirmPassword', v)}
-              onSubmit={handleVerifyPassword} // Your reg logic
+              onSubmit={handleVerifyPassword} 
               isLoading={isLoading}
               buttonText="Save Password"
               error={!!errors.password}

@@ -5,6 +5,30 @@ import { redirect } from "next/navigation"
 import { z } from "zod"
 
 
+export async function login(formData: FormData) {
+  const supabase = await createClient();
+  const email = formData.get('email') as string;
+  const password = formData.get('password') as string;
+
+  const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+
+  if (authError) {
+    return { error: "Email or Password not found" };
+  }
+
+  const { data: user, error: userError } = await supabase
+    .from('user')
+    .select('id, first_name, roles, profile_pic') 
+    .eq('email_add', email) 
+    .single();
+
+  if (userError || !user) {
+    return { error: "Profile not found" };
+  }
+
+ 
+  redirect(`/class-manager`);
+}
 
 const RegistrationSchema = z.object({
     email: z.string().email("Invalid email format"),
@@ -69,7 +93,6 @@ export async function register(formData: FormData) {
 
     const newDbId = userData.id
 
-    // Role-Specific Data
     if (role === 'Student') {
         const { error: studentError } = await supabase
             .from('student')
@@ -91,23 +114,6 @@ export async function register(formData: FormData) {
 
     return { success: true }
     
-}
-
-
-
-
-export async function login(formData: FormData) {
-    const supabase = await createClient()
-    const email = formData.get('email') as string
-    const password = formData.get('password') as string
-
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-
-    if (error) {
-        return { error: "Email or Password not found" }
-    }
-
-    redirect('/dashboard')
 }
 
 
