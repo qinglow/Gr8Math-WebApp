@@ -12,6 +12,7 @@ import studentRoleIcon from '@/app/auth/photos/role-student.png';
 import teacherRoleIconActive from '@/app/auth/photos/role-teacher-active.png';
 import studentRoleIconActive from '@/app/auth/photos/role-student-active.png';
 
+import { Gr8LoadingOverlay } from '@/components/ui/Gr8LoadingOverlay';
 import { Gr8Button } from '@/components/ui/Gr8Button';
 import { RegistrationDetailsForm } from '@/components/form/RegistrationForm';
 import { ROLES, ROLE_CONFIGS, type Role } from '@/app/constant/registration';
@@ -71,11 +72,20 @@ export default function SignUpPage() {
     const newErrors: Record<string, string> = {};
     const fields = ['email', 'firstName', 'lastName', 'extra', 'gender', 'birthdate'];
 
+    // 1. Basic empty field check
     fields.forEach(f => {
       if (!formData[f as keyof typeof formData]) {
         newErrors[f] = "Please enter the needed details.";
       }
     });
+
+    // 2. Client-side Email Format Validation
+    if (formData.email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        newErrors.email = "Invalid email format";
+      }
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -186,14 +196,7 @@ export default function SignUpPage() {
         <div className="w-full max-w-[450px] bg-white rounded-2xl shadow-xl p-8 lg:p-10 border border-gray-100 relative overflow-visible animate-in slide-in-from-bottom-8 duration-1000">
 
           {/* LOADING OVERLAY */}
-            {isLoading && (
-            <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-50 flex items-center justify-center">
-               <div className="bg-white px-6 py-4 rounded-lg shadow-lg flex items-center gap-x-3 border border-gray-100">
-                  <div className="w-5 h-5 border-2 border-[#2D00F7] border-t-transparent rounded-full animate-spin"></div>
-                <span className="text-sm font-bold text-[#222]">Loading...</span>
-               </div>
-            </div>
-          )}
+          <Gr8LoadingOverlay isLoading={isLoading} message="Loading..." />
 
 
           {step === 'role' && (
@@ -259,7 +262,7 @@ export default function SignUpPage() {
               confirmValue={formData.confirmPassword}
               onPasswordChange={(v) => updateField('password', v)}
               onConfirmChange={(v) => updateField('confirmPassword', v)}
-              onSubmit={handleVerifyPassword} 
+              onSubmit={handleVerifyPassword}
               isLoading={isLoading}
               buttonText="Save Password"
               error={!!errors.password}
