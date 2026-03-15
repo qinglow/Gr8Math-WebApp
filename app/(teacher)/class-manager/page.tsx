@@ -9,10 +9,14 @@ export default async function ClassManagerPage() {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
 
   if (authError || !user || !user.email) {
-    redirect('/login');
+    redirect('/auth/login');
   }
 
-  const { data: profile } = await getUserProfile(user.email);
+  const { data: profile, error: profileError } = await getUserProfile(user.email);
+
+  if (profileError || !profile) {
+    redirect('/auth/login?msg=Profile%20not%20found');
+  }
 
   return <ClassManagerClient profile={profile} />;
 }

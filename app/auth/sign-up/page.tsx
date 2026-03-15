@@ -72,14 +72,12 @@ export default function SignUpPage() {
     const newErrors: Record<string, string> = {};
     const fields = ['email', 'firstName', 'lastName', 'extra', 'gender', 'birthdate'];
 
-    // 1. Basic empty field check
     fields.forEach(f => {
       if (!formData[f as keyof typeof formData]) {
         newErrors[f] = "Please enter the needed details.";
       }
     });
 
-    // 2. Client-side Email Format Validation
     if (formData.email) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(formData.email)) {
@@ -172,11 +170,28 @@ export default function SignUpPage() {
     if (result?.success) {
       setIsLoading(false);
       const msg = encodeURIComponent("Registered successfully");
-      router.push(`/auth/login?msg=${msg}`);
+      resetRegistration();
+      router.replace(`/auth/login?msg=${msg}`);
     } else {
       setIsLoading(false);
       showToast(result?.error || "Registration failed. Please try again.");
     }
+  };
+
+  const resetRegistration = () => {
+    setStep('role');
+    setSelectedRole(null);
+    setFormData({
+      email: '',
+      firstName: '',
+      lastName: '',
+      gender: '',
+      birthdate: '',
+      extra: '',
+      password: '',
+      confirmPassword: ''
+    });
+    setErrors({});
   };
 
   return (
@@ -202,7 +217,10 @@ export default function SignUpPage() {
           {step === 'role' && (
             <div className="flex flex-col items-center">
               <div className="flex items-center mb-8 gap-x-4 w-full text-left">
-                <Link href="/auth/login" aria-label="Go back to Login Page">
+                <Link 
+                href="/auth/login" 
+                aria-label="Go back to Login Page"
+                onClick={resetRegistration}>
                   <Image src={backArrowIcon} alt="Back" width={20} height={20} />
                 </Link>
                 <h2 className="text-[22px] font-bold text-[#222] m-0">Register</h2>
@@ -257,19 +275,38 @@ export default function SignUpPage() {
 
           {/* CREATE PASSWORD */}
           {step === 'create-password' && (
-            <PasswordDetailsForm
-              passwordValue={formData.password}
-              confirmValue={formData.confirmPassword}
-              onPasswordChange={(v) => updateField('password', v)}
-              onConfirmChange={(v) => updateField('confirmPassword', v)}
-              onSubmit={handleVerifyPassword}
-              isLoading={isLoading}
-              buttonText="Save Password"
-              error={!!errors.password}
-              errorMessage={passwordErrorMessage}
-              activeField={activeField}
-              setActiveField={setActiveField}
-            />
+            <div className="flex flex-col animate-in slide-in-from-right-4 duration-500">
+              {/* Manual Back Button and Title for the Sign Up Flow */}
+              <div className="flex items-center mb-8 gap-x-4 w-full text-left">
+                <button
+                  aria-label='back'
+                  type="button"
+                  onClick={() => {
+                    setStep('info');
+                    setErrors({});
+                  }}
+                  className="cursor-pointer hover:opacity-70 transition-opacity outline-none"
+                >
+                  <Image src={backArrowIcon} alt="Back" width={20} height={20} />
+                </button>
+                <h2 className="text-[22px] font-bold text-[#222] m-0">Create Password</h2>
+              </div>
+
+              {/* The actual reusable form - without the onBack prop */}
+              <PasswordDetailsForm
+                passwordValue={formData.password}
+                confirmValue={formData.confirmPassword}
+                onPasswordChange={(v) => updateField('password', v)}
+                onConfirmChange={(v) => updateField('confirmPassword', v)}
+                onSubmit={handleVerifyPassword}
+                isLoading={isLoading}
+                buttonText="Save Password"
+                error={!!errors.password}
+                errorMessage={passwordErrorMessage}
+                activeField={activeField}
+                setActiveField={setActiveField}
+              />
+            </div>
           )}
 
         </div>

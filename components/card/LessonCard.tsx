@@ -3,7 +3,7 @@ import React from 'react';
 import Image from 'next/image';
 
 // Adjust the path if your components folder is located somewhere else
-import editIcon from '../app/class-page/photos/edit.png';
+import editIcon from '@/app/(teacher)/class-page/photos/edit.png';
 
 interface LessonCardProps {
   week: string;

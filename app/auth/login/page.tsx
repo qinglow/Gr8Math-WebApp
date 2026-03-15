@@ -29,20 +29,33 @@ function LoginForm() {
   const [activeField, setActiveField] = useState<'email' | 'password' | null>(null);
   const [emptyError, setEmptyError] = useState(false);
   const [loading, setLoading] = useState(false);
-
-
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [processedMsg, setProcessedMsg] = useState<string | null>(null);
+
+  const resetForm = () => {
+    setEmail('');
+    setPassword('');
+    setEmptyError(false);
+    setActiveField(null);
+  };
 
   useEffect(() => {
-  const messageFromUrl = searchParams.get('msg');
+    const messageFromUrl = searchParams.get('msg');
+    
+    if (messageFromUrl && messageFromUrl !== processedMsg) {
+      const decodedMsg = decodeURIComponent(messageFromUrl);
+      setToastMsg(decodedMsg);
+      setProcessedMsg(decodedMsg); 
 
-  if (messageFromUrl) {
-    setToastMsg(decodeURIComponent(messageFromUrl));
-    window.history.replaceState({}, '', window.location.pathname);
-    const timer = setTimeout(() => setToastMsg(null), 4000);
-    return () => clearTimeout(timer);
-  }
-}, [searchParams]);
+      router.replace('/auth/login', { scroll: false });
+
+      const timer = setTimeout(() => {
+        setToastMsg(null);
+      }, 4000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams, router, processedMsg]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,6 +79,8 @@ function LoginForm() {
       setToastMsg(result.error);
       setLoading(false);
       setTimeout(() => setToastMsg(null), 3000);
+    } else {
+      resetForm();
     }
   };
 
@@ -112,7 +127,7 @@ function LoginForm() {
             />
 
             <div className="flex justify-end mb-8 mt-[-8px]">
-              <Link href="/auth/update-password/">
+              <Link href="/auth/update-password/" onClick={resetForm}>
                 <Gr8Button text="Forgot Password?" variant="link" />
               </Link>
             </div>
@@ -131,7 +146,7 @@ function LoginForm() {
             </div>
 
             <p className="text-[12px] font-semibold mb-3 text-[#444] text-center">Don't have an account?</p>
-            <Link href="/auth/sign-up" className="w-full">
+            <Link href="/auth/sign-up" className="w-full" onClick={resetForm}>
               <Gr8Button text="Register" type="button" variant="solid" />
             </Link>
           </form>
