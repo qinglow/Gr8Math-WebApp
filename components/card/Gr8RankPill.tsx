@@ -18,8 +18,8 @@ export const Gr8RankPill: React.FC<Gr8RankPillProps> = ({ rank, name, onClick, c
             className={`flex items-center justify-between bg-white border border-[#0A7F93] rounded-full px-3 py-2 md:py-2.5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all outline-none mx-auto ${className}`}
         >
             <div className="flex items-center gap-x-3 md:gap-x-4 w-[85%]">
-                {/* The teal rank badge */}
-                <div className="bg-[#56C0B4] text-white font-black text-[11px] md:text-[12px] h-7 px-3 md:px-3.5 rounded-full flex items-center justify-center shrink-0">
+                {/* The dark cyan rank badge */}
+                <div className="bg-[#0F8B8D] text-white font-black text-[11px] md:text-[12px] h-7 px-3 md:px-3.5 rounded-full flex items-center justify-center shrink-0">
                     {rank}{rankSuffix}
                 </div>
                 {/* The student name */}
