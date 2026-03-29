@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { LessonCard } from '@/components/card/LessonCard';
 import { AssessmentCard } from '@/components/card/AssessmentCard';
 import { ParticipantAssessmentCard } from '@/components/card/ParticipantAssessmentCard';
+import { DllCard } from '@/components/card/DllCard'; 
 import { Gr8RankPill } from '@/components/card/Gr8RankPill'; 
 import { Gr8TextField } from '@/components/ui/Gr8TextField';
 import { Gr8MathHeader } from '@/components/ui/Gr8MathHeader'; 
@@ -15,6 +16,11 @@ import { Gr8RichTextEditor } from '@/components/ui/Gr8RichTextEditor';
 import { Gr8LoadingOverlay } from '@/components/ui/Gr8LoadingOverlay'; 
 import { Gr8DateTimePicker } from '@/components/ui/Gr8DateTimePicker'; 
 import { Gr8AssessmentEditor, QuestionData } from '@/components/ui/Gr8AssessmentEditor';
+
+// --- DLL COMPONENTS ---
+import { Gr8DllDatePicker } from '@/components/dll/Gr8DllDatePicker'; 
+import { Gr8DllEditor } from '@/components/dll/Gr8DllEditor'; 
+import { Gr8DllViewer } from '@/components/dll/Gr8DllViewer'; // <-- ADDED IMPORT
 
 // --- SIDEBAR IMAGES ---
 import classActiveIcon from './photos/class-active.png';
@@ -74,15 +80,15 @@ const TOTAL_SCORE = MOCK_REPORT_DATA.reduce((acc, curr) => acc + curr.score, 0);
 const TOTAL_ITEMS = MOCK_REPORT_DATA.reduce((acc, curr) => acc + curr.items, 0);
 
 export default function ClassPageClient({ initialFeed, sectionName, courseId }: ClassPageClientProps) {
-    // --- HIGH-LEVEL VIEW STATE ---
-    const [currentView, setCurrentView] = useState<'feed' | 'editor' | 'viewer' | 'assessment-editor'>('feed');
+    // --- HIGH-LEVEL VIEW STATE (ADDED dll-viewer) ---
+    const [currentView, setCurrentView] = useState<'feed' | 'editor' | 'viewer' | 'assessment-editor' | 'dll-editor' | 'dll-viewer'>('feed');
     const [viewingLesson, setViewingLesson] = useState<ClassContentItem | null>(null);
+    const [viewingDll, setViewingDll] = useState<any | null>(null); // <-- ADDED STATE FOR DLL VIEWER
 
     // --- MOBILE RESPONSIVE STATE ---
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     // --- FEED & SIDEBAR STATES ---
-    // FIX: Set initial state to 'class' instead of 'participants'
     const [activeTab, setActiveTab] = useState('class'); 
     const [showToast, setShowToast] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
@@ -110,6 +116,16 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
     const [availableUntil, setAvailableUntil] = useState('');
     const [hasAssessmentDetailsError, setHasAssessmentDetailsError] = useState(false);
     const [isAssessmentLoading, setIsAssessmentLoading] = useState(false);
+
+    // --- DLL DETAILS & RECORD STATES ---
+    const [dllSemesterNumber, setDllSemesterNumber] = useState('');
+    const [dllWeekNumber, setDllWeekNumber] = useState('');
+    const [dllAvailableFrom, setDllAvailableFrom] = useState('');
+    const [dllAvailableUntil, setDllAvailableUntil] = useState('');
+    const [hasDllDetailsError, setHasDllDetailsError] = useState(false);
+    const [isDllLoading, setIsDllLoading] = useState(false);
+    const [currentDllDates, setCurrentDllDates] = useState<{from: string, to: string} | null>(null);
+    const [dllRecords, setDllRecords] = useState<any[]>([]);
 
     // EDIT STATE MANAGEMENT
     const [isEditingLesson, setIsEditingLesson] = useState(false);
@@ -161,7 +177,7 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
     };
 
     const handleProceedToDetails = () => {
-        if (!selectedAddOption) return;
+        if (!selectedAddOption) return; 
         setAddStep('details');
     };
 
@@ -211,7 +227,34 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
         }, 1500);
     };
 
+    const handleDllNextDetails = () => {
+        if (!dllSemesterNumber.trim() || !dllWeekNumber.trim() || !dllAvailableFrom || !dllAvailableUntil) {
+            setHasDllDetailsError(true);
+            return;
+        }
+        setHasDllDetailsError(false);
+        setIsDllLoading(true);
+
+        setCurrentDllDates({ from: dllAvailableFrom, to: dllAvailableUntil });
+
+        setTimeout(() => {
+            setIsDllLoading(false);
+            setIsAddModalOpen(false);
+            setAddStep('select');
+            setSelectedAddOption(null);
+            setCurrentView('dll-editor'); 
+            
+            setDllSemesterNumber('');
+            setDllWeekNumber('');
+            setDllAvailableFrom('');
+            setDllAvailableUntil('');
+        }, 1500);
+    };
+
+    // FORM COMPLETION CHECKS
+    const isLessonFormComplete = weekNumber.trim() !== '' && lessonTitle.trim() !== '';
     const isAssessmentFormComplete = quarterNumber.trim() !== '' && assessmentNumber.trim() !== '' && assessmentTitle.trim() !== '' && availableFrom !== '' && availableUntil !== '';
+    const isDllFormComplete = dllSemesterNumber.trim() !== '' && dllWeekNumber.trim() !== '' && dllAvailableFrom !== '' && dllAvailableUntil !== '';
 
     const closeAddModal = () => {
         setIsAddModalOpen(false);
@@ -221,12 +264,20 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
             setWeekNumber('');
             setLessonTitle('');
             setHasDetailsError(false);
+
             setQuarterNumber('');
             setAssessmentNumber('');
             setAssessmentTitle('');
             setAvailableFrom('');
             setAvailableUntil('');
             setHasAssessmentDetailsError(false);
+
+            setDllSemesterNumber('');
+            setDllWeekNumber('');
+            setDllAvailableFrom('');
+            setDllAvailableUntil('');
+            setHasDllDetailsError(false);
+
             setIsEditingLesson(false);
             setEditingLessonId(null);
         }, 200);
@@ -288,6 +339,14 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
         setSelectedParticipant(null);
         setShowQuarterlyReport(false); 
     };
+
+    const ErrorWarningIcon = () => (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ED1F24" strokeWidth="2.5" className="absolute right-3 top-1/2 -translate-y-1/2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            <line x1="12" y1="9" x2="12" y2="13" stroke="#ED1F24" strokeWidth="2.5" strokeLinecap="round" />
+            <circle cx="12" cy="17" r="1.5" fill="#ED1F24" stroke="none" />
+        </svg>
+    );
 
     // ============================================================================
     // VIEW 1: THE FULL SCREEN EDITOR (RICH TEXT)
@@ -395,7 +454,59 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
     }
 
     // ============================================================================
-    // VIEW 4: THE MAIN FEED & SIDEBAR (Default)
+    // VIEW 4: DLL EDITOR
+    // ============================================================================
+    if (currentView === 'dll-editor') {
+        return (
+            <div className="flex flex-col min-h-screen bg-[#E2E7E9] font-sans relative">
+                <Gr8MathHeader />
+                
+                <Gr8DllEditor 
+                    onBack={() => setCurrentView('feed')} 
+                    onSaveComplete={(data) => {
+                        const newDllRecord = {
+                            id: Date.now(),
+                            from: currentDllDates?.from || '',
+                            to: currentDllDates?.to || '',
+                            data: data 
+                        };
+
+                        setDllRecords(prev => [newDllRecord, ...prev]);
+                        setCurrentDllDates(null);
+                        setToastMessage('DLL Saved Successfully!');
+                        
+                        setCurrentView('feed');
+                        setActiveTab('dll');
+                        
+                        setShowToast(true);
+                        setTimeout(() => setShowToast(false), 3000);
+                    }} 
+                />
+            </div>
+        );
+    }
+
+    // ============================================================================
+    // VIEW 6: DLL VIEWER (ADDED)
+    // ============================================================================
+    if (currentView === 'dll-viewer' && viewingDll) {
+        return (
+            <div className="flex flex-col min-h-screen bg-[#E2E7E9] font-sans relative">
+                <Gr8MathHeader />
+                
+                <Gr8DllViewer 
+                    record={viewingDll} 
+                    onBack={() => {
+                        setViewingDll(null);
+                        setCurrentView('feed');
+                    }} 
+                />
+            </div>
+        );
+    }
+
+    // ============================================================================
+    // VIEW 5: THE MAIN FEED & SIDEBAR (Default)
     // ============================================================================
     return (
         <div key="feed-view" className="flex flex-col min-h-screen bg-[#E2E7E9] font-sans">
@@ -493,7 +604,6 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                                     /* STATE A: LEADERBOARD VIEW   */
                                     /* --------------------------- */
                                     <div className="bg-[#F8F5EF] rounded-2xl pb-8 border border-[#D1D8DD] shadow-sm flex-1 flex flex-col overflow-hidden relative">
-                                        {/* Decorative Background Blocks */}
                                         <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl z-0">
                                             <div className="absolute top-10 left-10 opacity-[0.15] hidden md:block">
                                                 <div className="flex flex-col gap-1">
@@ -532,9 +642,7 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                                             </div>
                                         </div>
 
-                                        {/* Layered Top 3 Container */}
                                         <div className="relative flex justify-center items-end mt-12 mb-12 px-2 md:px-4 min-h-[250px] z-10">
-                                            {/* Background Layers (Yellow Bar + Red/Blue Banners) */}
                                             <div className="absolute inset-x-0 top-0 flex flex-col items-center pointer-events-none z-0 w-full h-full">
                                                 <div className="w-[95%] max-w-[650px] relative">
                                                     <Image src={yellowRect} alt="Yellow bar" className="w-full h-auto object-contain z-10 relative" quality={100} />
@@ -549,37 +657,28 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                                                 </div>
                                             </div>
 
-                                            {/* FIX: Properly spaced columns to completely prevent pills from colliding */}
-                                            <div className="flex justify-between items-end z-10 w-full relative pt-10 max-w-[850px] mx-auto px-1 sm:px-4">
-                                                
-                                                {/* Rank 2 (Silver) */}
+                                            <div className="flex justify-center items-end gap-x-1 md:gap-x-4 z-10 w-full relative pt-10 max-w-[850px] mx-auto px-1 sm:px-4">
                                                 <div className="flex flex-col items-center pb-4 w-[32%] z-20">
                                                     <Image src={silverTrophy} alt="2nd Place" className="w-20 md:w-36 h-auto object-contain drop-shadow-md" quality={100} />
                                                     <div className="mt-2 md:mt-4 w-full px-0.5 sm:px-2 flex justify-center">
                                                         <Gr8RankPill rank={2} name={MOCK_PARTICIPANTS[1].name} onClick={() => setSelectedParticipant(MOCK_PARTICIPANTS[1])} className="w-full max-w-[180px]" />
                                                     </div>
                                                 </div>
-
-                                                {/* Rank 1 (Gold) */}
                                                 <div className="flex flex-col items-center z-30 pb-12 w-[36%]">
                                                     <Image src={goldTrophy} alt="1st Place" className="w-24 md:w-48 h-auto object-contain drop-shadow-xl" quality={100} />
                                                     <div className="mt-2 md:mt-4 w-full px-0.5 sm:px-2 flex justify-center">
                                                         <Gr8RankPill rank={1} name={MOCK_PARTICIPANTS[0].name} onClick={() => setSelectedParticipant(MOCK_PARTICIPANTS[0])} className="w-full max-w-[220px] shadow-md transform md:scale-105" />
                                                     </div>
                                                 </div>
-
-                                                {/* Rank 3 (Bronze) */}
                                                 <div className="flex flex-col items-center pb-2 w-[32%] z-20">
                                                     <Image src={bronzeTrophy} alt="3rd Place" className="w-16 md:w-32 h-auto object-contain drop-shadow-md" quality={100} />
                                                     <div className="mt-2 md:mt-4 w-full px-0.5 sm:px-2 flex justify-center">
                                                         <Gr8RankPill rank={3} name={MOCK_PARTICIPANTS[2].name} onClick={() => setSelectedParticipant(MOCK_PARTICIPANTS[2])} className="w-full max-w-[180px]" />
                                                     </div>
                                                 </div>
-
                                             </div>
                                         </div>
 
-                                        {/* Rest of Ranks (4-10) using 2-Column Grid */}
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-x-8 md:gap-y-6 px-4 md:px-12 pb-12 overflow-y-auto max-w-5xl mx-auto w-full mt-8 relative z-10">
                                             {MOCK_PARTICIPANTS.slice(3).map((p) => (
                                                 <Gr8RankPill key={p.id} rank={p.rank} name={p.name} onClick={() => setSelectedParticipant(p)} className="w-full max-w-[400px]" />
@@ -593,14 +692,11 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                                     /* STATE B: INDIVIDUAL SCORES  */
                                     /* --------------------------- */
                                     <div className="bg-[#F8F5EF] rounded-2xl p-6 md:p-10 border border-[#D1D8DD] shadow-sm flex-1 flex flex-col relative animate-in slide-in-from-right-8 duration-300">
-                                        
-                                        {/* Clear Back Button */}
                                         <button onClick={() => setSelectedParticipant(null)} className="flex items-center gap-x-2 text-[#0A7F93] font-bold text-[14px] hover:text-[#1A4C8B] transition-colors mb-6 outline-none w-fit">
                                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
                                             Back to Rankings
                                         </button>
 
-                                        {/* UPGRADED: Premium Student Profile Header */}
                                         <div className="bg-white border border-[#D1D8DD] rounded-xl p-6 mb-8 shadow-sm flex flex-col sm:flex-row sm:items-center gap-4 md:gap-6">
                                             <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-[#1A4C8B] to-[#0A7F93] text-white rounded-full flex items-center justify-center text-[24px] md:text-[32px] font-black shadow-inner shrink-0">
                                                 {selectedParticipant.name.charAt(0)}
@@ -618,7 +714,6 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                                         </div>
 
                                         <div className="flex flex-col gap-y-4">
-                                            {/* UPGRADED: Rich Assessment Cards using reusable component */}
                                             {MOCK_REPORT_DATA.map((report) => (
                                                 <ParticipantAssessmentCard 
                                                     key={report.no}
@@ -691,7 +786,6 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                                     /* STATE C: QUARTERLY REPORT   */
                                     /* --------------------------- */
                                     <div className="flex-1 flex flex-col animate-in slide-in-from-right-8 duration-300">
-                                        
                                         <div className="bg-[#1A4C8B] text-white rounded-t-2xl p-5 md:px-8 flex items-center gap-x-3 shadow-sm z-10">
                                             <button onClick={() => setShowQuarterlyReport(false)} className="p-1 hover:bg-white/10 rounded transition-colors outline-none cursor-pointer">
                                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
@@ -700,10 +794,7 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                                         </div>
 
                                         <div className="p-6 md:p-10 bg-[#F8F5EF] rounded-b-2xl border-x border-b border-[#D1D8DD] shadow-sm flex-1 flex flex-col">
-                                            
-                                            <h3 className="text-[20px] md:text-[24px] font-black text-[#222] mb-8 w-fit">
-                                                Quarter 1
-                                            </h3>
+                                            <h3 className="text-[20px] md:text-[24px] font-black text-[#222] mb-8 w-fit">Quarter 1</h3>
 
                                             <div className="overflow-x-auto rounded-xl border border-[#1A4C8B] shadow-sm bg-white">
                                                 <table className="w-full text-center border-collapse min-w-[600px]">
@@ -751,9 +842,29 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                         {/* TAB: DLL                */}
                         {/* ======================= */}
                         {activeTab === 'dll' && (
-                            <div className="animate-in fade-in duration-300">
-                                <h2 className="text-[18px] font-black text-[#222] mb-6 uppercase tracking-wider">Daily Lesson Log</h2>
-                                <div className="text-[#888] font-bold mt-10">You have no new DLL records.</div>
+                            <div className="animate-in fade-in duration-300 pb-12">
+                                {dllRecords.length === 0 ? (
+                                    <>
+                                        <h2 className="text-[18px] font-black text-[#222] mb-6 uppercase tracking-wider">Daily Lesson Log</h2>
+                                        <div className="text-[#888] font-bold mt-10">You have no new DLL records.</div>
+                                    </>
+                                ) : (
+                                    // --- THE NEW DLL CARDS ARE RENDERED HERE! ---
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                        {dllRecords.map((record) => (
+                                            <DllCard 
+                                                key={record.id} 
+                                                startDate={record.from} 
+                                                endDate={record.to} 
+                                                onClick={() => {
+                                                    // --- FIXED: ADDED CLICK HANDLER TO TRIGGER VIEWER ---
+                                                    setViewingDll(record);
+                                                    setCurrentView('dll-viewer');
+                                                }} 
+                                            />
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -771,9 +882,9 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                     {/* --- THE ADD CONTENT MODAL --- */}
                     {isAddModalOpen && (
                         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-                            <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-[420px] relative animate-in zoom-in-95 duration-200 flex flex-col">
+                            <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-[420px] relative animate-in zoom-in-95 duration-200 flex flex-col overflow-hidden">
                                 
-                                <Gr8LoadingOverlay isLoading={isAssessmentLoading} message="Loading..." />
+                                <Gr8LoadingOverlay isLoading={isAssessmentLoading || isDllLoading} message="Loading..." />
 
                                 {addStep === 'select' && (
                                     <>
@@ -802,8 +913,63 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                                                 <span className="font-bold text-[#222]">Daily Lesson Log</span>
                                             </label>
                                         </div>
-                                        <button onClick={handleProceedToDetails} disabled={!selectedAddOption} className={`w-full py-3.5 text-[13px] font-black rounded-lg uppercase tracking-wide transition-all outline-none flex items-center justify-center gap-x-2 ${selectedAddOption ? 'bg-[#1A4C8B] text-white shadow-md hover:bg-[#153a6b]' : 'bg-[#E9E9E9] text-[#A0A0A0] cursor-not-allowed'}`}>Proceed</button>
+                                        <button 
+                                            onClick={handleProceedToDetails} 
+                                            className={`w-full py-3.5 text-[13px] font-black rounded-lg uppercase tracking-wide transition-all outline-none flex items-center justify-center gap-x-2 text-white shadow-md ${selectedAddOption ? 'bg-[#1A4C8B] hover:bg-[#153a6b]' : 'bg-[#0F8B8D]'}`}
+                                        >
+                                            Proceed
+                                        </button>
                                     </>
+                                )}
+
+                                {/* --- NEW: DLL DETAILS FORM --- */}
+                                {addStep === 'details' && selectedAddOption === 'dll' && (
+                                    <div className="animate-in slide-in-from-right-4 duration-300 flex flex-col">
+                                        <div className="flex items-center justify-center mb-1 relative">
+                                            <button onClick={() => setAddStep('select')} className="absolute left-0 p-1 -ml-1 text-gray-600 hover:text-gray-900 transition-colors outline-none cursor-pointer"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+                                            <h2 className="text-[18px] font-extrabold text-[#222] text-center">Daily Lesson Log</h2>
+                                        </div>
+                                        <p className="text-[12px] font-bold text-center text-[#222] mb-6">Please enter the needed details.</p>
+
+                                        <div className="flex flex-col gap-y-4 mb-8">
+                                            {/* Semester Number */}
+                                            <div className="relative">
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="Semester Number" 
+                                                    value={dllSemesterNumber} 
+                                                    onChange={(e) => setDllSemesterNumber(e.target.value)} 
+                                                    className={`w-full p-3 bg-[#F4F6F8] text-[#222] placeholder:text-[#A0A0A0] text-[14px] font-semibold border rounded-lg outline-none transition-all pr-10 focus:border-[#EFBD31] focus:ring-1 focus:ring-[#EFBD31] ${hasDllDetailsError && !dllSemesterNumber ? 'border-[#ED1F24] bg-red-50/50' : 'border-[#D1D8DD]'}`} 
+                                                />
+                                                {hasDllDetailsError && !dllSemesterNumber && <ErrorWarningIcon />}
+                                            </div>
+
+                                            {/* Week Number */}
+                                            <div className="relative mt-2">
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="Week Number" 
+                                                    value={dllWeekNumber} 
+                                                    onChange={(e) => setDllWeekNumber(e.target.value)} 
+                                                    className={`w-full p-3 bg-[#F4F6F8] text-[#222] placeholder:text-[#A0A0A0] text-[14px] font-semibold border rounded-lg outline-none transition-all pr-10 focus:border-[#EFBD31] focus:ring-1 focus:ring-[#EFBD31] ${hasDllDetailsError && !dllWeekNumber ? 'border-[#ED1F24] bg-red-50/50' : 'border-[#D1D8DD]'}`} 
+                                                />
+                                                {hasDllDetailsError && !dllWeekNumber && <ErrorWarningIcon />}
+                                            </div>
+                                            
+                                            {/* Date Pickers - using new dedicated DLL picker */}
+                                            <div className={`grid grid-cols-2 gap-x-3 transition-all ${hasDllDetailsError && (!dllSemesterNumber || !dllWeekNumber) ? 'mt-4' : 'mt-2'}`}>
+                                                <Gr8DllDatePicker label="Available From" value={dllAvailableFrom} onChange={setDllAvailableFrom} hasError={hasDllDetailsError && !dllAvailableFrom} />
+                                                <Gr8DllDatePicker label="Available Until" value={dllAvailableUntil} onChange={setDllAvailableUntil} hasError={hasDllDetailsError && !dllAvailableUntil} />
+                                            </div>
+                                        </div>
+
+                                        <button 
+                                            onClick={handleDllNextDetails} 
+                                            className={`w-full py-3.5 text-[14px] font-black rounded-lg transition-colors outline-none text-white shadow-md ${isDllFormComplete ? 'bg-[#1A4C8B] hover:bg-[#153a6b]' : 'bg-[#0F8B8D]'}`}
+                                        >
+                                            Next
+                                        </button>
+                                    </div>
                                 )}
                                 
                                 {/* ASSESSMENT DETAILS FORM */}
@@ -816,11 +982,20 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                                         <p className="text-[12px] font-bold text-center text-[#222] mb-6">Please enter the needed details.</p>
 
                                         <div className="flex flex-col gap-y-3 mb-8">
-                                            <input type="text" placeholder="Quarter Number" value={quarterNumber} onChange={(e) => setQuarterNumber(e.target.value)} className={`w-full p-3 bg-white text-[#222] placeholder:text-[#A0A0A0] text-[14px] font-semibold border rounded-lg outline-none transition-all focus:border-[#EFBD31] focus:ring-1 focus:ring-[#EFBD31] ${hasAssessmentDetailsError && !quarterNumber ? 'border-red-500' : 'border-[#D1D8DD]'}`} />
-                                            <input type="text" placeholder="Assessment Number" value={assessmentNumber} onChange={(e) => setAssessmentNumber(e.target.value)} className={`w-full p-3 bg-white text-[#222] placeholder:text-[#A0A0A0] text-[14px] font-semibold border rounded-lg outline-none transition-all focus:border-[#EFBD31] focus:ring-1 focus:ring-[#EFBD31] ${hasAssessmentDetailsError && !assessmentNumber ? 'border-red-500' : 'border-[#D1D8DD]'}`} />
-                                            <input type="text" placeholder="Assessment Title" value={assessmentTitle} onChange={(e) => setAssessmentTitle(e.target.value)} className={`w-full p-3 bg-white text-[#222] placeholder:text-[#A0A0A0] text-[14px] font-semibold border rounded-lg outline-none transition-all focus:border-[#EFBD31] focus:ring-1 focus:ring-[#EFBD31] ${hasAssessmentDetailsError && !assessmentTitle ? 'border-red-500' : 'border-[#D1D8DD]'}`} />
+                                            <div className="relative">
+                                                <input type="text" placeholder="Quarter Number" value={quarterNumber} onChange={(e) => setQuarterNumber(e.target.value)} className={`w-full p-3 bg-white text-[#222] placeholder:text-[#A0A0A0] text-[14px] font-semibold border rounded-lg outline-none transition-all pr-10 focus:border-[#EFBD31] focus:ring-1 focus:ring-[#EFBD31] ${hasAssessmentDetailsError && !quarterNumber ? 'border-[#ED1F24] bg-red-50/50' : 'border-[#D1D8DD]'}`} />
+                                                {hasAssessmentDetailsError && !quarterNumber && <ErrorWarningIcon />}
+                                            </div>
+                                            <div className="relative mt-2">
+                                                <input type="text" placeholder="Assessment Number" value={assessmentNumber} onChange={(e) => setAssessmentNumber(e.target.value)} className={`w-full p-3 bg-white text-[#222] placeholder:text-[#A0A0A0] text-[14px] font-semibold border rounded-lg outline-none transition-all pr-10 focus:border-[#EFBD31] focus:ring-1 focus:ring-[#EFBD31] ${hasAssessmentDetailsError && !assessmentNumber ? 'border-[#ED1F24] bg-red-50/50' : 'border-[#D1D8DD]'}`} />
+                                                {hasAssessmentDetailsError && !assessmentNumber && <ErrorWarningIcon />}
+                                            </div>
+                                            <div className="relative mt-2">
+                                                <input type="text" placeholder="Assessment Title" value={assessmentTitle} onChange={(e) => setAssessmentTitle(e.target.value)} className={`w-full p-3 bg-white text-[#222] placeholder:text-[#A0A0A0] text-[14px] font-semibold border rounded-lg outline-none transition-all pr-10 focus:border-[#EFBD31] focus:ring-1 focus:ring-[#EFBD31] ${hasAssessmentDetailsError && !assessmentTitle ? 'border-[#ED1F24] bg-red-50/50' : 'border-[#D1D8DD]'}`} />
+                                                {hasAssessmentDetailsError && !assessmentTitle && <ErrorWarningIcon />}
+                                            </div>
                                             
-                                            <div className="grid grid-cols-2 gap-x-3 mt-2">
+                                            <div className={`grid grid-cols-2 gap-x-3 transition-all ${hasAssessmentDetailsError && (!quarterNumber || !assessmentNumber || !assessmentTitle) ? 'mt-4' : 'mt-2'}`}>
                                                 <Gr8DateTimePicker label="Available From" value={availableFrom} onChange={setAvailableFrom} hasError={hasAssessmentDetailsError && !availableFrom} />
                                                 <Gr8DateTimePicker label="Available Until" value={availableUntil} onChange={setAvailableUntil} hasError={hasAssessmentDetailsError && !availableUntil} />
                                             </div>
@@ -828,10 +1003,7 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
 
                                         <button 
                                             onClick={handleAssessmentNextDetails} 
-                                            disabled={!isAssessmentFormComplete}
-                                            className={`w-full py-3.5 text-[14px] font-black rounded-lg transition-colors outline-none
-                                                ${isAssessmentFormComplete ? 'bg-[#1A4C8B] text-white hover:bg-[#153a6b] shadow-md' : 'bg-[#E9E9E9] text-[#A0A0A0] cursor-not-allowed'}
-                                            `}
+                                            className={`w-full py-3.5 text-[14px] font-black rounded-lg transition-colors outline-none text-white shadow-md ${isAssessmentFormComplete ? 'bg-[#1A4C8B] hover:bg-[#153a6b]' : 'bg-[#0F8B8D]'}`}
                                         >
                                             Next
                                         </button>
@@ -848,12 +1020,17 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                                             <h2 className="text-[18px] font-extrabold text-[#222]">Write a Lesson</h2>
                                         </div>
 
-                                        <div className="flex flex-col gap-y-1 mb-8">
+                                        <div className="flex flex-col gap-y-3 mb-8">
                                             <Gr8TextField label="Week Number" value={weekNumber} onChange={setWeekNumber} hasError={hasDetailsError && !weekNumber} />
-                                            <Gr8TextField label="Lesson Title" value={lessonTitle} onChange={setLessonTitle} hasError={hasDetailsError && !lessonTitle} />
+                                            <div className="mt-2">
+                                                <Gr8TextField label="Lesson Title" value={lessonTitle} onChange={setLessonTitle} hasError={hasDetailsError && !lessonTitle} />
+                                            </div>
                                         </div>
 
-                                        <button onClick={handleLessonNextDetails} className="w-full py-3.5 text-[13px] font-black rounded-lg uppercase tracking-wide transition-all outline-none bg-[#1A4C8B] text-white shadow-md hover:bg-[#153a6b]">
+                                        <button 
+                                            onClick={handleLessonNextDetails} 
+                                            className={`w-full py-3.5 text-[13px] font-black rounded-lg uppercase tracking-wide transition-all outline-none text-white shadow-md ${isLessonFormComplete ? 'bg-[#1A4C8B] hover:bg-[#153a6b]' : 'bg-[#0F8B8D]'}`}
+                                        >
                                             Next
                                         </button>
                                     </div>
