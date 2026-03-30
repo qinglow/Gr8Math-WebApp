@@ -13,21 +13,21 @@ export function ClassFeed({ courseContent, onEdit, onSeeMore }: ClassFeedProps) 
 
     return (
         <div className="flex flex-col gap-y-6">
-            {courseContent.map((item: ClassContentItem) => ( // Explicit type here
+            {courseContent.map((item: ClassContentItem) => (
                 item.type === 'lesson' ? (
-                    <LessonCard 
-                        key={item.id} 
+                    <LessonCard
+                        key={`lesson-${item.id}`}
                         week={`Week ${item.week_number}`}
-                        title={item.lesson_title || 'Untitled'} 
-                        description={item.preview || ''} 
-                        onEdit={() => onEdit(item)} 
-                        onSeeMore={() => onSeeMore(item)} 
+                        title={item.lesson_title || 'Untitled'}
+                        description={item.preview || ''}
+                        onEdit={() => onEdit(item)}
+                        onSeeMore={() => onSeeMore(item)}
                     />
                 ) : (
-                    <AssessmentCard 
-                    key={item.id} 
-                    title={item.title || 'Assessment'}
-                    onClick={() => onEdit(item)} />
+                    <AssessmentCard
+                        key={`assessment-${item.id}`}
+                        title={item.title || 'Assessment'}
+                        onClick={() => onEdit(item)} />
                 )
             ))}
         </div>

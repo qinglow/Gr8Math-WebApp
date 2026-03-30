@@ -85,18 +85,22 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
     // ============================================================================
     // BROWSER BACK BUTTON INTERCEPT
     // ============================================================================
-    useEffect(() => {
+   useEffect(() => {
         const handlePopState = (e: PopStateEvent) => {
+            // Only alert if we are NOT on the main feed (e.g., in an editor)
             if (currentView !== 'feed') {
                 const confirmLeave = window.confirm("Are you sure? Any unsaved process will not be recorded.");
                 if (!confirmLeave) {
+                    // Stay here
                     window.history.pushState(null, "", window.location.href);
                 } else {
+                    // Go back to feed
                     setCurrentView('feed');
                 }
             }
         };
 
+        // Create a history point so we can detect the "back" click
         window.history.pushState(null, "", window.location.href);
         window.addEventListener('popstate', handlePopState);
         return () => window.removeEventListener('popstate', handlePopState);
