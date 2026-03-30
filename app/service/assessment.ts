@@ -2,7 +2,7 @@
 import { createClient } from "@/lib/supabase/server";
 
 export async function publishAssessmentAction(params: {
-    courseId: number; 
+    courseId: number;
     title: string;
     startTime: string;
     endTime: string;
@@ -24,7 +24,7 @@ export async function publishAssessmentAction(params: {
         const { data: assessment, error: aErr } = await supabase
             .from('assessment_created')
             .insert({
-                course_id: cc.id, 
+                course_id: cc.id,
                 title: params.title,
                 start_time: params.startTime,
                 end_time: params.endTime,
@@ -39,7 +39,7 @@ export async function publishAssessmentAction(params: {
 
         // 3. Loop through Questions
         for (const q of params.questions) {
-            const rawQuestionText = q.question || q.questionText || ''; 
+            const rawQuestionText = q.question || q.questionText || '';
             const formattedQuestionText = `[${q.type}] ${rawQuestionText.trim()}`;
 
             const { data: savedQ, error: qErr } = await supabase
@@ -58,17 +58,17 @@ export async function publishAssessmentAction(params: {
                 const choicesToInsert = q.choices.map((choiceText: string) => {
                     const cleanChoiceText = choiceText.trim();
                     const pts = q.points !== undefined ? q.points : 1;
-                    
-                    // Prefix the choice with points
-                    const formattedChoiceText = `[${pts} pts] ${cleanChoiceText}`;
-                    
-                    // Match against the correctAnswers array
+
+                    // 1. Match against the correctAnswers array FIRST
                     const correctArray = Array.isArray(q.correctAnswers) ? q.correctAnswers : [];
                     const isCorrect = correctArray.some((ans: string) => ans.trim() === cleanChoiceText);
 
+                    // 2. ONLY prefix the choice with points if it is correct!
+                    const finalChoiceText = isCorrect ? `[${pts} pts] ${cleanChoiceText}` : cleanChoiceText;
+
                     return {
                         question_id: savedQ.id,
-                        choice_text: formattedChoiceText,
+                        choice_text: finalChoiceText,
                         is_correct: isCorrect
                     };
                 });
@@ -87,7 +87,7 @@ export async function publishAssessmentAction(params: {
 
 export async function fetchAssessmentDetails(assessmentId: number) {
     const supabase = await createClient();
-    
+
     try {
         const { data: assessment, error } = await supabase
             .from('assessment_created')
@@ -140,9 +140,9 @@ export async function updateAssessmentAction(params: {
 
         // 3. Re-insert Edited Questions
         for (const q of params.questions) {
-            const rawQuestionText = q.question || q.questionText || ''; 
+            const rawQuestionText = q.question || q.questionText || '';
             const formattedQuestionText = `[${q.type}] ${rawQuestionText.trim()}`;
-            
+
             const { data: savedQ, error: qErr } = await supabase
                 .from('assessment_questions')
                 .insert({ assessment_id: params.assessmentId, question_text: formattedQuestionText })
@@ -154,13 +154,11 @@ export async function updateAssessmentAction(params: {
                 const choicesToInsert = q.choices.map((choiceText: string) => {
                     const cleanChoiceText = choiceText.trim();
                     const pts = q.points !== undefined ? q.points : 1;
-                    const formattedChoiceText = `[${pts} pts] ${cleanChoiceText}`;
-                    
-                    // FIX: Safe array check mapping
                     const correctArray = Array.isArray(q.correctAnswers) ? q.correctAnswers : [];
                     const isCorrect = correctArray.some((ans: string) => ans.trim() === cleanChoiceText);
+                    const finalChoiceText = isCorrect ? `[${pts} pts] ${cleanChoiceText}` : cleanChoiceText;
 
-                    return { question_id: savedQ.id, choice_text: formattedChoiceText, is_correct: isCorrect };
+                    return { question_id: savedQ.id, choice_text: finalChoiceText, is_correct: isCorrect };
                 });
 
                 const { error: cErr } = await supabase.from('assessment_choices').insert(choicesToInsert);
@@ -175,7 +173,7 @@ export async function updateAssessmentAction(params: {
 
 async function notifyStudentsOfAssessment(courseId: number, assessmentId: number) {
     const supabase = await createClient();
-    
+
     const { data: bridge } = await supabase
         .from('course_content')
         .select('section_id')
