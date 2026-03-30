@@ -29,10 +29,6 @@ export async function fetchClassDetails(sectionId: string) {
     };
 }
 
-/**
- * Revised to fetch the bridge ID (course_content.id) first, 
- * then query lessons and assessments using that ID.
- */
 export async function fetchClassFeed(sectionId: string) {
     const supabase = await createClient();
     const numericSectionId = parseInt(sectionId, 10);

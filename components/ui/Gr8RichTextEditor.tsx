@@ -21,22 +21,26 @@ type CopiedFormatType = {
 } | null;
 
 interface Gr8RichTextEditorProps {
+    courseId: string;
     initialContent: string;
     onChange: (content: string) => void;
     onSave: () => void;
     onBack: () => void;
     isEditing: boolean;
+    onMediaQueued: (id: string, file: File, localUrl: string) => void;
 }
 
-export function Gr8RichTextEditor({ initialContent, onChange, onSave, onBack, isEditing }: Gr8RichTextEditorProps) {
+export function Gr8RichTextEditor({ courseId, initialContent, onChange, onSave, onBack, isEditing, onMediaQueued }: Gr8RichTextEditorProps) {
     const editorRef = useRef<HTMLDivElement>(null);
     const colorMenuRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [currentFontSize, setCurrentFontSize] = useState(12);
     const [fontSizeInputValue, setFontSizeInputValue] = useState('12');
     const [showTextColorPicker, setShowTextColorPicker] = useState(false);
     const [showHighlightPicker, setShowHighlightPicker] = useState(false);
     const [copiedFormat, setCopiedFormat] = useState<CopiedFormatType>(null);
+    const [isUploadingMedia, setIsUploadingMedia] = useState(false);
 
     const [activeFormats, setActiveFormats] = useState({
         bold: false, italic: false, underline: false, strikeThrough: false,
@@ -50,8 +54,7 @@ export function Gr8RichTextEditor({ initialContent, onChange, onSave, onBack, is
             document.execCommand('defaultParagraphSeparator', false, 'p');
             checkFormats();
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); 
+    }, []);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -63,6 +66,37 @@ export function Gr8RichTextEditor({ initialContent, onChange, onSave, onBack, is
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        setIsUploadingMedia(true);
+
+        // 1. Generate local preview URL
+        const localUrl = URL.createObjectURL(file);
+        const uniqueId = `pending-media-${Date.now()}`;
+
+        // 2. Queue for actual upload later
+        onMediaQueued(uniqueId, file, localUrl);
+
+        // 3. Build HTML Preview
+        let previewTag = '';
+        if (file.type.startsWith('image/')) {
+            previewTag = `<br><div id="${uniqueId}" align="center"><img src="${localUrl}" width="100%" style="max-width: 800px; border-radius: 8px;" /></div><br>`;
+        } else if (file.type.startsWith('video/')) {
+            previewTag = `<br><div id="${uniqueId}" align="center"><video width="100%" style="max-width: 800px; border-radius: 8px;" controls><source src="${localUrl}" type="${file.type}"></video></div><br>`;
+        } else {
+            previewTag = `<br><div id="${uniqueId}" align="center"><span data-local="${localUrl}" style="color: #1A4C8B; font-weight: bold; background: #F4F6F8; padding: 10px; border-radius: 8px; display: inline-block;">⏳ Pending Upload: ${file.name}</span></div><br>`;
+        }
+
+        editorRef.current?.focus();
+        document.execCommand('insertHTML', false, previewTag);
+        handleEditorInput();
+
+        setIsUploadingMedia(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
 
     const checkFormats = () => {
         if (!editorRef.current) return;
@@ -188,7 +222,7 @@ export function Gr8RichTextEditor({ initialContent, onChange, onSave, onBack, is
             </div>
 
             <div className="flex-1 flex flex-col w-full max-w-6xl mx-auto px-4 md:px-8 lg:px-12 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
-                
+
                 <div className="sticky top-0 bg-[#F4F6F8] border border-[#D1D8DD] border-b-0 rounded-t-xl p-3 md:p-4 flex flex-wrap items-center gap-y-3 gap-x-2 shadow-md z-50 shrink-0 text-[#666]">
                     <div className="flex items-center gap-x-0.5 border-r border-[#D1D8DD] pr-2">
                         <button onClick={() => execCmd('undo')} className="p-2 rounded outline-none transition-colors hover:bg-[#EBB637]/20 hover:text-[#EBB637]" title="Undo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg></button>
@@ -203,14 +237,14 @@ export function Gr8RichTextEditor({ initialContent, onChange, onSave, onBack, is
                             <div className="absolute top-full left-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 p-3 z-[100] w-[240px] animate-in zoom-in-95 duration-100">
                                 <div className="grid grid-cols-8 gap-1">
                                     {colorPalette.flat().map((color, i) => (
-                                        <button key={i} onMouseDown={(e) => { e.preventDefault(); execCmd('foreColor', color); setShowTextColorPicker(false); }} className="w-5 h-5 rounded-sm border border-gray-200 hover:scale-125 transition-transform" style={{ backgroundColor: color }} />
+                                        <button aria-label='b' key={i} onMouseDown={(e) => { e.preventDefault(); execCmd('foreColor', color); setShowTextColorPicker(false); }} className="w-5 h-5 rounded-sm border border-gray-200 hover:scale-125 transition-transform" style={{ backgroundColor: color }} />
                                     ))}
                                 </div>
                                 <div className="mt-4 pt-3 border-t border-gray-200 flex items-center justify-between">
                                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Custom</span>
                                     <label className="relative cursor-pointer hover:bg-gray-100 p-1.5 rounded-full transition-colors flex items-center justify-center">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#222" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
-                                        <input type="color" className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" onChange={(e) => { execCmd('foreColor', e.target.value); setShowTextColorPicker(false); }} />
+                                        <input aria-label='color' type="color" className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" onChange={(e) => { execCmd('foreColor', e.target.value); setShowTextColorPicker(false); }} />
                                     </label>
                                 </div>
                             </div>
@@ -227,7 +261,7 @@ export function Gr8RichTextEditor({ initialContent, onChange, onSave, onBack, is
                                 </button>
                                 <div className="grid grid-cols-8 gap-1">
                                     {colorPalette.flat().map((color, i) => (
-                                        <button key={i} onMouseDown={(e) => { e.preventDefault(); execCmd('hiliteColor', color); setShowHighlightPicker(false); }} className="w-5 h-5 rounded-sm border border-gray-200 hover:scale-125 transition-transform" style={{ backgroundColor: color }} />
+                                        <button aria-label='co' key={i} onMouseDown={(e) => { e.preventDefault(); execCmd('hiliteColor', color); setShowHighlightPicker(false); }} className="w-5 h-5 rounded-sm border border-gray-200 hover:scale-125 transition-transform" style={{ backgroundColor: color }} />
                                     ))}
                                 </div>
                             </div>
@@ -257,18 +291,19 @@ export function Gr8RichTextEditor({ initialContent, onChange, onSave, onBack, is
 
                     <div className="flex items-center gap-x-0.5 border-r border-[#D1D8DD] pr-2">
                         <div className="flex items-center border border-[#D1D8DD] rounded bg-white shadow-sm overflow-hidden text-black h-8 mx-1">
-                            <button onClick={() => handleFontSizeChange('down')} className="px-2 h-full hover:bg-gray-100 outline-none transition-colors">
+                            <button aria-label='font' onClick={() => handleFontSizeChange('down')} className="px-2 h-full hover:bg-gray-100 outline-none transition-colors">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                             </button>
-                            <input 
-                                type="text" 
-                                value={fontSizeInputValue} 
+                            <input
+                                aria-label='fontSize'
+                                type="text"
+                                value={fontSizeInputValue}
                                 onChange={(e) => setFontSizeInputValue(e.target.value)}
                                 onBlur={handleFontSizeInputBlur}
                                 onKeyDown={(e) => e.key === 'Enter' && handleFontSizeInputBlur()}
                                 className="w-8 h-full text-center text-[13px] font-medium bg-transparent !text-[#222] border-x border-[#D1D8DD] outline-none m-0 p-0 focus:bg-white"
                             />
-                            <button onClick={() => handleFontSizeChange('up')} className="px-2 h-full hover:bg-gray-100 outline-none transition-colors">
+                            <button aria-label='strike' onClick={() => handleFontSizeChange('up')} className="px-2 h-full hover:bg-gray-100 outline-none transition-colors">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                             </button>
                         </div>
@@ -295,11 +330,36 @@ export function Gr8RichTextEditor({ initialContent, onChange, onSave, onBack, is
                         <button onClick={() => execCmd('outdent')} className="p-2 rounded outline-none hover:bg-[#EBB637]/20 hover:text-[#EBB637] transition-colors" title="Decrease Indent"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="11 17 6 12 11 7"></polyline><line x1="18" y1="18" x2="18" y2="6"></line><line x1="6" y1="12" x2="18" y2="12"></line></svg></button>
                         <button onClick={() => execCmd('indent')} className="p-2 rounded outline-none hover:bg-[#EBB637]/20 hover:text-[#EBB637] transition-colors" title="Increase Indent"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="13 17 18 12 13 7"></polyline><line x1="6" y1="18" x2="6" y2="6"></line><line x1="6" y1="12" x2="18" y2="12"></line></svg></button>
                     </div>
-                    
-                    <div className="flex items-center">
-                        <button className="flex items-center gap-x-2 text-[13px] font-bold text-[#0A7F93] hover:text-[#EBB637] transition-colors outline-none px-2 py-1.5 rounded hover:bg-[#EBB637]/10">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                            Add Media
+
+                    {/* --- THE UPDATED ADD MEDIA BUTTON --- */}
+                    <div className="flex items-center relative">
+                        <input
+                            aria-label='de'
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleFileChange}
+                            className="hidden"
+                            accept="image/*,video/*,application/pdf"
+                        />
+                        <button
+                            type="button"
+                            onClick={(e) => { e.preventDefault(); fileInputRef.current?.click(); }}
+                            disabled={isUploadingMedia}
+                            className={`flex items-center gap-x-2 text-[13px] font-bold outline-none px-2 py-1.5 rounded transition-colors
+                                ${isUploadingMedia
+                                    ? 'text-gray-400 cursor-not-allowed'
+                                    : 'text-[#0A7F93] hover:text-[#EBB637] hover:bg-[#EBB637]/10'
+                                }`
+                            }
+                        >
+                            {isUploadingMedia ? (
+                                <span className="animate-pulse">Uploading...</span>
+                            ) : (
+                                <>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                                    Add Media
+                                </>
+                            )}
                         </button>
                     </div>
                 </div>
@@ -308,10 +368,10 @@ export function Gr8RichTextEditor({ initialContent, onChange, onSave, onBack, is
                     ref={editorRef}
                     contentEditable
                     onInput={handleEditorInput}
-                    onPaste={handlePaste} 
-                    onMouseUp={handleEditorMouseUp} 
-                    onKeyUp={checkFormats}     
-                    onClick={checkFormats}     
+                    onPaste={handlePaste}
+                    onMouseUp={handleEditorMouseUp}
+                    onKeyUp={checkFormats}
+                    onClick={checkFormats}
                     className="w-full bg-white border border-[#D1D8DD] rounded-b-xl p-8 md:p-12 text-[16px] text-black font-medium leading-relaxed outline-none transition-all focus:border-[#EBB637] focus:ring-4 focus:ring-[#EBB637]/20 shadow-sm min-h-[500px]
                         [&_p]:mb-4
                         [&_h1]:text-4xl [&_h1]:font-black [&_h1]:text-[#222] [&_h1]:mb-4
