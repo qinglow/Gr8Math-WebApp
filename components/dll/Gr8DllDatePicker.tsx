@@ -15,11 +15,11 @@ interface Gr8DllDatePickerProps {
   onFocus?: () => void; 
   onBlur?: () => void;
   hasError?: boolean; 
-  errorMessage?: string;
+  errorMessage?: string; 
 }
 
 export const Gr8DllDatePicker: React.FC<Gr8DllDatePickerProps> = ({
-  label, value, onChange, isActive = false, onFocus, onBlur, hasError = false, errorMessage
+  label, value, onChange, isActive = false, onFocus, onBlur, hasError = false, errorMessage = "Please enter needed details"
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState<'calendar' | 'years'>('calendar');
@@ -48,7 +48,6 @@ export const Gr8DllDatePicker: React.FC<Gr8DllDatePickerProps> = ({
     }
   }, [view]);
 
-  // Matches the exact style of your DLL form fields
   const borderClass = hasError ? 'border-[#ED1F24] bg-red-50/50' : (isActive ? 'border-[#EFBD31] ring-1 ring-[#EFBD31]' : 'border-[#D1D8DD] bg-[#F4F6F8] hover:border-[#1A4C8B]');
   
   const year = currentDate.getFullYear();
@@ -61,7 +60,6 @@ export const Gr8DllDatePicker: React.FC<Gr8DllDatePickerProps> = ({
   const shortMonthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-  // FIX FOR DLL: Generate years ranging from 5 years ago to 10 years in the future!
   const years = Array.from({ length: 15 }, (_, i) => today.getFullYear() - 5 + i);
 
   const handlePrevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
@@ -79,13 +77,11 @@ export const Gr8DllDatePicker: React.FC<Gr8DllDatePickerProps> = ({
 
   const handleOk = () => {
     if (tempSelectedDate) {
-      // Passes standard format to backend
       onChange(`${tempSelectedDate.getMonth() + 1}/${tempSelectedDate.getDate()}/${tempSelectedDate.getFullYear()}`);
       setIsOpen(false);
     }
   };
 
-  // FORMATTER: Converts "3/16/2026" to "Mar. 16, 2026" for the UI display
   const formatDisplayDate = (dateString: string) => {
       if (!dateString) return label;
       const parsed = new Date(dateString);
@@ -94,13 +90,12 @@ export const Gr8DllDatePicker: React.FC<Gr8DllDatePickerProps> = ({
   };
 
   return (
-    <div className="w-full flex flex-col mb-4">
-      <div className="relative w-full">
+    <div className="w-full flex flex-col mb-4"> 
+      <div className="w-full relative">
         <div 
           onClick={() => { setIsOpen(true); setView('calendar'); if (onFocus) onFocus(); }}
           className={`w-full px-3 py-3 pr-10 text-[14px] font-semibold border rounded-lg outline-none transition-all cursor-pointer flex items-center ${borderClass} ${value ? 'text-[#222]' : 'text-[#A0A0A0]'}`}
         >
-          {/* USES THE NEW FORMATTER HERE */}
           {value ? formatDisplayDate(value) : label}
         </div>
         <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none flex items-center gap-x-2">
@@ -109,7 +104,12 @@ export const Gr8DllDatePicker: React.FC<Gr8DllDatePickerProps> = ({
         </div>
       </div>
 
-      {hasError && !value && <p className="text-[#ED1F24] text-[11px] font-bold mt-1 absolute -bottom-5 left-1 z-10">Please enter needed details</p>}
+      {/* FIXED: Replaced absolute positioning with standard flow so it sits right under the box */}
+      {hasError && (
+          <p className="text-[#ED1F24] text-[11px] font-bold mt-1.5 ml-1 text-left leading-tight">
+              {errorMessage}
+          </p>
+      )}
 
       {isOpen && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -133,7 +133,6 @@ export const Gr8DllDatePicker: React.FC<Gr8DllDatePickerProps> = ({
                     </span>
                     <div className="flex gap-x-4">
                       <button onClick={handlePrevMonth} type="button" className="text-gray-500 hover:text-black font-bold text-lg cursor-pointer bg-transparent border-none outline-none">‹</button>
-                      {/* FIX FOR DLL: Removed disabled={isFuture} logic so future months can be clicked */}
                       <button onClick={handleNextMonth} type="button" className="text-gray-500 hover:text-black font-bold text-lg cursor-pointer bg-transparent border-none outline-none">›</button>
                     </div>
                   </div>
@@ -151,7 +150,6 @@ export const Gr8DllDatePicker: React.FC<Gr8DllDatePickerProps> = ({
                           key={day} 
                           type="button" 
                           onClick={() => handleSelectDay(day)} 
-                          // FIX FOR DLL: Removed future block logic so teachers can select future days!
                           className={`w-8 h-8 mx-auto flex items-center justify-center rounded-full text-xs font-bold transition-all border-none outline-none cursor-pointer
                             ${isSelected ? 'bg-[#ED1F24] text-white' : 'bg-transparent text-gray-700 hover:bg-gray-100'}
                           `}

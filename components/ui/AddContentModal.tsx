@@ -3,6 +3,7 @@
 import React from 'react';
 import { Gr8TextField } from '@/components/ui/Gr8TextField';
 import { Gr8DateTimePicker } from '@/components/ui/Gr8DateTimePicker';
+import { Gr8DllDatePicker } from '@/components/dll/Gr8DllDatePicker';
 import { pickerToDate } from '@/lib/utils/utils';
 
 export function AddContentModal({
@@ -10,23 +11,20 @@ export function AddContentModal({
     handleProceedToDetails, handleAssessmentNextDetails, isAssessmentFormComplete, quarterNumber, setQuarterNumber,
     assessmentNumber, setAssessmentNumber, assessmentTitle, setAssessmentTitle, availableFrom, setAvailableFrom,
     availableUntil, setAvailableUntil, hasAssessmentDetailsError,
-    weekNumber, setWeekNumber, lessonTitle, setLessonTitle, hasDetailsError, handleLessonNextDetails
+    weekNumber, setWeekNumber, lessonTitle, setLessonTitle, hasDetailsError, handleLessonNextDetails,
+    // DLL Props
+    handleDllNextDetails, dllSemesterNumber, setDllSemesterNumber, dllWeekNumber, setDllWeekNumber,
+    dllAvailableFrom, setDllAvailableFrom, dllAvailableUntil, setDllAvailableUntil, hasDllDetailsError,
+    // NEW: Isolated Error Messages
+    dllFromError, dllUntilError
 }: any) {
-    
-    // Strict Number Validation for input fields
+
     const onNumberChange = (setter: (val: string) => void) => (val: string) => {
         setter(val.replace(/\D/g, ''));
     };
 
-    // --- CALCULATE CALENDAR CONSTRAINTS ---
-    // 1. Current moment to disable all past dates
     const today = new Date();
-
-    // 2. Parse the "Available From" string to a Date object using our robust utility
     const selectedFromDate = pickerToDate(availableFrom);
-
-    // 3. For the "Until" field, the calendar should disable everything before the "From" date.
-    // If no "From" date is picked yet, it defaults to today.
     const untilMinDate = selectedFromDate || today;
 
     const options = [
@@ -73,35 +71,18 @@ export function AddContentModal({
                         <p className="text-[12px] font-bold text-center text-[#222] mb-6">Please enter the needed details.</p>
 
                         <div className="flex flex-col gap-y-3 mb-8">
-                            <Gr8TextField label="Quarter Number" value={quarterNumber} onChange={onNumberChange(setQuarterNumber)} hasError={hasAssessmentDetailsError && !quarterNumber} errorMessage="Please enter the needed details." showTopLabel />
-                            <Gr8TextField label="Assessment Number" value={assessmentNumber} onChange={onNumberChange(setAssessmentNumber)} hasError={hasAssessmentDetailsError && !assessmentNumber} errorMessage="Please enter the needed details." showTopLabel />
-                            <Gr8TextField label="Assessment Title" value={assessmentTitle} onChange={setAssessmentTitle} hasError={hasAssessmentDetailsError && !assessmentTitle} errorMessage="Please enter the needed details." showTopLabel />
+                      // Updated Code
+                            <Gr8TextField label="Quarter Number" value={quarterNumber} onChange={onNumberChange(setQuarterNumber)} hasError={hasAssessmentDetailsError && !quarterNumber} errorMessage={hasAssessmentDetailsError && !quarterNumber ? "Please enter needed details" : ""} showTopLabel />
+                            <Gr8TextField label="Assessment Number" value={assessmentNumber} onChange={onNumberChange(setAssessmentNumber)} hasError={hasAssessmentDetailsError && !assessmentNumber} errorMessage={hasAssessmentDetailsError && !assessmentNumber ? "Please enter needed details" : ""} showTopLabel />
+                            <Gr8TextField label="Assessment Title" value={assessmentTitle} onChange={setAssessmentTitle} hasError={hasAssessmentDetailsError && !assessmentTitle} errorMessage={hasAssessmentDetailsError && !assessmentTitle ? "Please enter needed details" : ""} showTopLabel />
 
                             <div className="grid grid-cols-2 gap-x-3 mt-2">
-                                <Gr8DateTimePicker 
-                                    label="Available From" 
-                                    value={availableFrom} 
-                                    onChange={setAvailableFrom} 
-                                    minDate={today} // Pass today to disable past dates
-                                    hasError={hasAssessmentDetailsError && !availableFrom} 
-                                />
-                                <Gr8DateTimePicker 
-                                    label="Available Until" 
-                                    value={availableUntil} 
-                                    onChange={setAvailableUntil} 
-                                    minDate={untilMinDate} // Pass the start date to disable earlier dates
-                                    hasError={hasAssessmentDetailsError && !availableUntil} 
-                                />
+                                <Gr8DateTimePicker label="Available From" value={availableFrom} onChange={setAvailableFrom} minDate={today} hasError={hasAssessmentDetailsError && !availableFrom} errorMessage={hasAssessmentDetailsError && !availableFrom ? "Please enter needed details" : ""} />
+                                <Gr8DateTimePicker label="Available Until" value={availableUntil} onChange={setAvailableUntil} minDate={untilMinDate} hasError={hasAssessmentDetailsError && !availableUntil} errorMessage={hasAssessmentDetailsError && !availableUntil ? "Please enter needed details" : ""} />
                             </div>
-                            {hasAssessmentDetailsError && (!availableFrom || !availableUntil) && (
-                                <p className="text-[#ED1F24] text-[10px] font-bold mt-1">Please select the valid schedule.</p>
-                            )}
                         </div>
 
-                        <button
-                            onClick={handleAssessmentNextDetails}
-                            className="w-full py-3.5 text-[14px] font-black bg-[#1A4C8B] text-white rounded-lg transition-colors outline-none shadow-md hover:bg-[#153a6b]"
-                        >
+                        <button onClick={handleAssessmentNextDetails} className="w-full py-3.5 text-[14px] font-black bg-[#1A4C8B] text-white rounded-lg transition-colors outline-none shadow-md hover:bg-[#153a6b]">
                             Next
                         </button>
                     </div>
@@ -118,8 +99,8 @@ export function AddContentModal({
                         </div>
 
                         <div className="flex flex-col gap-y-1 mb-8">
-                            <Gr8TextField label="Week Number" value={weekNumber} onChange={onNumberChange(setWeekNumber)} hasError={hasDetailsError && !weekNumber} errorMessage="Please enter the needed details." showTopLabel />
-                            <Gr8TextField label="Lesson Title" value={lessonTitle} onChange={setLessonTitle} hasError={hasDetailsError && !lessonTitle} errorMessage="Please enter the needed details." showTopLabel />
+                            <Gr8TextField label="Week Number" value={weekNumber} onChange={onNumberChange(setWeekNumber)} hasError={hasDetailsError && !weekNumber} errorMessage="Please enter needed details" showTopLabel />
+                            <Gr8TextField label="Lesson Title" value={lessonTitle} onChange={setLessonTitle} hasError={hasDetailsError && !lessonTitle} errorMessage="Please enter needed details" showTopLabel />
                         </div>
 
                         <button onClick={handleLessonNextDetails} className="w-full py-3.5 text-[13px] font-black rounded-lg uppercase tracking-wide transition-all outline-none bg-[#1A4C8B] text-white shadow-md hover:bg-[#153a6b]">
@@ -137,8 +118,31 @@ export function AddContentModal({
                             </button>
                             <h2 className="text-[18px] font-extrabold text-[#222]">Daily Lesson Log</h2>
                         </div>
-                        <p className="text-[14px] text-[#666] mb-8">Click below to generate a new DLL log entry.</p>
-                        <button onClick={closeAddModal} className="w-full py-3.5 bg-[#1A4C8B] text-white rounded-lg font-black uppercase shadow-md hover:bg-[#153a6b]">
+                        <p className="text-[12px] font-bold text-center text-[#222] mb-6">Please enter the needed details.</p>
+
+                        <div className="flex flex-col gap-y-3 mb-8 text-left">
+                            <Gr8TextField label="Semester Number" value={dllSemesterNumber} onChange={onNumberChange(setDllSemesterNumber)} hasError={hasDllDetailsError && !dllSemesterNumber} errorMessage="Please enter needed details" showTopLabel />
+                            <Gr8TextField label="Week Number" value={dllWeekNumber} onChange={onNumberChange(setDllWeekNumber)} hasError={hasDllDetailsError && !dllWeekNumber} errorMessage="Please enter needed details" showTopLabel />
+
+                            <div className="grid grid-cols-2 gap-x-3 mt-2">
+                                <Gr8DllDatePicker
+                                    label="Available From"
+                                    value={dllAvailableFrom}
+                                    onChange={setDllAvailableFrom}
+                                    hasError={!!dllFromError}
+                                    errorMessage={dllFromError}
+                                />
+                                <Gr8DllDatePicker
+                                    label="Available Until"
+                                    value={dllAvailableUntil}
+                                    onChange={setDllAvailableUntil}
+                                    hasError={!!dllUntilError}
+                                    errorMessage={dllUntilError}
+                                />
+                            </div>
+                        </div>
+
+                        <button onClick={handleDllNextDetails} className="w-full py-3.5 bg-[#1A4C8B] text-white rounded-lg font-black uppercase shadow-md hover:bg-[#153a6b]">
                             Create Log
                         </button>
                     </div>

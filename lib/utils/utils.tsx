@@ -1,42 +1,3 @@
-// export const convertToIso = (rawDate: string | null | undefined): string | null => {
-//     if (!rawDate) return null;
-
-//     let dateStr = String(rawDate).trim();
-//     dateStr = dateStr.replace(/(\d{1,2}:\d{2})(am|pm)/i, '$1 $2');
-//     dateStr = dateStr.replace(/^(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2})/, '$1T$2');
-//     const parsedDate = new Date(dateStr);
-
-//     if (isNaN(parsedDate.getTime())) {
-//         console.error(`❌ FATAL: Could not parse date format: "${rawDate}"`);
-//         return null;
-//     }
-
-//     return parsedDate.toISOString();
-// };
-
-// export const revertIsoToPicker = (isoString: string | null | undefined): string => {
-//     if (!isoString) return '';
-//     try {
-//         const date = new Date(isoString);
-//         if (isNaN(date.getTime())) return '';
-
-//         const m = String(date.getMonth() + 1).padStart(2, '0');
-//         const d = String(date.getDate()).padStart(2, '0');
-//         const y = date.getFullYear();
-
-//         let h = date.getHours();
-//         const min = String(date.getMinutes()).padStart(2, '0');
-//         const ampm = h >= 12 ? 'PM' : 'AM';
-
-//         h = h % 12 || 12;
-//         const formattedH = String(h).padStart(2, '0');
-
-//         return `${m}/${d}/${y} - ${formattedH}:${min} ${ampm}`;
-//     } catch (e) {
-//         return '';
-//     }
-// };
-
 export const formatTime = (timeString: string | null): string => {
     if (!timeString) return "Time N/A";
     try {
@@ -93,3 +54,34 @@ export const revertIsoToPicker = (isoString: string | null | undefined): string 
     return `${fullMonthNames[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()} ${formattedH}:${min}${ampm}`;
 };
 
+
+export function formatDllDateRange(startStr: string, endStr: string) {
+    if (!startStr || !endStr) return '';
+    const cleanStart = startStr.replace(/\s\d{1,2}:\d{2}[a-zA-Z]{2}/i, '').trim();
+    const cleanEnd = endStr.replace(/\s\d{1,2}:\d{2}[a-zA-Z]{2}/i, '').trim();
+
+    const start = new Date(cleanStart);
+    const end = new Date(cleanEnd);
+    
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return '';
+    
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    
+    const sMonth = months[start.getMonth()];
+    const sDay = start.getDate();
+    const sYear = start.getFullYear();
+    
+    const eMonth = months[end.getMonth()];
+    const eDay = end.getDate();
+    const eYear = end.getFullYear();
+    
+    if (sYear === eYear && sMonth === eMonth) {
+        return `${sMonth}. ${sDay}-${eDay}, ${sYear}`; 
+    } 
+    else if (sYear === eYear) {
+        return `${sMonth}. ${sDay} - ${eMonth}. ${eDay}, ${sYear}`; 
+    } 
+    else {
+        return `${sMonth}. ${sDay}, ${sYear} - ${eMonth}. ${eDay}, ${eYear}`;
+    }
+}

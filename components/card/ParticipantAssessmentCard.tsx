@@ -1,7 +1,5 @@
 import React from 'react';
 import Image from 'next/image';
-
-// Adjust the path if your images are located somewhere else
 import assessmentIcon from '@/app/(teacher)/class-page/photos/assessment.png';
 
 interface ParticipantAssessmentCardProps {
@@ -16,7 +14,7 @@ interface ParticipantAssessmentCardProps {
 export const ParticipantAssessmentCard: React.FC<ParticipantAssessmentCardProps> = ({
     assessmentNumber,
     title,
-    date = 'Jan 1, 2026', // Default fallback date
+    date = 'N/A', 
     score,
     totalItems,
     onClick

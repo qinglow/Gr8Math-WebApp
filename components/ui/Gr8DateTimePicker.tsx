@@ -56,16 +56,16 @@ const DrumColumn = ({ items, selected, onSelect }: DrumProps) => {
   );
 };
 
-export const Gr8DateTimePicker = ({ label, value, onChange, hasError, minDate }: any) => {
+export const Gr8DateTimePicker = ({ label, value, onChange, hasError, minDate, errorMessage }: any) => {
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState<'date' | 'time'>('date');
-  
+
   // Date States
   const [currentDate, setCurrentDate] = useState(new Date());
   const [tempSelectedDate, setTempSelectedDate] = useState<Date | null>(null);
   const [view, setView] = useState<'calendar' | 'years'>('calendar');
   const yearRef = useRef<HTMLDivElement>(null);
-  
+
   // Time States
   const [hour, setHour] = useState('11');
   const [minute, setMinute] = useState('00');
@@ -100,7 +100,7 @@ export const Gr8DateTimePicker = ({ label, value, onChange, hasError, minDate }:
     const prevMonthDate = new Date(year, month - 1, 1);
     // Prevent scrolling to months before the minDate
     if (prevMonthDate.getMonth() < todayThreshold.getMonth() && prevMonthDate.getFullYear() <= todayThreshold.getFullYear()) {
-        return;
+      return;
     }
     setCurrentDate(prevMonthDate);
   };
@@ -120,7 +120,7 @@ export const Gr8DateTimePicker = ({ label, value, onChange, hasError, minDate }:
 
   return (
     <div className="flex-1 flex flex-col">
-      <div 
+      <div
         onClick={() => setIsOpen(true)}
         className={`w-full bg-white border rounded-lg p-3 text-[14px] font-semibold cursor-pointer transition-colors flex items-center justify-between
           ${hasError && !value ? 'border-red-500' : 'border-[#D1D8DD] hover:border-[#0A7F93]'}
@@ -131,10 +131,17 @@ export const Gr8DateTimePicker = ({ label, value, onChange, hasError, minDate }:
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="opacity-50"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
       </div>
 
+      {/* --- ADD THIS ERROR MESSAGE BLOCK --- */}
+      {hasError && errorMessage && (
+        <span className="text-[#ED1F24] text-[10px] mt-1.5 ml-1 animate-in fade-in">
+          {errorMessage}
+        </span>
+      )}
+
       {isOpen && (
         <div className="fixed inset-0 z-[250] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-lg shadow-2xl w-[310px] overflow-hidden flex flex-col animate-in zoom-in-95 duration-150">
-            
+
             {step === 'date' && (
               <>
                 <div className="bg-[#1A4C8B] px-6 py-4 text-white">
@@ -162,17 +169,17 @@ export const Gr8DateTimePicker = ({ label, value, onChange, hasError, minDate }:
                         {Array.from({ length: daysInMonth }).map((_, i) => {
                           const day = i + 1;
                           const currentIterationDate = new Date(year, month, day);
-                          
+
                           // THE DISABLE LOGIC: Check if this day is before the threshold
                           const isDisabled = currentIterationDate < todayThreshold;
-                          
+
                           const isSelected = tempSelectedDate?.getDate() === day && tempSelectedDate?.getMonth() === month && tempSelectedDate?.getFullYear() === year;
-                          
+
                           return (
-                            <button 
-                              key={day} 
+                            <button
+                              key={day}
                               disabled={isDisabled}
-                              onClick={() => !isDisabled && setTempSelectedDate(currentIterationDate)} 
+                              onClick={() => !isDisabled && setTempSelectedDate(currentIterationDate)}
                               className={`w-8 h-8 mx-auto flex items-center justify-center rounded-full text-xs font-bold transition-all border-none outline-none
                                 ${isDisabled ? 'text-gray-300 cursor-not-allowed opacity-40' : 'cursor-pointer'}
                                 ${isSelected ? 'bg-[#ED1F24] text-white' : !isDisabled ? 'bg-transparent text-[#222] hover:bg-gray-100' : ''}
@@ -189,15 +196,15 @@ export const Gr8DateTimePicker = ({ label, value, onChange, hasError, minDate }:
                       {years.map((y) => {
                         const isYearDisabled = y < todayThreshold.getFullYear();
                         return (
-                          <button 
-                            key={y} 
+                          <button
+                            key={y}
                             disabled={isYearDisabled}
                             onClick={() => {
                               if (!isYearDisabled) {
-                                setCurrentDate(new Date(y, month, 1)); 
+                                setCurrentDate(new Date(y, month, 1));
                                 setView('calendar');
                               }
-                            }} 
+                            }}
                             className={`py-2 text-sm rounded-md transition-colors outline-none
                               ${isYearDisabled ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-gray-100 text-[#222]'}
                               ${y === year ? 'bg-[#1A4C8B] text-white font-bold selected-year' : ''}
@@ -224,7 +231,7 @@ export const Gr8DateTimePicker = ({ label, value, onChange, hasError, minDate }:
                   <p className="text-[10px] font-bold uppercase opacity-70 mb-1 tracking-widest">Select Time</p>
                   <h3 className="text-3xl font-bold">{hour}:{minute} {period}</h3>
                 </div>
-                
+
                 <div className="relative p-6 flex justify-around items-center bg-[#F9FAFB] h-[220px] overflow-hidden">
                   <div className="absolute top-1/2 left-0 w-full h-10 -translate-y-1/2 border-y border-gray-200 bg-gray-100/40 pointer-events-none" />
                   <DrumColumn items={hours} selected={hour} onSelect={setHour} />

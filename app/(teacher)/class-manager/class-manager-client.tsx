@@ -10,6 +10,7 @@ import { formatTime } from '@/lib/utils/utils';
 import { Gr8Toast } from '@/components/ui/Gr8Toast';
 import { Gr8Cache } from '@/lib/utils/cache';
 import Link from 'next/link';
+import { DllTabContent } from '../class-page/dll/DllTabContent';
 
 // --- SIDEBAR IMAGE IMPORTS ---
 import profileIcon from './photos/DefaultTemporaryProfile.png';
@@ -135,7 +136,7 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
     const handleCopyCode = () => {
         if (generatedCode) {
             navigator.clipboard.writeText(generatedCode);
-            triggerToast("CLASS CODE COPIED");
+            triggerToast("Class code copied");
         }
     };
 

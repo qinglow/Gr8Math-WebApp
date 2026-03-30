@@ -1,9 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 
-/**
- * Revised to fetch details using section_id 
- * as the primary lookup.
- */
 export async function fetchClassDetails(sectionId: string) {
     const supabase = await createClient();
     const numericSectionId = parseInt(sectionId, 10);
@@ -16,15 +12,14 @@ export async function fetchClassDetails(sectionId: string) {
             id,
             class:section_id (class_name)
         `)
-        .eq('section_id', numericSectionId) // Querying by the Class ID from the URL
+        .eq('section_id', numericSectionId) 
         .maybeSingle();
 
     if (error) throw error;
     if (!data) return null;
 
-    // Return a clean object so the Page doesn't need to do .class[0]
     return {
-        id: data.id, // This is the real course_id used for lessons
+        id: data.id, 
         section_name: (data as any)?.class?.class_name || "Classroom"
     };
 }
@@ -35,7 +30,6 @@ export async function fetchClassFeed(sectionId: string) {
 
     if (isNaN(numericSectionId)) return [];
 
-    // 1. Get the bridge record (course_content) for this section
     const { data: bridge } = await supabase
         .from('course_content')
         .select('id')
@@ -49,7 +43,6 @@ export async function fetchClassFeed(sectionId: string) {
 
     const realCourseId = bridge.id;
 
-    // 2. Fetch Lessons and Assessments using the bridge ID (realCourseId)
     const [lessonsRes, assessmentsRes] = await Promise.all([
         supabase
             .from('lesson')

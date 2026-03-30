@@ -131,7 +131,7 @@ export default function SignUpPage() {
 
     if (!formData.password || !formData.confirmPassword) {
       setErrors({ password: "Required", confirmPassword: "Required" });
-      setPasswordErrorMessage("Required");
+      setPasswordErrorMessage("Please enter needed details");
       return;
     }
 

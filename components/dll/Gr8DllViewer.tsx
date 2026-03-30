@@ -65,7 +65,7 @@ export const Gr8DllViewer: React.FC<Gr8DllViewerProps> = ({ record, onBack }) =>
         <div className="flex-1 w-full max-w-[1200px] mx-auto px-4 md:px-8 py-8 animate-in fade-in duration-500 relative">
             
             <div className="flex items-center gap-x-3 mb-8">
-                <button onClick={onBack} className="p-1 -ml-1 hover:bg-black/5 rounded transition-colors outline-none cursor-pointer">
+                <button aria-label='d' onClick={onBack} className="p-1 -ml-1 hover:bg-black/5 rounded transition-colors outline-none cursor-pointer">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0A7F93" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="15 18 9 12 15 6"></polyline>
                     </svg>

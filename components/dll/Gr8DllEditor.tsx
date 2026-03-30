@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Gr8LoadingOverlay } from '@/components/ui/Gr8LoadingOverlay';
+import { Gr8DllDatePicker } from './Gr8DllDatePicker';
 
 interface Gr8DllEditorProps {
     onBack: () => void;
@@ -39,12 +40,27 @@ const AutoResizeTextarea = ({ value, onChange, placeholder, minHeight = '120px' 
     );
 };
 
+// --- HELPER COMPONENT: The Tesla-Style Toggle ---
+const DailyWeeklyToggle = ({ isWeekly, onChange }: { isWeekly: boolean, onChange: (val: boolean) => void }) => {
+    return (
+        <div className="mt-4 flex bg-[#EAEAEA] rounded-full p-1 relative w-[140px] shadow-inner">
+            <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-white rounded-full shadow-sm transition-transform duration-300 ease-in-out ${isWeekly ? 'translate-x-[calc(100%+8px)]' : 'translate-x-0'}`} />
+            <button onClick={() => onChange(false)} className={`flex-1 relative z-10 py-1.5 text-[10px] font-black uppercase tracking-wider transition-colors outline-none ${!isWeekly ? 'text-[#222]' : 'text-[#888]'}`}>DAILY</button>
+            <button onClick={() => onChange(true)} className={`flex-1 relative z-10 py-1.5 text-[10px] font-black uppercase tracking-wider transition-colors outline-none ${isWeekly ? 'text-[#222]' : 'text-[#888]'}`}>WEEKLY</button>
+        </div>
+    );
+};
+
 export const Gr8DllEditor: React.FC<Gr8DllEditorProps> = ({ onBack, onSaveComplete }) => {
     // --- MULTI-STEP FLOW STATE ---
     const [currentPart, setCurrentPart] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
     const [isDiscardModalOpen, setIsDiscardModalOpen] = useState(false);
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false); 
+
+    // --- SEPARATE TOGGLE STATES FOR CS & PS ---
+    const [isCsWeekly, setIsCsWeekly] = useState(false);
+    const [isPsWeekly, setIsPsWeekly] = useState(false);
 
     const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'] as const;
     type DayKey = typeof days[number];
@@ -136,6 +152,7 @@ export const Gr8DllEditor: React.FC<Gr8DllEditorProps> = ({ onBack, onSaveComple
         setTimeout(() => {
             setIsLoading(false);
             onSaveComplete({
+                toggles: { isCsWeekly, isPsWeekly }, // Save toggle states for the viewer
                 objectives: { contentStandards, performanceStandards, learningCompetencies },
                 resources: { content, teacherGuide, learnerMaterials, textbookPages, additionalMaterials, otherReferences },
                 procedures,
@@ -145,7 +162,6 @@ export const Gr8DllEditor: React.FC<Gr8DllEditorProps> = ({ onBack, onSaveComple
         }, 1500);
     };
 
-    // --- FIXED: Use regular variables instead of React components to prevent cursor focus loss ---
     const tableHeader = (
         <thead>
             <tr>
@@ -162,28 +178,60 @@ export const Gr8DllEditor: React.FC<Gr8DllEditorProps> = ({ onBack, onSaveComple
     const part1Rows = (
         <>
             <tr>
-                <td className="p-3 border-b border-r border-[#B0B8C1] font-black text-[#222] text-[13px]">I. Objectives</td>
+                <td className="p-3 border-b border-r border-[#B0B8C1] align-top">
+                    <div className="font-black text-[#222] text-[13px]">I. Objectives</div>
+                </td>
                 <td colSpan={5} className="border-b border-[#B0B8C1]"></td>
             </tr>
             <tr>
-                <td className="p-3 border-b border-r border-[#B0B8C1] align-top font-bold text-[#222] text-[13px] leading-snug">
-                    A. Content standards
+                <td className="p-3 border-b border-r border-[#B0B8C1] align-top">
+                    <div className="font-bold text-[#222] text-[13px] leading-snug">
+                        A. Content standards
+                    </div>
+                    {/* TOGGLE FOR CONTENT STANDARDS */}
+                    <DailyWeeklyToggle isWeekly={isCsWeekly} onChange={setIsCsWeekly} />
                 </td>
-                {days.map(day => (
-                    <td key={`content-std-${day}`} className="border-b border-r border-[#B0B8C1] align-top p-0 focus-within:bg-[#FFFDF5] focus-within:ring-2 focus-within:ring-inset focus-within:ring-[#EFBD31] focus-within:relative z-10 transition-colors">
-                        <AutoResizeTextarea value={contentStandards[day]} onChange={(val) => setContentStandards(prev => ({ ...prev, [day]: val }))} placeholder="Lorem Ipsum" />
+                {/* CONDITIONAL RENDER: 1 Col (Weekly) vs 5 Cols (Daily) */}
+                {isCsWeekly ? (
+                    <td colSpan={5} className="border-b border-[#B0B8C1] align-top p-0 focus-within:bg-[#FFFDF5] focus-within:ring-2 focus-within:ring-inset focus-within:ring-[#EFBD31] focus-within:relative z-10 transition-colors">
+                        <AutoResizeTextarea 
+                            value={contentStandards.monday} 
+                            onChange={(val) => setContentStandards(prev => ({ ...prev, monday: val }))} 
+                            placeholder="Type weekly content standard here..." 
+                        />
                     </td>
-                ))}
+                ) : (
+                    days.map(day => (
+                        <td key={`content-std-${day}`} className="border-b border-r border-[#B0B8C1] align-top p-0 focus-within:bg-[#FFFDF5] focus-within:ring-2 focus-within:ring-inset focus-within:ring-[#EFBD31] focus-within:relative z-10 transition-colors">
+                            <AutoResizeTextarea value={contentStandards[day]} onChange={(val) => setContentStandards(prev => ({ ...prev, [day]: val }))} placeholder="" />
+                        </td>
+                    ))
+                )}
             </tr>
             <tr>
-                <td className="p-3 border-b border-r border-[#B0B8C1] align-top font-bold text-[#222] text-[13px] leading-snug">
-                    B. Performance standards
+                <td className="p-3 border-b border-r border-[#B0B8C1] align-top">
+                    <div className="font-bold text-[#222] text-[13px] leading-snug">
+                        B. Performance standards
+                    </div>
+                    {/* TOGGLE FOR PERFORMANCE STANDARDS */}
+                    <DailyWeeklyToggle isWeekly={isPsWeekly} onChange={setIsPsWeekly} />
                 </td>
-                {days.map(day => (
-                    <td key={`perf-std-${day}`} className="border-b border-r border-[#B0B8C1] align-top p-0 focus-within:bg-[#FFFDF5] focus-within:ring-2 focus-within:ring-inset focus-within:ring-[#EFBD31] focus-within:relative z-10 transition-colors">
-                        <AutoResizeTextarea value={performanceStandards[day]} onChange={(val) => setPerformanceStandards(prev => ({ ...prev, [day]: val }))} placeholder="Lorem Ipsum" />
+                {/* CONDITIONAL RENDER: 1 Col (Weekly) vs 5 Cols (Daily) */}
+                {isPsWeekly ? (
+                    <td colSpan={5} className="border-b border-[#B0B8C1] align-top p-0 focus-within:bg-[#FFFDF5] focus-within:ring-2 focus-within:ring-inset focus-within:ring-[#EFBD31] focus-within:relative z-10 transition-colors">
+                        <AutoResizeTextarea 
+                            value={performanceStandards.monday} 
+                            onChange={(val) => setPerformanceStandards(prev => ({ ...prev, monday: val }))} 
+                            placeholder="Type weekly performance standard here..." 
+                        />
                     </td>
-                ))}
+                ) : (
+                    days.map(day => (
+                        <td key={`perf-std-${day}`} className="border-b border-r border-[#B0B8C1] align-top p-0 focus-within:bg-[#FFFDF5] focus-within:ring-2 focus-within:ring-inset focus-within:ring-[#EFBD31] focus-within:relative z-10 transition-colors">
+                            <AutoResizeTextarea value={performanceStandards[day]} onChange={(val) => setPerformanceStandards(prev => ({ ...prev, [day]: val }))} placeholder="" />
+                        </td>
+                    ))
+                )}
             </tr>
             <tr>
                 <td className="p-3 border-b border-r border-[#B0B8C1] align-top font-bold text-[#222] text-[13px] leading-snug">
@@ -191,7 +239,7 @@ export const Gr8DllEditor: React.FC<Gr8DllEditorProps> = ({ onBack, onSaveComple
                 </td>
                 {days.map(day => (
                     <td key={`lc-${day}`} className="border-b border-r border-[#B0B8C1] align-top p-0 focus-within:bg-[#FFFDF5] focus-within:ring-2 focus-within:ring-inset focus-within:ring-[#EFBD31] focus-within:relative z-10 transition-colors">
-                        <AutoResizeTextarea value={learningCompetencies[day]} onChange={(val) => setLearningCompetencies(prev => ({ ...prev, [day]: val }))} placeholder="Lorem Ipsum" />
+                        <AutoResizeTextarea value={learningCompetencies[day]} onChange={(val) => setLearningCompetencies(prev => ({ ...prev, [day]: val }))} placeholder="" />
                     </td>
                 ))}
             </tr>
@@ -206,7 +254,7 @@ export const Gr8DllEditor: React.FC<Gr8DllEditorProps> = ({ onBack, onSaveComple
                 </td>
                 {days.map(day => (
                     <td key={`content-${day}`} className="border-b border-r border-[#B0B8C1] align-top p-0 focus-within:bg-[#FFFDF5] focus-within:ring-2 focus-within:ring-inset focus-within:ring-[#EFBD31] focus-within:relative z-10 transition-colors">
-                        <AutoResizeTextarea value={content[day]} onChange={(val) => setContent(prev => ({ ...prev, [day]: val }))} placeholder="Lorem Ipsum" />
+                        <AutoResizeTextarea value={content[day]} onChange={(val) => setContent(prev => ({ ...prev, [day]: val }))} placeholder="" />
                     </td>
                 ))}
             </tr>
@@ -287,7 +335,7 @@ export const Gr8DllEditor: React.FC<Gr8DllEditorProps> = ({ onBack, onSaveComple
                                     ...prev,
                                     [proc.key]: { ...prev[proc.key], [day]: val }
                                 }))} 
-                                placeholder="Lorem Ipsum" 
+                                placeholder="" 
                             />
                         </td>
                     ))}
@@ -303,7 +351,7 @@ export const Gr8DllEditor: React.FC<Gr8DllEditorProps> = ({ onBack, onSaveComple
                     V. Remarks
                 </td>
                 <td colSpan={5} className="border-b border-[#B0B8C1] align-top p-0 focus-within:bg-[#FFFDF5] focus-within:ring-2 focus-within:ring-inset focus-within:ring-[#EFBD31] focus-within:relative z-10 transition-colors">
-                    <AutoResizeTextarea value={remarks} onChange={setRemarks} placeholder="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce vestibulum." minHeight="180px" />
+                    <AutoResizeTextarea value={remarks} onChange={setRemarks} placeholder="" minHeight="180px" />
                 </td>
             </tr>
             <tr>
@@ -331,7 +379,7 @@ export const Gr8DllEditor: React.FC<Gr8DllEditorProps> = ({ onBack, onSaveComple
             <Gr8LoadingOverlay isLoading={isLoading} message="Loading..." />
 
             <div className="flex items-center gap-x-3 mb-8">
-                <button onClick={handleBackClick} className="p-1 -ml-1 hover:bg-black/5 rounded transition-colors outline-none cursor-pointer">
+                <button aria-label='o' onClick={handleBackClick} className="p-1 -ml-1 hover:bg-black/5 rounded transition-colors outline-none cursor-pointer">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0A7F93" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="15 18 9 12 15 6"></polyline>
                     </svg>
@@ -394,22 +442,22 @@ export const Gr8DllEditor: React.FC<Gr8DllEditorProps> = ({ onBack, onSaveComple
                                     <td className="w-[30%] p-4 border-b border-r border-[#B0B8C1] font-black text-[#222] text-[13px] text-center align-top">
                                         V. Remarks
                                     </td>
-                                    <td className="w-[70%] border-b border-[#B0B8C1] align-top p-0 focus-within:bg-[#FFFDF5] focus-within:ring-2 focus-within:ring-inset focus-within:ring-[#EFBD31] focus-within:relative z-10 transition-colors">
-                                        <AutoResizeTextarea value={remarks} onChange={setRemarks} placeholder="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce vestibulum." minHeight="180px" />
+                                    <td colSpan={5} className="border-b border-[#B0B8C1] align-top p-0 focus-within:bg-[#FFFDF5] focus-within:ring-2 focus-within:ring-inset focus-within:ring-[#EFBD31] focus-within:relative z-10 transition-colors">
+                                        <AutoResizeTextarea value={remarks} onChange={setRemarks} placeholder="" minHeight="180px" />
                                     </td>
                                 </tr>
                                 <tr>
                                     <td className="w-[30%] p-4 border-b border-r border-[#B0B8C1] font-black text-[#222] text-[13px] text-center">
                                         VI. Reflection
                                     </td>
-                                    <td className="w-[70%] border-b border-[#B0B8C1]"></td>
+                                    <td colSpan={5} className="border-b border-[#B0B8C1]"></td>
                                 </tr>
                                 {reflectionLabels.map(ref => (
                                     <tr key={`reflection-${ref.key}`}>
                                         <td className="w-[30%] p-4 border-b border-r border-[#B0B8C1] align-middle font-bold text-[#222] text-[12px] leading-snug pr-4">
                                             {ref.label}
                                         </td>
-                                        <td className="w-[70%] border-b border-[#B0B8C1] align-top p-0 focus-within:bg-[#FFFDF5] focus-within:ring-2 focus-within:ring-inset focus-within:ring-[#EFBD31] focus-within:relative z-10 transition-colors">
+                                        <td colSpan={5} className="border-b border-[#B0B8C1] align-top p-0 focus-within:bg-[#FFFDF5] focus-within:ring-2 focus-within:ring-inset focus-within:ring-[#EFBD31] focus-within:relative z-10 transition-colors">
                                             <AutoResizeTextarea value={reflection[ref.key]} onChange={(val) => setReflection(prev => ({...prev, [ref.key]: val}))} placeholder="Reflection" minHeight="60px" />
                                         </td>
                                     </tr>
