@@ -26,7 +26,7 @@ export function ClassFeed({ courseContent, onEdit, onSeeMore }: ClassFeedProps) 
                 ) : (
                     <AssessmentCard
                         key={`assessment-${item.id}`}
-                        title={item.title || 'Assessment'}
+                        title={`Assesssment ${item.assessment_number}` || 'Assessment'}
                         onClick={() => onEdit(item)} />
                 )
             ))}

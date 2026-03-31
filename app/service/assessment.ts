@@ -40,7 +40,11 @@ export async function publishAssessmentAction(params: {
         // 3. Loop through Questions
         for (const q of params.questions) {
             const rawQuestionText = q.question || q.questionText || '';
-            const formattedQuestionText = `[${q.type}] ${rawQuestionText.trim()}`;
+            let formattedQuestionText = `[${q.type}] ${rawQuestionText.trim()}`;
+
+            if (q.imageUrl && q.imageUrl.trim() !== '') {
+                formattedQuestionText += ` ||| ${q.imageUrl.trim()}`;
+            }
 
             const { data: savedQ, error: qErr } = await supabase
                 .from('assessment_questions')
@@ -77,6 +81,9 @@ export async function publishAssessmentAction(params: {
                 if (cErr) throw cErr;
             }
         }
+
+        // ---> FIX: ACTUALLY CALL THE NOTIFICATION FUNCTION HERE <---
+        await notifyStudentsOfAssessment(cc.id, assessment.id);
 
         return { success: true, id: assessment.id };
     } catch (error: any) {
@@ -141,7 +148,11 @@ export async function updateAssessmentAction(params: {
         // 3. Re-insert Edited Questions
         for (const q of params.questions) {
             const rawQuestionText = q.question || q.questionText || '';
-            const formattedQuestionText = `[${q.type}] ${rawQuestionText.trim()}`;
+            let formattedQuestionText = `[${q.type}] ${rawQuestionText.trim()}`;
+
+            if (q.imageUrl && q.imageUrl.trim() !== '') {
+                formattedQuestionText += ` ||| ${q.imageUrl.trim()}`;
+            }
 
             const { data: savedQ, error: qErr } = await supabase
                 .from('assessment_questions')

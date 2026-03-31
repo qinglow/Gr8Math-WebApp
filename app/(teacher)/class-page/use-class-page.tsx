@@ -215,12 +215,47 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
             const dbData = res.data;
             setAssessmentTitle(dbData.title || ''); setAssessmentNumber(dbData.assessment_number?.toString() || ''); setQuarterNumber(dbData.assessment_quarter?.toString() || '');
             setAvailableFrom(revertIsoToPicker(dbData.start_time)); setAvailableUntil(revertIsoToPicker(dbData.end_time));
+
             const parsedQuestions = dbData.assessment_questions.map((dbQ: any) => {
-                const qMatch = dbQ.question_text.match(/^\[(.*?)\] (.*)$/); const type = qMatch ? qMatch[1] : 'Multiple Choice'; const cleanQuestion = qMatch ? qMatch[2] : dbQ.question_text;
+                // 1. Separate Image URL from Question Text
+                let rawText = dbQ.question_text;
+                let extractedImageUrl = '';
+
+                if (rawText.includes(' ||| ')) {
+                    const parts = rawText.split(' ||| ');
+                    rawText = parts[0];
+                    extractedImageUrl = parts[1];
+                }
+
+                // 2. Parse the clean text
+                const qMatch = rawText.match(/^\[(.*?)\] (.*)$/);
+                const type = qMatch ? qMatch[1] : 'Multiple Choice';
+                const cleanQuestion = qMatch ? qMatch[2] : rawText;
+
                 let points = 1; const choices: string[] = []; const correctAnswers: string[] = [];
-                dbQ.assessment_choices?.forEach((dbC: any) => { const cMatch = dbC.choice_text.match(/^\[(\d+)\s*pts\]\s*(.*)$/i); let cleanChoice = dbC.choice_text; if (cMatch) { points = parseInt(cMatch[1], 10); cleanChoice = cMatch[2].trim(); } choices.push(cleanChoice); if (dbC.is_correct) correctAnswers.push(cleanChoice); });
-                return { id: dbQ.id.toString(), type, question: cleanQuestion, choices: choices.length > 0 ? choices : [''], hasError: false, choiceErrors: choices.map(() => false), points, correctAnswers, isAnswerKeyMode: false };
+                dbQ.assessment_choices?.forEach((dbC: any) => {
+                    const cMatch = dbC.choice_text.match(/^\[(\d+)\s*pts\]\s*(.*)$/i);
+                    let cleanChoice = dbC.choice_text;
+                    if (cMatch) { points = parseInt(cMatch[1], 10); cleanChoice = cMatch[2].trim(); }
+                    choices.push(cleanChoice);
+                    if (dbC.is_correct) correctAnswers.push(cleanChoice);
+                });
+
+                // 3. Return the parsed data including imageUrl
+                return {
+                    id: dbQ.id.toString(),
+                    type,
+                    question: cleanQuestion,
+                    imageUrl: extractedImageUrl, // <--- Added this!
+                    choices: choices.length > 0 ? choices : [''],
+                    hasError: false,
+                    choiceErrors: choices.map(() => false),
+                    points,
+                    correctAnswers,
+                    isAnswerKeyMode: false
+                };
             });
+
             setAssessmentInitialQuestions(parsedQuestions); setSelectedAddOption('assessment'); setAddStep('details'); setIsAddModalOpen(true);
         }
         setIsSaving(false);

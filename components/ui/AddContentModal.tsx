@@ -12,10 +12,8 @@ export function AddContentModal({
     assessmentNumber, setAssessmentNumber, assessmentTitle, setAssessmentTitle, availableFrom, setAvailableFrom,
     availableUntil, setAvailableUntil, hasAssessmentDetailsError,
     weekNumber, setWeekNumber, lessonTitle, setLessonTitle, hasDetailsError, handleLessonNextDetails,
-    // DLL Props
     handleDllNextDetails, dllSemesterNumber, setDllSemesterNumber, dllWeekNumber, setDllWeekNumber,
     dllAvailableFrom, setDllAvailableFrom, dllAvailableUntil, setDllAvailableUntil, hasDllDetailsError,
-    // NEW: Isolated Error Messages
     dllFromError, dllUntilError
 }: any) {
 
