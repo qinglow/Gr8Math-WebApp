@@ -18,8 +18,87 @@ export async function login(formData: FormData) {
 
     if (userError || !user) return { error: "Email or Password not found" };
 
+    // --- NEW: STRICT MFA ENFORCEMENT FOR TEACHERS ---
+    if (user.roles === 'Teacher') {
+        const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors();
+        
+        if (factorsError || !factorsData) {
+            await supabase.auth.signOut();
+            return { error: "Failed to check security settings." };
+        }
+            
+        const allFactors = (factorsData as any).all || (factorsData as any).factors || [];
+
+        // 1. Check for active, verified Authenticator app
+        const totpFactor = allFactors.find(
+            (f: any) => f.factor_type === 'totp' && f.status === 'verified'
+        );
+        
+        if (totpFactor) {
+            // Verified exists: Force them to enter the code
+            return { mfaRequired: true, mfaType: 'verify', factorId: totpFactor.id };
+        } 
+        
+        // 2. Clean up any abandoned "unverified" attempts from past logins
+        const unverifiedFactors = allFactors.filter((f: any) => f.factor_type === 'totp' && f.status === 'unverified');
+        for (const uf of unverifiedFactors) {
+            await supabase.auth.mfa.unenroll({ factorId: uf.id });
+        }
+
+        // 3. Generate a fresh QR Code for them to scan
+        const { data: enrollData, error: enrollError } = await supabase.auth.mfa.enroll({
+            factorType: 'totp'
+        });
+
+        if (enrollError || !enrollData) {
+            await supabase.auth.signOut(); // Securely wipe the partial session
+            return { error: "Failed to load MFA setup. Please try again." };
+        }
+
+        // Return QR Code SVG to frontend
+        return { 
+            mfaRequired: true, 
+            mfaType: 'setup', 
+            factorId: enrollData.id, 
+            qrCode: enrollData.totp.qr_code 
+        };
+    }
+
+    // No MFA required (Student), redirect normally
     redirect(`/class-manager`);
 }
+
+export async function verifyMfaAction(factorId: string, code: string) {
+    const supabase = await createClient();
+
+    try {
+        const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({ factorId });
+        if (challengeError) return { error: "Invalid authentication session." };
+
+        const { error: verifyError } = await supabase.auth.mfa.verify({
+            factorId,
+            challengeId: challengeData.id,
+            code
+        });
+
+        if (verifyError) return { error: "Incorrect code. Please try again." };
+
+    } catch (err: any) {
+        return { error: "An unexpected error occurred." };
+    }
+
+    // Success! MFA verified, redirect to dashboard.
+    redirect('/class-manager'); 
+}
+
+// --- NEW: Securely destroy partial session if user backs out ---
+export async function cancelLoginAction() {
+    const supabase = await createClient();
+    await supabase.auth.signOut();
+}
+
+
+// --- EVERYTHING BELOW THIS LINE IS UNTOUCHED ---
 
 const RegistrationSchema = z.object({
     email: z.string().email("Invalid email format"),
@@ -79,7 +158,6 @@ export async function register(formData: FormData) {
 
     return { success: true }
 }
-
 
 export async function checkAvailability(type: 'email' | 'lrn', value: string) {
     const table = type === 'email' ? 'user' : 'student';

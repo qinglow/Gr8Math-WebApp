@@ -31,6 +31,9 @@ export default function UpdatePasswordPage() {
   const [passwordErrorMessage, setPasswordErrorMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [toastError, setToastError] = useState<string | null>(null);
+  
+  // --- NEW: Track the dead code to lock the button ---
+  const [failedCode, setFailedCode] = useState('');
 
   // Use the counter hook
   const { timeLeft, startCountdown } = counter(0);
@@ -50,6 +53,7 @@ export default function UpdatePasswordPage() {
     setPasswordError(false);
     setToastError(null);
     setLoading(false);
+    setFailedCode(''); // Clear the lock
     setStep('request');
     startCountdown(0);
     router.push('/auth/login');
@@ -90,6 +94,14 @@ export default function UpdatePasswordPage() {
       return;
     }
 
+    // --- FIX: EXACT ERROR FOR EXPIRED CODE ---
+    if (timeLeft === 0) {
+      setCodeError(true);
+      setToastError("Expired code. Please request a new one.");
+      setTimeout(() => setToastError(null), 3000);
+      return;
+    }
+
     setLoading(true);
     const formData = new FormData();
     formData.append('email', email);
@@ -100,7 +112,10 @@ export default function UpdatePasswordPage() {
 
     if (result?.error) {
       setCodeError(true);
-      setToastError(result.error);
+      setFailedCode(code); // --- NEW: Lock the button with the failed code ---
+      
+      // --- FIX: EXACT ERROR FOR INVALID CODE ---
+      setToastError("Invalid code.");
       setTimeout(() => setToastError(null), 3000);
     } else {
       setStep('new-password');
@@ -194,9 +209,31 @@ export default function UpdatePasswordPage() {
                   {timeLeft > 0 ? `${timeLeft} s` : (loading ? "Sending..." : "Get Code")}
                 </button>
               </div>
-              <Gr8TextField label="Code" type="text" value={code} onChange={(val) => { setCode(val); setCodeError(false); }} isActive={activeField === 'code'} onFocus={() => setActiveField('code')} onBlur={() => setActiveField(null)} hasError={codeError} errorMessage="Please enter the verification code." />
+              <Gr8TextField 
+                label="Code" 
+                type="text" 
+                value={code} 
+                onChange={(val) => { 
+                  setCode(val); 
+                  setCodeError(false); 
+                  // --- NEW: Unlock the button if they type a different code ---
+                  if (val !== failedCode) setFailedCode(''); 
+                }} 
+                isActive={activeField === 'code'} 
+                onFocus={() => setActiveField('code')} 
+                onBlur={() => setActiveField(null)} 
+                hasError={codeError} 
+                errorMessage="Please enter the verification code." 
+              />
               <div className="mt-6">
-                <Gr8Button type="button" text={loading ? "Verifying..." : "Verify"} onClick={handleVerifyCode} variant="solid" disabled={loading} />
+                {/* --- FIX: Disable button if input matches the dead code OR time is up --- */}
+                <Gr8Button 
+                  type="button" 
+                  text={loading ? "Verifying..." : "Verify"} 
+                  onClick={handleVerifyCode} 
+                  variant="solid" 
+                  disabled={loading || !code || code === failedCode || timeLeft === 0} 
+                />
               </div>
             </div>
           )}

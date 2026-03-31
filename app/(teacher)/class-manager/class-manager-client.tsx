@@ -148,15 +148,15 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
         setErrors({});
     };
 
-    const handleLogout = async () => {
-        Gr8Cache.clearAll();
-        const { createClient } = await import('@/lib/supabase/client');
-        const supabase = createClient();
+   const handleLogout = async () => {
+    Gr8Cache.clearAll();
+    const { createClient } = await import('@/lib/supabase/client');
+    const supabase = createClient();
 
-        await supabase.auth.signOut();
+    await supabase.auth.signOut();
 
-        window.location.href = '/';
-    };
+    window.location.replace('/'); // <-- THE FIX
+  };
 
     return (
         <div className="flex h-screen bg-[#E2E7E9] font-sans overflow-hidden">
