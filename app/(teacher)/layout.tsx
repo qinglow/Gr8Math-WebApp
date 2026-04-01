@@ -13,7 +13,7 @@ export default async function TeacherLayout({ children }: { children: React.Reac
   const { data: profile } = await getUserProfile(user.email);
 
   if (profile?.roles === 'Admin') {
-    redirect('/admin-dashboard'); 
+    redirect('/dashboard'); 
   }
 
   if (!profile || profile.roles === 'Student') {

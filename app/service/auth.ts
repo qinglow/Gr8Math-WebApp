@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { logAuditTrail } from "./audit-trails";
 
 export async function getUserProfile(email: string) {
   const supabase = await createClient();
@@ -12,7 +13,20 @@ export async function getUserProfile(email: string) {
 
 export async function insertUser(data: any) {
   const supabase = await createClient();
-  return await supabase.from('user').insert(data).select().single();
+  const response = await supabase.from('user').insert(data).select().single();
+
+  // Log successful registration
+  if (response.data && !response.error) {
+    await logAuditTrail(
+      response.data.id, 
+      'Authentication', 
+      'REGISTER', 
+      'SUCCESS', 
+      `New ${data.roles} account created for ${data.email_add}.`
+    );
+  }
+
+  return response;
 }
 
 export async function insertRoleSpecificData(role: 'Student' | 'Teacher', data: any) {

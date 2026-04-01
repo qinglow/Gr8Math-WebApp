@@ -13,7 +13,7 @@ export interface AuditLogData {
 
 export function AuditTableRow({ log }: { log: AuditLogData }) {
     // We can put any complex logic for formatting dates or status colors right here!
-    const isSuccess = log.status.toUpperCase() === 'SUCCESS';
+    const isSuccess = log.status?.toUpperCase() === 'SUCCESS';
 
     return (
         <tr className="hover:bg-[#F9FAFB] transition-colors">

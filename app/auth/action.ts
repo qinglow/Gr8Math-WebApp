@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { z } from "zod"
 import * as AuthService from "@/app/service/auth";
+import { logAuditTrail } from "@/app/service/audit-trails";
 
 
 export async function login(formData: FormData) {
@@ -12,7 +13,20 @@ export async function login(formData: FormData) {
     const password = formData.get('password') as string;
 
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
-    if (authError) return { error: "Email or Password not found" };
+    if (authError) {
+        const { data: existingUser } = await AuthService.getUserProfile(email);
+        const targetUserId = existingUser ? existingUser.id : null;
+
+        await logAuditTrail(
+            targetUserId,
+            'Authentication',
+            'LOGIN',
+            'FAILED',
+            `Failed login attempt for ${email}.`
+        );
+
+        return { error: "Email or Password not found" };
+    }
 
     const { data: user, error: userError } = await AuthService.getUserProfile(email);
 
@@ -21,24 +35,24 @@ export async function login(formData: FormData) {
     // --- NEW: STRICT MFA ENFORCEMENT FOR TEACHERS ---
     if (user.roles === 'Teacher') {
         const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors();
-        
+
         if (factorsError || !factorsData) {
             await supabase.auth.signOut();
             return { error: "Failed to check security settings." };
         }
-            
+
         const allFactors = (factorsData as any).all || (factorsData as any).factors || [];
 
         // 1. Check for active, verified Authenticator app
         const totpFactor = allFactors.find(
             (f: any) => f.factor_type === 'totp' && f.status === 'verified'
         );
-        
+
         if (totpFactor) {
             // Verified exists: Force them to enter the code
             return { mfaRequired: true, mfaType: 'verify', factorId: totpFactor.id };
-        } 
-        
+        }
+
         // 2. Clean up any abandoned "unverified" attempts from past logins
         const unverifiedFactors = allFactors.filter((f: any) => f.factor_type === 'totp' && f.status === 'unverified');
         for (const uf of unverifiedFactors) {
@@ -56,20 +70,45 @@ export async function login(formData: FormData) {
         }
 
         // Return QR Code SVG to frontend
-        return { 
-            mfaRequired: true, 
-            mfaType: 'setup', 
-            factorId: enrollData.id, 
-            qrCode: enrollData.totp.qr_code 
+        return {
+            mfaRequired: true,
+            mfaType: 'setup',
+            factorId: enrollData.id,
+            qrCode: enrollData.totp.qr_code
         };
     }
 
-    // No MFA required (Student), redirect normally
-    redirect(`/class-manager`);
+    await logAuditTrail(
+        user.id,
+        'Authentication',
+        'LOGIN',
+        'SUCCESS',
+        'Successful Login.'
+    );
+
+    if (user.roles === 'Admin') {
+        redirect('/dashboard');
+    } else if (user.roles === 'Student') {
+        redirect('/auth/access-denied');
+    }
+
+    redirect('/class-manager');
 }
 
 export async function verifyMfaAction(factorId: string, code: string) {
     const supabase = await createClient();
+
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    let profileId: number | null = null;
+    let userRole: string = '';
+
+    if (authUser && authUser.email) {
+        const { data: profile } = await AuthService.getUserProfile(authUser.email);
+        if (profile) {
+            profileId = profile.id;
+            userRole = profile.roles;
+        }
+    }
 
     try {
         const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({ factorId });
@@ -81,14 +120,40 @@ export async function verifyMfaAction(factorId: string, code: string) {
             code
         });
 
-        if (verifyError) return { error: "Incorrect code. Please try again." };
+        if (verifyError) {
+            if (profileId) {
+                await logAuditTrail(
+                    profileId,
+                    'Authentication',
+                    'MFA_VERIFY',
+                    'FAILED',
+                    'Failed MFA verification attempt.'
+                );
+            }
+            return { error: "Incorrect code. Please try again." };
+        }
 
     } catch (err: any) {
         return { error: "An unexpected error occurred." };
     }
 
-    // Success! MFA verified, redirect to dashboard.
-    redirect('/class-manager'); 
+    if (profileId) {
+        await logAuditTrail(
+            profileId,
+            'Authentication',
+            'LOGIN',
+            'SUCCESS',
+            'Successful Login via MFA.'
+        );
+    }
+
+    if (userRole === 'Admin') {
+        redirect('/dashboard');
+    } else if (userRole === 'Student') {
+        redirect('/auth/access-denied');
+    }
+
+    redirect('/class-manager');
 }
 
 // --- NEW: Securely destroy partial session if user backs out ---
@@ -174,7 +239,17 @@ export async function sendResetCode(formData: FormData) {
     if (!email) return { error: "Please enter your email" };
 
     const { error } = await supabase.auth.resetPasswordForEmail(email);
-    if (error) return { error: error.message };
+    if (error) {
+        const { data: existingUser } = await AuthService.getUserProfile(email);
+        const targetUserId = existingUser ? existingUser.id : null;
+        await logAuditTrail(targetUserId, 'Authentication', 'REQUEST_RESET', 'FAILED', `Failed OTP request: ${error.message}`);
+        return { error: error.message };
+    }
+
+    const { data: existingUser } = await AuthService.getUserProfile(email);
+    if (existingUser) {
+        await logAuditTrail(existingUser.id, 'Authentication', 'REQUEST_RESET', 'SUCCESS', 'Requested password reset OTP.');
+    }
 
     return { success: true };
 }
@@ -192,7 +267,12 @@ export async function verifyResetCode(formData: FormData) {
         type: 'recovery',
     });
 
-    if (error) return { error: "Invalid code or expired" };
+    if (error) {
+        const { data: existingUser } = await AuthService.getUserProfile(email);
+        const targetUserId = existingUser ? existingUser.id : null;
+        await logAuditTrail(targetUserId, 'Authentication', 'VERIFY_RESET', 'FAILED', 'Failed OTP verification.');
+        return { error: "Invalid code or expired" };
+    }
     return { success: true };
 }
 
@@ -200,8 +280,25 @@ export async function updatePassword(formData: FormData) {
     const supabase = await createClient();
     const password = formData.get('password') as string;
 
+    const { data: { user } } = await supabase.auth.getUser();
+
     const { error } = await supabase.auth.updateUser({ password });
-    if (error) return { error: error.message };
+    if (error) {
+        if (user && user.email) {
+            const { data: profile } = await AuthService.getUserProfile(user.email);
+            if (profile) {
+                await logAuditTrail(profile.id, 'Authentication', 'UPDATE_PASSWORD', 'FAILED', `Password update failed: ${error.message}`);
+            }
+        }
+        return { error: error.message };
+    }
+
+    if (user && user.email) {
+        const { data: profile } = await AuthService.getUserProfile(user.email);
+        if (profile) {
+            await logAuditTrail(profile.id, 'Authentication', 'UPDATE_PASSWORD', 'SUCCESS', 'Password updated successfully.');
+        }
+    }
 
     const message = encodeURIComponent("Password updated successfully");
     redirect(`/auth/login?msg=${message}`);

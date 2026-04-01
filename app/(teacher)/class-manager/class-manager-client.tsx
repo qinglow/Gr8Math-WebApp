@@ -155,7 +155,7 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
 
     await supabase.auth.signOut();
 
-    window.location.replace('/'); // <-- THE FIX
+    window.location.replace('/');
   };
 
     return (
