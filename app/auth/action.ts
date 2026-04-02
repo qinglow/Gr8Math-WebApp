@@ -59,11 +59,14 @@ export async function login(formData: FormData) {
             await supabase.auth.mfa.unenroll({ factorId: uf.id });
         }
 
-        // 3. Generate a fresh QR Code for them to scan
-        const { data: enrollData, error: enrollError } = await supabase.auth.mfa.enroll({
-            factorType: 'totp'
-        });
 
+        // 3. Generate a fresh QR Code for them to scan
+       const { data: enrollData, error: enrollError } = await supabase.auth.mfa.enroll({
+            factorType: 'totp',
+            issuer: 'Gr8Math',          // <-- Removed the space
+            friendlyName: email.trim()  // <-- Added .trim() to ensure no trailing spaces
+        });
+        
         if (enrollError || !enrollData) {
             await supabase.auth.signOut(); // Securely wipe the partial session
             return { error: "Failed to load MFA setup. Please try again." };

@@ -1,5 +1,6 @@
 'use server'
 import { createClient } from "@/lib/supabase/server";
+import { checkContentModeration } from "@/app/service/moderation";
 
 export async function publishAssessmentAction(params: {
     courseId: number;
@@ -21,6 +22,13 @@ export async function publishAssessmentAction(params: {
 
         if (ccErr || !cc) throw new Error("Could not find course content for this section.");
 
+        const allTextToCheck = params.title + " " + params.questions.map(q =>
+            (q.question || q.questionText || '') + " " + (q.choices || []).join(" ")
+        ).join(" ");
+
+        const modCheck = await checkContentModeration(allTextToCheck);
+        const status = modCheck.isSafe ? 'approved' : 'pending';
+
         const { data: assessment, error: aErr } = await supabase
             .from('assessment_created')
             .insert({
@@ -30,7 +38,8 @@ export async function publishAssessmentAction(params: {
                 end_time: params.endTime,
                 assessment_items: params.questions.length,
                 assessment_number: params.assessmentNumber,
-                assessment_quarter: params.assessmentQuarter
+                assessment_quarter: params.assessmentQuarter,
+                status: status
             })
             .select()
             .single();
@@ -82,8 +91,40 @@ export async function publishAssessmentAction(params: {
             }
         }
 
+        if (!modCheck.isSafe) {
+            const { data: { user } } = await supabase.auth.getUser();
+            const { data: dbUser } = await supabase.from('user').select('id').eq('email_add', user?.email).single();
+
+            // --- NEW: CAPTURE THE WHOLE CONTENT FOR CONTEXT ---
+            const fullContext = `[FLAGGED ITEM: ${modCheck.offendingWord}]\n\nTITLE: ${params.title}\n\nCONTENT:\n${allTextToCheck}`;
+
+            await supabase.from('moderation_actions').insert({
+                target_user_id: dbUser?.id,
+                content_type: 'assessment',
+                content_id: assessment.id,
+                violation_details: fullContext, // <--- SAVES FULL CONTEXT HERE
+                reason_code: modCheck.reasonCode || 'Banned Word', // Ensures accurate reason
+                status: 'pending'
+            });
+
+            return { success: true, id: assessment.id, flagged: true }; // Stop here, do not notify students
+        }
+
         // ---> FIX: ACTUALLY CALL THE NOTIFICATION FUNCTION HERE <---
         await notifyStudentsOfAssessment(cc.id, assessment.id);
+
+        const { data: { user } } = await supabase.auth.getUser();
+        const { data: dbUser } = await supabase.from('user').select('id').eq('email_add', user?.email).single();
+
+        if (dbUser) {
+            await supabase.from('audit_trails').insert({
+                user_id: dbUser.id,
+                resource: 'Assessment',
+                action: 'CREATE',
+                status: 'SUCCESS',
+                details: `Published new assessment: ${params.title}`
+            });
+        }
 
         return { success: true, id: assessment.id };
     } catch (error: any) {
@@ -127,6 +168,21 @@ export async function updateAssessmentAction(params: {
     const supabase = await createClient();
 
     try {
+        // --- MODERATION CHECK ---
+        const allTextToCheck = params.title + " " + params.questions.map(q =>
+            (q.question || q.questionText || '') + " " + (q.choices || []).join(" ")
+        ).join(" ");
+
+        const modCheck = await checkContentModeration(allTextToCheck);
+        const status = modCheck.isSafe ? 'approved' : 'pending';
+
+        // --- FETCH EXISTING DATES ---
+        const { data: existingAssessment } = await supabase
+            .from('assessment_created')
+            .select('start_time, end_time')
+            .eq('id', params.assessmentId)
+            .single();
+
         // 1. Update Main Info
         const { error: aErr } = await supabase
             .from('assessment_created')
@@ -136,11 +192,38 @@ export async function updateAssessmentAction(params: {
                 end_time: params.endTime,
                 assessment_items: params.questions.length,
                 assessment_number: params.assessmentNumber,
-                assessment_quarter: params.assessmentQuarter
+                assessment_quarter: params.assessmentQuarter,
+                status: status
             })
             .eq('id', params.assessmentId);
 
         if (aErr) throw aErr;
+
+        // --- TIME EXTENSION CHECK & 0-SCORE WIPE ---
+        if (existingAssessment) {
+            const oldEnd = new Date(existingAssessment.end_time).getTime();
+            const newEnd = new Date(params.endTime).getTime();
+
+            // If the new end time is strictly newer/greater than the previously recorded end time
+            if (newEnd > oldEnd) {
+                const { data: wipedRecords, error: wipeErr } = await supabase
+                    .from('assessment_record')
+                    .delete()
+                    .eq('assessment_id', params.assessmentId)
+                    .eq('score', 0)
+                    .select('student_id');
+
+                // Delete their specific answers so they get a totally clean slate
+                if (!wipeErr && wipedRecords && wipedRecords.length > 0) {
+                    const studentIds = wipedRecords.map(r => r.student_id);
+                    await supabase
+                        .from('student_answers')
+                        .delete()
+                        .eq('assessment_id', params.assessmentId)
+                        .in('student_id', studentIds);
+                }
+            }
+        }
 
         // 2. Wipe old questions
         await supabase.from('assessment_questions').delete().eq('assessment_id', params.assessmentId);
@@ -176,6 +259,36 @@ export async function updateAssessmentAction(params: {
                 if (cErr) throw cErr;
             }
         }
+
+        const { data: { user } } = await supabase.auth.getUser();
+        const { data: dbUser } = await supabase.from('user').select('id').eq('email_add', user?.email).single();
+
+        if (!modCheck.isSafe) {
+            const fullContext = `[FLAGGED ITEM: ${modCheck.offendingWord}]\n\nTITLE: ${params.title}\n\nCONTENT:\n${allTextToCheck}`;
+
+            await supabase.from('moderation_actions').insert({
+                target_user_id: dbUser?.id,
+                content_type: 'assessment',
+                content_id: params.assessmentId,
+                violation_details: fullContext,
+                reason_code: modCheck.reasonCode || 'Banned Word',
+                status: 'pending'
+            });
+
+            return { success: true, id: params.assessmentId, flagged: true };
+        }
+
+        // --- AUDIT TRAIL LOGGING ---
+        if (dbUser) {
+            await supabase.from('audit_trails').insert({
+                user_id: dbUser.id,
+                resource: 'Assessment',
+                action: 'UPDATE',
+                status: 'SUCCESS',
+                details: `Updated assessment: ${params.title}`
+            });
+        }
+
         return { success: true, id: params.assessmentId };
     } catch (error: any) {
         return { success: false, error: error.message };

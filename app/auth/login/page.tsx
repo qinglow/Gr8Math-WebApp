@@ -8,7 +8,7 @@ import myLogo from '../photos/logo.png';
 import { Gr8TextField } from '../../../components/ui/Gr8TextField';
 import { Gr8Button } from '../../../components/ui/Gr8Button';
 import { Gr8Toast } from '@/components/ui/Gr8Toast';
-import { login, verifyMfaAction, cancelLoginAction } from '../action'; 
+import { login, verifyMfaAction, cancelLoginAction } from '../action';
 
 export default function LoginPage() {
   return (
@@ -24,7 +24,7 @@ function LoginForm() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  
+
   const [mfaStep, setMfaStep] = useState<'none' | 'setup' | 'verify'>('none');
   const [mfaCode, setMfaCode] = useState('');
   const [factorId, setFactorId] = useState('');
@@ -58,18 +58,18 @@ function LoginForm() {
   // Handle URL Toast Messages
   useEffect(() => {
     const messageFromUrl = searchParams.get('msg');
-    
+
     if (messageFromUrl && messageFromUrl !== processedMsg) {
       const decodedMsg = decodeURIComponent(messageFromUrl);
       setToastMsg(decodedMsg);
-      setProcessedMsg(decodedMsg); 
+      setProcessedMsg(decodedMsg);
 
       router.replace('/auth/login', { scroll: false });
 
       const timer = setTimeout(() => {
         setToastMsg(null);
       }, 4000);
-      
+
       return () => clearTimeout(timer);
     }
   }, [searchParams, router, processedMsg]);
@@ -85,9 +85,9 @@ function LoginForm() {
         return;
       }
       setLoading(true);
-      
+
       const result = await verifyMfaAction(factorId, mfaCode);
-      
+
       if (result?.error) {
         setToastMsg(result.error);
         setLoading(false);
@@ -148,15 +148,15 @@ function LoginForm() {
       {/* RIGHT PANEL */}
       <div className="w-full lg:w-1/2 flex-1 bg-[#FDF8F2] flex justify-center items-center relative p-6 lg:p-16">
         <div className="w-full max-w-[450px] bg-white rounded-2xl shadow-xl p-8 lg:p-10 border border-gray-100 animate-in fade-in zoom-in-95 slide-in-from-bottom-8 duration-1000 ease-out">
-          
+
           <h2 className="text-[22px] font-bold text-center mb-8 text-[#222]">
-            {mfaStep === 'setup' ? "Secure Your Account" : 
-             mfaStep === 'verify' ? "Two-Factor Authentication" : 
-             "Welcome Back to Gr8 Math!"}
+            {mfaStep === 'setup' ? "Secure Your Account" :
+              mfaStep === 'verify' ? "Two-Factor Authentication" :
+                "Welcome Back to Gr8 Math!"}
           </h2>
 
           <form onSubmit={handleLogin}>
-            
+
             {/* --- NORMAL LOGIN UI --- */}
             {mfaStep === 'none' && (
               <>
@@ -196,13 +196,16 @@ function LoginForm() {
             {mfaStep === 'setup' && (
               <div className="mb-6 animate-in fade-in slide-in-from-right-4 flex flex-col items-center">
                 <p className="text-[14px] text-center text-[#666] font-medium mb-4">
-                  1. Download <strong>Google Authenticator</strong> on your phone.<br/>
+                  1. Download <strong>Google Authenticator</strong> on your phone.<br />
                   2. Scan this QR Code to link your account.
                 </p>
-               <div 
-                  className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6 flex justify-center items-center w-full max-w-[200px] aspect-square [&>svg]:w-full [&>svg]:h-full"
-                  dangerouslySetInnerHTML={{ __html: qrCodeSvg.replace('data:image/svg+xml;utf-8,', '') }} 
-                />
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6 flex justify-center items-center w-[200px] h-[200px]">
+                  {qrCodeSvg.startsWith('<svg') ? (
+                      <div className="w-full h-full [&>svg]:w-full [&>svg]:h-full" dangerouslySetInnerHTML={{ __html: qrCodeSvg }} />
+                  ) : (
+                      <img src={qrCodeSvg} alt="MFA QR Code" className="w-full h-full object-contain" />
+                  )}
+                </div>
                 <div className="w-full">
                   <Gr8TextField
                     label="3. Enter the 6-Digit Code"
@@ -249,8 +252,8 @@ function LoginForm() {
             {/* Back button for MFA */}
             {mfaStep !== 'none' && (
               <div className="mt-4 flex justify-center">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={handleCancelMfa}
                   className="text-[13px] font-bold text-[#666] hover:text-[#ED1F24] transition-colors outline-none"
                 >

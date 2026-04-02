@@ -48,7 +48,8 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
         participantsList, setParticipantsList, pendingNavigation, setPendingNavigation,
         handleSetAvailableFrom, handleSetAvailableUntil, handleSetDllAvailableFrom, handleSetDllAvailableUntil, handleProceedToDetails,
         handleLessonNextDetails, handleAssessmentNextDetails, handleDllNextDetails, openAddModal, resetEditor, cancelDiscard, closeAddModal,
-        onPublishAssessment, onExecuteSave, handleEditAssessment, handleEditLesson, isAssessmentFormComplete
+        onPublishAssessment, onExecuteSave, handleEditAssessment, handleEditLesson, isAssessmentFormComplete,
+        activeWarning, dismissWarning, userProfile
     } = useClassManager(courseId, initialFeed);
 
     // ============================================================================
@@ -172,7 +173,9 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                             handleDllNextDetails, isAssessmentFormComplete, dllSemesterNumber, setDllSemesterNumber,
                             dllWeekNumber, setDllWeekNumber, dllAvailableFrom, setDllAvailableFrom: handleSetDllAvailableFrom,
                             dllAvailableUntil, setDllAvailableUntil: handleSetDllAvailableUntil,
-                            hasDllDetailsError, dllFromError, dllUntilError
+                            hasDllDetailsError, dllFromError, dllUntilError,
+                            isRestricted: userProfile?.is_restricted,
+                            userId: userProfile?.id
                         }}
                         closeAddModal={closeAddModal}
                     />
@@ -183,6 +186,27 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                 )}
             </div>
             {showToast && <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[500] bg-[#0A7F93] text-white px-10 py-3 rounded shadow-xl font-bold uppercase">{toastMessage}</div>}
+
+            {/* --- FLASH WARNING UI --- */}
+            {activeWarning && (
+                <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-[#ED1F24]/90 backdrop-blur-md animate-in fade-in duration-500">
+                    <div className="text-center p-8 max-w-md bg-white rounded-3xl shadow-2xl scale-in-center">
+                        <div className="w-20 h-20 bg-red-100 text-[#ED1F24] rounded-full flex items-center justify-center mx-auto mb-6">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+                        </div>
+                        <h2 className="text-2xl font-black text-[#222] mb-2">Content Removed</h2>
+                        <p className="text-[#444] font-bold mb-6">
+                            {activeWarning.message}
+                            <br /> <span className="text-[#ED1F24]">Warning Strike: {activeWarning.count}/3</span>
+                        </p>
+                        <button onClick={dismissWarning} className="w-full py-4 bg-[#222] text-white rounded-xl font-black uppercase tracking-widest hover:bg-black transition-colors outline-none cursor-pointer">
+                            I Understand
+                        </button>
+                    </div>
+                </div>
+            )}
+
+
         </div>
     );
 }

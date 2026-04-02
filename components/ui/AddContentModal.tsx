@@ -1,10 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Gr8TextField } from '@/components/ui/Gr8TextField';
 import { Gr8DateTimePicker } from '@/components/ui/Gr8DateTimePicker';
 import { Gr8DllDatePicker } from '@/components/dll/Gr8DllDatePicker';
 import { pickerToDate } from '@/lib/utils/utils';
+import { checkAndLiftRestriction } from '@/app/service/moderation'; // Only kept the restriction checker
 
 export function AddContentModal({
     isEditingLesson, closeAddModal, addStep, setAddStep, selectedAddOption, setSelectedAddOption,
@@ -14,8 +15,35 @@ export function AddContentModal({
     weekNumber, setWeekNumber, lessonTitle, setLessonTitle, hasDetailsError, handleLessonNextDetails,
     handleDllNextDetails, dllSemesterNumber, setDllSemesterNumber, dllWeekNumber, setDllWeekNumber,
     dllAvailableFrom, setDllAvailableFrom, dllAvailableUntil, setDllAvailableUntil, hasDllDetailsError,
-    dllFromError, dllUntilError
+    dllFromError, dllUntilError,
+    isRestricted,
+    userId 
 }: any) {
+
+    // --- 24 HOUR BAN STATE ---
+    const [activelyRestricted, setActivelyRestricted] = useState(isRestricted);
+    const [timeLeft, setTimeLeft] = useState({ h: 24, m: 0 });
+
+   useEffect(() => {
+
+        async function verify() {
+            if (isRestricted && userId) {
+                const result = await checkAndLiftRestriction(userId);
+
+                if (!result.stillRestricted) {
+                    setActivelyRestricted(false);
+                } else {
+                    setTimeLeft({ 
+                        h: result.hoursRemaining ?? 24, 
+                        m: result.minutesRemaining ?? 0 
+                    });
+                }
+            } else {
+                // console.warn("BROWSER LOG: verify() skipped. isRestricted:", isRestricted, "userId:", userId);
+            }
+        }
+        verify();
+    }, [isRestricted, userId]);
 
     const onNumberChange = (setter: (val: string) => void) => (val: string) => {
         setter(val.replace(/\D/g, ''));
@@ -30,6 +58,39 @@ export function AddContentModal({
         { id: 'assessment', label: 'Create Assessment Test' },
         { id: 'dll', label: 'Daily Lesson Log' }
     ];
+
+   // --- HIJACK THE MODAL IF THE USER IS RESTRICTED ---
+    if (activelyRestricted) {
+        return (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                <div className="bg-white rounded-3xl shadow-2xl p-6 md:p-8 w-full max-w-[420px] relative animate-in zoom-in-95 duration-200 flex flex-col text-center">
+                    
+                    {/* The specific 'X' close button from your image */}
+                    <button aria-label="Close modal" onClick={closeAddModal} className="absolute top-5 right-5 p-1.5 text-gray-400 hover:text-gray-800 transition-colors outline-none cursor-pointer">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+
+                    <h2 className="text-[22px] font-black text-[#222] mb-4 mt-2">Account Restricted</h2>
+                    
+                    <p className="text-[14px] text-[#666] font-medium leading-relaxed mb-6">
+                        You have reached 3 warning strikes. You are currently restricted from posting new content.
+                    </p>
+                    
+                  <div className="bg-red-50 rounded-xl border border-red-100 p-4 mb-2">
+        <span className="text-[12px] font-extrabold text-[#ED1F24] uppercase tracking-wider block mb-1">
+            Restriction lifts automatically in:
+        </span>
+        <span className="text-[18px] font-black text-[#ED1F24]">
+            {/* Show both H and M */}
+            {timeLeft.h}h {timeLeft.m}m
+        </span>
+    </div>
+
+                </div>
+            </div>
+        );
+    }
+    // ------------------------------------------------------------------
 
     return (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -69,7 +130,6 @@ export function AddContentModal({
                         <p className="text-[12px] font-bold text-center text-[#222] mb-6">Please enter the needed details.</p>
 
                         <div className="flex flex-col gap-y-3 mb-8">
-                      // Updated Code
                             <Gr8TextField label="Quarter Number" value={quarterNumber} onChange={onNumberChange(setQuarterNumber)} hasError={hasAssessmentDetailsError && !quarterNumber} errorMessage={hasAssessmentDetailsError && !quarterNumber ? "Please enter needed details" : ""} showTopLabel />
                             <Gr8TextField label="Assessment Number" value={assessmentNumber} onChange={onNumberChange(setAssessmentNumber)} hasError={hasAssessmentDetailsError && !assessmentNumber} errorMessage={hasAssessmentDetailsError && !assessmentNumber ? "Please enter needed details" : ""} showTopLabel />
                             <Gr8TextField label="Assessment Title" value={assessmentTitle} onChange={setAssessmentTitle} hasError={hasAssessmentDetailsError && !assessmentTitle} errorMessage={hasAssessmentDetailsError && !assessmentTitle ? "Please enter needed details" : ""} showTopLabel />

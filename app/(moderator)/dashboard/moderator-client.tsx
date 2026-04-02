@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Gr8MathHeader } from '@/components/ui/Gr8MathHeader';
 import { Gr8LoadingOverlay } from '@/components/ui/Gr8LoadingOverlay';
-import { getCustomBannedWords, addBannedWord, removeBannedWord } from '@/app/service/moderation';
+import { getCustomBannedWords, addBannedWord, removeBannedWord, decideModeration, getPendingViolations } from '@/app/service/moderation';
 
 // --- SIDEBAR ASSET IMPORTS ---
 import profileIcon from '@/app/(teacher)/class-manager/photos/DefaultTemporaryProfile.png';
@@ -43,15 +43,7 @@ export default function ModeratorDashboard({ profile }: { profile: any }) {
     const [toast, setToast] = useState<{ isVisible: boolean; message: string }>({ isVisible: false, message: '' });
 
     // --- STATE FOR VIOLATIONS FLOW ---
-    const [violations, setViolations] = useState([
-        {
-            id: 1,
-            studentName: 'Juan Dela Crux',
-            description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. In non lorem varius, rutrum sapien et, iaculis odio. Suspendisse rhoncus tortor.',
-            issue: 'Content contains Banned Word.',
-            offendingWord: 'bobo'
-        }
-    ]);
+    const [violations, setViolations] = useState<any[]>([]);
     const [selectedViolation, setSelectedViolation] = useState<any | null>(null);
     const [showDetailsModal, setShowDetailsModal] = useState(false);
     const [showConfirmRemoveModal, setShowConfirmRemoveModal] = useState(false);
@@ -63,14 +55,18 @@ export default function ModeratorDashboard({ profile }: { profile: any }) {
     };
 
     const handleLogout = () => {
-        // Add your logout logic here
         router.push('/auth/login');
     };
 
     useEffect(() => {
         async function load() {
+            // Load banned words
             const words = await getCustomBannedWords();
             setBannedWords(words);
+
+            // Load real pending violations
+            const pendingViolations = await getPendingViolations();
+            setViolations(pendingViolations);
         }
         load();
     }, []);
@@ -120,16 +116,91 @@ export default function ModeratorDashboard({ profile }: { profile: any }) {
         }
     };
 
-    const handleConfirmRemove = () => {
+    const handleConfirmRemove = async () => {
         setShowConfirmRemoveModal(false);
         setLoadingMessage('Removing...');
         setIsLoading(true);
+
+        if (selectedViolation) {
+            await decideModeration(selectedViolation.id, 'disapproved');
+        }
+
         setTimeout(() => {
             setIsLoading(false);
             setViolations(violations.filter(v => v.id !== selectedViolation?.id));
             setSelectedViolation(null);
             triggerToast('Content Removed');
         }, 1500);
+    };
+
+    // --- FORMATTING HELPERS ---
+
+    // 1. Cleans the string for the Preview Card (Shows ONLY content)
+    const getPreviewText = (fullText: string) => {
+        if (!fullText) return '';
+        // Extract everything after "CONTENT:"
+        const contentMatch = fullText.match(/CONTENT:\s*([\s\S]*)/i);
+        return contentMatch ? contentMatch[1].trim() : fullText;
+    };
+
+    const renderHighlightedText = (fullText: string, offendingWord: string) => {
+        if (!fullText) return null;
+
+        // 1. Extract the "[FLAGGED ITEM: word]" part to display it cleanly at the top
+        const flaggedMatch = fullText.match(/\[FLAGGED ITEM:(.*?)\]/i);
+        const flaggedItem = flaggedMatch ? flaggedMatch[1].trim() : offendingWord;
+
+        // 2. Remove the flagged item bracket from the string so we are left with just TITLE and CONTENT
+        const cleanText = fullText.replace(/\[FLAGGED ITEM:.*?\]\s*/i, '');
+
+        // 3. Split the text into layout sections using "TITLE:" and "CONTENT:"
+        const parts = cleanText.split(/(TITLE:|CONTENT:)/g);
+
+        return (
+            <div className="flex flex-col gap-1">
+                {/* Always display the flagged item clearly at the top */}
+                <div className="mb-4 bg-red-50 text-[#ED1F24] p-3 rounded-lg border border-red-100">
+                    <span className="font-extrabold text-[11px] uppercase tracking-wider block mb-1">Flagged Term/Link:</span>
+                    <span className="font-bold text-[14px]">{flaggedItem}</span>
+                </div>
+
+                {parts.map((part, index) => {
+                    if (!part.trim()) return null;
+
+                    // If it's a label, style it bold
+                    if (part === 'TITLE:' || part === 'CONTENT:') {
+                        return (
+                            <span key={index} className="text-[12px] font-extrabold text-[#666] uppercase tracking-wider mt-4">
+                                {part.replace(':', '')}
+                            </span>
+                        );
+                    }
+
+                    // If there is no flagged item to highlight, just return the text
+                    if (!flaggedItem) return <span key={index} className="text-[14px] text-[#222] font-medium leading-relaxed">{part}</span>;
+
+                    // Otherwise, highlight the offending word/link anywhere it appears in the text
+                    // We escape the flaggedItem just in case it's a URL with special regex characters
+                    const escapedWord = flaggedItem.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+                    const wordRegex = new RegExp(`(${escapedWord})`, 'gi');
+                    const textChunks = part.split(wordRegex);
+
+                    return (
+                        <span key={index} className="text-[14px] text-[#222] font-medium leading-relaxed">
+                            {textChunks.map((chunk, chunkIdx) =>
+                                chunk.toLowerCase() === flaggedItem.toLowerCase() ? (
+                                    <span key={chunkIdx} className="bg-[#E91D26BF] text-white px-1.5 py-0.5 rounded font-bold mx-1">
+                                        {chunk}
+                                    </span>
+                                ) : (
+                                    <span key={chunkIdx}>{chunk}</span>
+                                )
+                            )}
+                        </span>
+                    );
+                })}
+            </div>
+        );
     };
 
     return (
@@ -203,8 +274,10 @@ export default function ModeratorDashboard({ profile }: { profile: any }) {
                                     violations.map((violation) => (
                                         <div key={violation.id} className="bg-[#F4EBE6] border border-[#DCD3CC] rounded-xl p-6 relative overflow-hidden">
                                             <h3 className="text-[15px] font-bold text-[#222] mb-3">{violation.studentName}</h3>
+                                            
+                                            {/* PREVIEW PORTION ON CARD (Uses Helper) */}
                                             <p className="text-[13px] text-[#444] font-medium leading-relaxed mb-6 text-justify">
-                                                {violation.description}
+                                                {getPreviewText(violation.description)?.substring(0, 100)}...
                                             </p>
 
                                             <div className="bg-[#E91D26BF] rounded-full px-5 py-3 flex justify-between items-center text-white shadow-sm">
@@ -297,15 +370,19 @@ export default function ModeratorDashboard({ profile }: { profile: any }) {
                             </div>
 
                             <div className="mb-8">
-                                <span className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-2">Flagged Content</span>
-                                <div className="bg-[#F8F5EF] border border-[#D1D8DD] rounded-lg p-4 text-[13px] text-[#444] font-medium leading-relaxed text-justify">
-                                    Lorem ipsum dolor sit amet, <span className="bg-[#E91D26BF] text-white px-1.5 py-0.5 rounded font-bold mx-1">{selectedViolation.offendingWord}</span> consectetur adipiscing elit. In non lorem varius, rutrum sapien et, iaculis odio. Suspendisse rhoncus tortor.
+                                <div className="bg-[#F8F5EF] border border-[#D1D8DD] rounded-lg p-5 max-h-[300px] overflow-y-auto custom-scrollbar text-left break-words">
+                                    {renderHighlightedText(selectedViolation.description, selectedViolation.offendingWord)}
                                 </div>
                             </div>
 
                             <div className="flex flex-col gap-3">
                                 <button
-                                    onClick={() => { setViolations(violations.filter(v => v.id !== selectedViolation?.id)); setShowDetailsModal(false); triggerToast('Content Allowed'); }}
+                                    onClick={async () => {
+                                        if (selectedViolation) await decideModeration(selectedViolation.id, 'allowed');
+                                        setViolations(violations.filter(v => v.id !== selectedViolation?.id));
+                                        setShowDetailsModal(false);
+                                        triggerToast('Content Allowed');
+                                    }}
                                     className="w-full py-3.5 rounded-lg text-white font-black text-[13px] transition-colors outline-none shadow-md hover:opacity-90"
                                     style={{ backgroundColor: '#1E4B95' }}
                                 >

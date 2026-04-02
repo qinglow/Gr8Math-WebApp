@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { getUserProfile } from '@/app/service/auth';
 import { redirect } from 'next/navigation';
+import { Suspense } from 'react'; // 1. Import Suspense
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -22,7 +23,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   if (profile?.roles === 'Admin') {
-    return <>{children}</>;
+    // 2. Wrap children in Suspense to fix the Next.js 15 Error
+    return (
+      <Suspense fallback={null}>
+        {children}
+      </Suspense>
+    );
   }
 
   redirect('/auth/login');

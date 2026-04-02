@@ -1,3 +1,4 @@
+import { createClient } from "@/lib/supabase/client";
 import { useState, useEffect } from 'react';
 import { handleLessonSave } from '@/app/service/lesson-save';
 import { publishAssessmentAction, fetchAssessmentDetails, updateAssessmentAction } from '@/app/service/assessment';
@@ -52,6 +53,9 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
     const [isDiscardModalOpen, setIsDiscardModalOpen] = useState(false);
     const [participantsList, setParticipantsList] = useState<any[]>([]);
     const [pendingNavigation, setPendingNavigation] = useState<boolean>(false);
+    const [activeWarning, setActiveWarning] = useState<any>(null);
+    const [isRestrictedModalOpen, setIsRestrictedModalOpen] = useState(false);
+    const [userProfile, setUserProfile] = useState<any>(null);
 
     // --- EFFECTS ---
     useEffect(() => { setCourseContent(initialFeed); }, [initialFeed]);
@@ -100,6 +104,43 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
         };
         loadParticipants();
     }, [courseId]);
+
+
+    useEffect(() => {
+        const fetchUserStatus = async () => {
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const { data: dbUser } = await supabase.from('user').select('id, is_restricted, warning_count').eq('email_add', user.email).single();
+            if (dbUser) setUserProfile(dbUser);
+
+            if (dbUser) {
+                // Check for unread flash warnings
+                const { data: notices } = await supabase.from('notifications')
+                    .select('*')
+                    .eq('user_id', dbUser.id)
+                    .eq('is_read', false)
+                    .eq('type', 'warning');
+
+                if (notices && notices.length > 0) {
+                    const flashNotice = notices.find((n: any) => n.meta?.flash_ui);
+                    if (flashNotice) {
+                        setActiveWarning({ id: flashNotice.id, message: flashNotice.message, count: flashNotice.meta?.warning_count });
+                    }
+                }
+            }
+        };
+        fetchUserStatus();
+    }, []);
+
+    const dismissWarning = async () => {
+        if (activeWarning?.id) {
+            const supabase = createClient();
+            await supabase.from('notifications').update({ is_read: true }).eq('id', activeWarning.id);
+        }
+        setActiveWarning(null);
+    };
 
     // --- HANDLERS ---
     const handleSetAvailableFrom = (val: string) => {
@@ -181,18 +222,64 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
     };
 
     const onPublishAssessment = async (questions: any[]) => {
+        
+        // --- NEW: STRICT ANSWER KEY CHECK ---
+        // This stops the teacher from publishing if any question is missing a correct answer
+        const hasMissingKeys = questions.some(q => !q.correctAnswers || q.correctAnswers.length === 0);
+        if (hasMissingKeys) {
+            setToastMessage("Cannot publish: Please set an answer key for all questions.");
+            setShowToast(true); 
+            setTimeout(() => setShowToast(false), 3000);
+            return; // Stops the function from running
+        }
+        // ------------------------------------
+
         setIsSaving(true);
-        const start = convertToIso(availableFrom); const end = convertToIso(availableUntil);
-        if (!start || !end) { setToastMessage("Date conversion failed."); setShowToast(true); setTimeout(() => setShowToast(false), 3000); setIsSaving(false); return; }
+        const start = convertToIso(availableFrom); 
+        const end = convertToIso(availableUntil);
+        
+        if (!start || !end) { 
+            setToastMessage("Date conversion failed."); 
+            setShowToast(true); 
+            setTimeout(() => setShowToast(false), 3000); 
+            setIsSaving(false); 
+            return; 
+        }
+
         try {
-            const payload = { courseId: parseInt(courseId), title: assessmentTitle, startTime: start, endTime: end, assessmentNumber: parseInt(assessmentNumber), assessmentQuarter: parseInt(quarterNumber), questions };
-            const res = isEditingLesson && editingLessonId ? await updateAssessmentAction({ ...payload, assessmentId: editingLessonId }) : await publishAssessmentAction(payload);
+            const payload = { 
+                courseId: parseInt(courseId), 
+                title: assessmentTitle, 
+                startTime: start, 
+                endTime: end, 
+                assessmentNumber: parseInt(assessmentNumber), 
+                assessmentQuarter: parseInt(quarterNumber), 
+                questions 
+            };
+            
+            const res = isEditingLesson && editingLessonId 
+                ? await updateAssessmentAction({ ...payload, assessmentId: editingLessonId }) 
+                : await publishAssessmentAction(payload);
+                
             if (res.success) {
-                const newItem: ClassContentItem = { id: res.id || Date.now(), type: 'assessment', title: assessmentTitle, assessment_number: parseInt(assessmentNumber) };
-                setCourseContent(prev => isEditingLesson ? prev.map(a => (a.id === editingLessonId && a.type === 'assessment') ? newItem : a) : [newItem, ...prev]);
-                setToastMessage(isEditingLesson ? 'Assessment Updated!' : 'Assessment Published!'); resetEditor();
-            } else { alert(res.error || "Failed to publish."); }
-        } catch (error) { console.error(error); }
+                const newItem: ClassContentItem = { 
+                    id: res.id || Date.now(), 
+                    type: 'assessment', 
+                    title: assessmentTitle, 
+                    assessment_number: parseInt(assessmentNumber) 
+                };
+                setCourseContent(prev => isEditingLesson 
+                    ? prev.map(a => (a.id === editingLessonId && a.type === 'assessment') ? newItem : a) 
+                    : [newItem, ...prev]
+                );
+                setToastMessage(isEditingLesson ? 'Assessment Updated!' : 'Assessment Published!'); 
+                resetEditor();
+            } else { 
+                alert(res.error || "Failed to publish."); 
+            }
+        } catch (error) { 
+            console.error(error); 
+        }
         setIsSaving(false);
     };
 
@@ -282,6 +369,7 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
         participantsList, setParticipantsList, pendingNavigation, setPendingNavigation,
         handleSetAvailableFrom, handleSetAvailableUntil, handleSetDllAvailableFrom, handleSetDllAvailableUntil, handleProceedToDetails,
         handleLessonNextDetails, handleAssessmentNextDetails, handleDllNextDetails, openAddModal, resetEditor, cancelDiscard, closeAddModal,
-        onPublishAssessment, onExecuteSave, handleEditAssessment, handleEditLesson, isAssessmentFormComplete
+        onPublishAssessment, onExecuteSave, handleEditAssessment, handleEditLesson, isAssessmentFormComplete,
+        activeWarning, dismissWarning, userProfile
     };
 }
