@@ -468,7 +468,7 @@ export function Gr8RichTextEditor({ courseId, initialContent, onChange, onSave, 
 
                         <div className="p-6 bg-gray-50 flex flex-col gap-y-4">
                             <p className="text-[13px] font-bold text-gray-500">
-                                Click the keyboard icon inside the box to open the math virtual keyboard.
+                                Click the keyboard icon to open the math virtual keyboard.
                             </p>
                             
                             <div className="bg-white border-2 border-[#D1D8DD] rounded-xl p-2 focus-within:border-[#EBB637] transition-colors shadow-inner min-h-[70px] flex items-center cursor-text" onClick={() => mathFieldRef.current?.focus()}>
