@@ -5,7 +5,7 @@ import { Gr8TextField } from '@/components/ui/Gr8TextField';
 import { Gr8DateTimePicker } from '@/components/ui/Gr8DateTimePicker';
 import { Gr8DllDatePicker } from '@/components/dll/Gr8DllDatePicker';
 import { pickerToDate } from '@/lib/utils/utils';
-import { checkAndLiftRestriction } from '@/app/service/moderation'; // Only kept the restriction checker
+import { checkAndLiftRestriction } from '@/app/service/moderation';
 
 export function AddContentModal({
     isEditingLesson, closeAddModal, addStep, setAddStep, selectedAddOption, setSelectedAddOption,

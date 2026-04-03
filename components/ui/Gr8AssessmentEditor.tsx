@@ -135,7 +135,26 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, isEdi
     };
 
     const updateQuestion = (id: string, field: keyof QuestionData, value: any) => {
-        setQuestions(questions.map(q => q.id === id ? { ...q, [field]: value, hasError: false } : q));
+        setQuestions(questions.map(q => {
+            if (q.id === id) {
+                const updatedQ = { ...q, [field]: value, hasError: false };
+                
+                if (field === 'type') {
+                    updatedQ.correctAnswers = [];
+                    updatedQ.choiceErrors = [];
+                    
+                    if (value === 'Upload Image' || value === 'Short Answer' || value === 'Paragraph') {
+                        updatedQ.choices = []; 
+                    } else {
+                        // Reset back to standard choices
+                        updatedQ.choices = ['']; 
+                        updatedQ.choiceErrors = [false];
+                    }
+                }
+                return updatedQ;
+            }
+            return q;
+        }));
     };
 
     const addChoice = (qId: string) => {
@@ -205,16 +224,7 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, isEdi
     const handleStageQuestionImage = (qId: string, e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        const tempUrl = URL.createObjectURL(file);
-        setQuestions(questions.map(q => q.id === qId ? { ...q, imageUrl: tempUrl, pendingQuestionImage: file, hasError: false } : q));
-        e.target.value = '';
-    };
-
-    const handleStageAnswerImage = (qId: string, e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        const tempUrl = URL.createObjectURL(file);
-        setQuestions(questions.map(q => q.id === qId ? { ...q, choices: [tempUrl], correctAnswers: [tempUrl], pendingAnswerImage: file, hasKeyError: false } : q));
+        setQuestions(questions.map(q => q.id === qId ? { ...q, pendingQuestionImage: file, hasError: false } : q));
         e.target.value = '';
     };
 
@@ -238,9 +248,13 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, isEdi
                     if (!choice.trim()) { cErrors[idx] = true; isValid = false; }
                 });
             }
-            const validAnswers = q.correctAnswers.filter(ans => ans && ans.trim() !== '');
-            if (validAnswers.length === 0) {
-                keyError = true; isValid = false;
+            
+            // For 'Upload Image', we do not require a typed correct answer.
+            if (q.type !== 'Upload Image') {
+                const validAnswers = q.correctAnswers.filter(ans => ans && ans.trim() !== '');
+                if (validAnswers.length === 0) {
+                    keyError = true; isValid = false;
+                }
             }
 
             return { ...q, hasError: qError, hasKeyError: keyError, choiceErrors: cErrors };
@@ -253,22 +267,14 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, isEdi
             let finalQuestions = [...validatedQuestions];
             for (let i = 0; i < finalQuestions.length; i++) {
                 let q = finalQuestions[i];
+                
+                // 1. Upload pending Question Image
                 if (q.pendingQuestionImage) {
                     const formData = new FormData();
                     formData.append('file', q.pendingQuestionImage);
                     formData.append('courseId', courseId);
                     const res = await uploadLessonMediaToTigris(formData);
                     if (res.success && res.publicUrl) q.imageUrl = res.publicUrl;
-                }
-                if (q.type === 'Upload Image' && q.pendingAnswerImage) {
-                    const formData = new FormData();
-                    formData.append('file', q.pendingAnswerImage);
-                    formData.append('courseId', courseId);
-                    const res = await uploadLessonMediaToTigris(formData);
-                    if (res.success && res.publicUrl) {
-                        q.choices = [res.publicUrl];
-                        q.correctAnswers = [res.publicUrl];
-                    }
                 }
             }
             onPublish(finalQuestions);
@@ -343,12 +349,8 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, isEdi
                                         <textarea placeholder="Expected answer or grading criteria..." value={q.correctAnswers[0] || ''} onChange={(e) => updateSingleAnswer(q.id, e.target.value)} className="w-full p-3 h-24 text-[15px] font-bold text-[#1E4B95] bg-white border-2 border-[#D1D8DD] rounded-lg outline-none focus:border-[#1E4B95] resize-none" />
                                     )}
                                     {q.type === 'Upload Image' && (
-                                        <div className="flex flex-col gap-y-3 p-6 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200 items-center">
-                                            <label className="bg-[#1A4C8B] text-white px-6 py-2 rounded-lg text-[13px] font-bold cursor-pointer">
-                                                Choose File
-                                                <input type="file" accept="image/*" className="hidden" onChange={(e) => handleStageAnswerImage(q.id, e)} />
-                                            </label>
-                                            {q.correctAnswers[0] && <img src={q.correctAnswers[0]} className="mt-4 max-h-[150px] rounded border" />}
+                                        <div className="text-[13px] text-gray-500 font-bold bg-gray-50 p-4 rounded border border-dashed border-gray-300">
+                                            Answer must be an uploaded image. No key required. Points saved.
                                         </div>
                                     )}
                                 </div>
@@ -369,7 +371,7 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, isEdi
                                             <input type="text" placeholder="Question Text (use $...$ for math)" value={q.question} onChange={(e) => updateQuestion(q.id, 'question', e.target.value)} className="w-full p-3 text-[15px] bg-transparent outline-none text-[#222]" />
                                             {q.hasError && <ErrorIcon />}
                                         </div>
-                                        <button onClick={() => { setActiveMathTarget({ qId: q.id }); setShowMathModal(true); }} className="shrink-0 p-3 rounded-lg border border-[#D1D8DD] bg-gray-50 hover:bg-gray-100 text-[#0A7F93]">
+                                        <button onClick={() => { setActiveMathTarget({ qId: q.id }); setShowMathModal(true); }} className="shrink-0 p-3 rounded-lg border border-[#D1D8DD] bg-white hover:bg-gray-50 text-[#0A7F93]">
                                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" /><path d="M8 7h6M11 4v6M8 14h6M8 17h6" /></svg>
                                         </button>
                                         <label className="shrink-0 p-3 rounded-lg cursor-pointer border bg-gray-50 hover:bg-gray-100 border-[#D1D8DD]">
@@ -378,6 +380,16 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, isEdi
                                         </label>
                                     </div>
                                     {q.hasError && <span className="text-[12px] font-bold text-[#ED1F24] ml-1">Please enter a question or attach an image</span>}
+
+                                    {/* QUESTION IMAGE PREVIEW RESTORED */}
+                                    {(q.imageUrl || q.pendingQuestionImage) && (
+                                        <div className="relative mt-3 inline-block">
+                                            <img src={q.pendingQuestionImage ? URL.createObjectURL(q.pendingQuestionImage) : q.imageUrl} alt="Question" className="max-h-[150px] object-contain rounded border border-gray-200" />
+                                            <button onClick={() => removeQuestionImage(q.id)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="relative w-full md:w-[220px]">
                                     <select aria-label='sw' value={q.type} onChange={(e) => updateQuestion(q.id, 'type', e.target.value as QuestionType)} className="w-full p-3 text-[14px] font-bold text-[#222] bg-white border border-[#D1D8DD] rounded-lg outline-none appearance-none pr-10 focus:border-[#EFBD31]">
@@ -411,11 +423,11 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, isEdi
                                         <button onClick={() => addChoice(q.id)} className="w-full mt-2 py-2.5 bg-[#1A4C8B] text-white text-[13px] font-bold rounded-lg hover:bg-[#153a6b]">Add Choice</button>
                                     </div>
                                 )}
-                                {q.type === 'Short Answer' && q.correctAnswers[0] && (
-                                    <div className="text-[13px] text-gray-500 font-bold bg-gray-50 p-2 rounded border border-dashed border-gray-300">Key: <span className="text-[#1E4B95]">{q.correctAnswers[0]}</span></div>
+                                {q.type === 'Short Answer' && (
+                                    <input type="text" placeholder="Correct Answer" value={q.correctAnswers[0] || ''} onChange={(e) => updateSingleAnswer(q.id, e.target.value)} className="w-full p-3 text-[15px] font-bold text-[#1E4B95] bg-white border-2 border-[#D1D8DD] rounded-lg outline-none focus:border-[#1E4B95]" />
                                 )}
-                                {q.type === 'Upload Image' && q.correctAnswers[0] && (
-                                    <div className="mt-2"><span className="text-[11px] font-bold text-[#A0A0A0] uppercase block">Key Preview:</span><img src={q.correctAnswers[0]} className="h-16 rounded border" /></div>
+                                {q.type === 'Paragraph' && (
+                                    <textarea placeholder="Expected answer or grading criteria..." value={q.correctAnswers[0] || ''} onChange={(e) => updateSingleAnswer(q.id, e.target.value)} className="w-full p-3 h-24 text-[15px] font-bold text-[#1E4B95] bg-white border-2 border-[#D1D8DD] rounded-lg outline-none focus:border-[#1E4B95] resize-none" />
                                 )}
                             </div>
 
@@ -429,7 +441,7 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, isEdi
                                         {q.hasKeyError && <ErrorIcon />}
                                     </div>
                                     {q.hasKeyError && <span className="text-[12px] font-bold text-[#ED1F24]">Please set an answer key</span>}
-                                    {!q.hasKeyError && q.correctAnswers.length > 0 && <span className="text-[11px] font-bold text-[#1E4B95] bg-[#1E4B95]/10 px-2 py-1 rounded">Key Set ({q.points}pt)</span>}
+                                    {!q.hasKeyError && (q.correctAnswers.length > 0 || q.type === 'Upload Image') && <span className="text-[11px] font-bold text-[#1E4B95] bg-[#1E4B95]/10 px-2 py-1 rounded">Key Set ({q.points}pt)</span>}
                                 </div>
                             </div>
                         </div>
@@ -447,9 +459,23 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, isEdi
                             <button onClick={() => setShowMathModal(false)} className="text-white hover:opacity-70 outline-none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
                         </div>
                         <div className="p-8 bg-white flex flex-col gap-y-6">
-                            <p className="text-[14px] font-bold text-[#666]">Click the keyboard icon to open the virtual keyboard.</p>
-                            <div className="bg-white border-2 border-[#D1D8DD] rounded-xl px-4 py-3 min-h-[85px] flex items-center shadow-sm" onClick={() => mathFieldRef.current?.focus()}>
-                                <math-field ref={mathFieldRef} style={{ width: '100%', fontSize: '28px', border: 'none', outline: 'none' }}>{mathValue}</math-field>
+                            <p className="text-[14px] font-bold text-[#666]">Click the keyboard icon to open the math virtual keyboard.</p>
+                            <div className="bg-white border-2 border-[#D1D8DD] rounded-xl p-2 focus-within:border-[#EBB637] transition-colors shadow-inner min-h-[70px] flex items-center cursor-text" onClick={() => mathFieldRef.current?.focus()}>
+                                {/* @ts-ignore */}
+                                <math-field 
+                                    ref={mathFieldRef} 
+                                    style={{ 
+                                        width: '100%', 
+                                        fontSize: '28px', 
+                                        outline: 'none', 
+                                        border: 'none', 
+                                        backgroundColor: 'transparent',
+                                        color: '#000000' 
+                                    }}
+                                >
+                                    {mathValue}
+                                {/* @ts-ignore */}
+                                </math-field>
                             </div>
                         </div>
                         <div className="px-8 py-6 border-t border-gray-100 flex justify-end items-center gap-x-8">
