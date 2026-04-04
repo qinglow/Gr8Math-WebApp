@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation'; // <-- IMPORTED ROUTER
 
 // --- COMPONENTS ---
 import { LessonCard } from '@/components/card/LessonCard';
@@ -20,7 +21,7 @@ import { Gr8AssessmentEditor, QuestionData } from '@/components/ui/Gr8Assessment
 // --- DLL COMPONENTS ---
 import { Gr8DllDatePicker } from '@/components/dll/Gr8DllDatePicker'; 
 import { Gr8DllEditor } from '@/components/dll/Gr8DllEditor'; 
-import { Gr8DllViewer } from '@/components/dll/Gr8DllViewer'; // <-- ADDED IMPORT
+import { Gr8DllViewer } from '@/components/dll/Gr8DllViewer';
 
 // --- SIDEBAR IMAGES ---
 import classActiveIcon from './photos/class-active.png';
@@ -80,10 +81,12 @@ const TOTAL_SCORE = MOCK_REPORT_DATA.reduce((acc, curr) => acc + curr.score, 0);
 const TOTAL_ITEMS = MOCK_REPORT_DATA.reduce((acc, curr) => acc + curr.items, 0);
 
 export default function ClassPageClient({ initialFeed, sectionName, courseId }: ClassPageClientProps) {
-    // --- HIGH-LEVEL VIEW STATE (ADDED dll-viewer) ---
+    const router = useRouter(); // <-- INITIALIZED ROUTER
+
+    // --- HIGH-LEVEL VIEW STATE ---
     const [currentView, setCurrentView] = useState<'feed' | 'editor' | 'viewer' | 'assessment-editor' | 'dll-editor' | 'dll-viewer'>('feed');
     const [viewingLesson, setViewingLesson] = useState<ClassContentItem | null>(null);
-    const [viewingDll, setViewingDll] = useState<any | null>(null); // <-- ADDED STATE FOR DLL VIEWER
+    const [viewingDll, setViewingDll] = useState<any | null>(null);
 
     // --- MOBILE RESPONSIVE STATE ---
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -176,8 +179,16 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
         setSelectedAddOption('lesson');
     };
 
+    // --- UPDATED REDIRECT LOGIC FOR PROCEED BUTTON ---
     const handleProceedToDetails = () => {
         if (!selectedAddOption) return; 
+        
+        if (selectedAddOption === 'virtual_blackboard') {
+            setIsAddModalOpen(false); // Close modal before redirecting
+            router.push('/virtual-blackboard'); // Redirect to the new page
+            return;
+        }
+
         setAddStep('details');
     };
 
@@ -487,7 +498,7 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
     }
 
     // ============================================================================
-    // VIEW 6: DLL VIEWER (ADDED)
+    // VIEW 6: DLL VIEWER
     // ============================================================================
     if (currentView === 'dll-viewer' && viewingDll) {
         return (
@@ -849,7 +860,6 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                                         <div className="text-[#888] font-bold mt-10">You have no new DLL records.</div>
                                     </>
                                 ) : (
-                                    // --- THE NEW DLL CARDS ARE RENDERED HERE! ---
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                         {dllRecords.map((record) => (
                                             <DllCard 
@@ -857,7 +867,6 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                                                 startDate={record.from} 
                                                 endDate={record.to} 
                                                 onClick={() => {
-                                                    // --- FIXED: ADDED CLICK HANDLER TO TRIGGER VIEWER ---
                                                     setViewingDll(record);
                                                     setCurrentView('dll-viewer');
                                                 }} 
@@ -900,19 +909,30 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                                                 </div>
                                                 <span className="font-bold text-[#222]">Write a Lesson</span>
                                             </label>
+                                            
                                             <label className={`flex items-center gap-x-4 p-4 rounded-xl border-2 cursor-pointer transition-all bg-white hover:border-[#1A4C8B] ${selectedAddOption === 'assessment' ? 'border-[#1A4C8B]' : 'border-[#D1D8DD]'}`} onClick={() => setSelectedAddOption('assessment')}>
                                                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${selectedAddOption === 'assessment' ? 'border-[#1A4C8B]' : 'border-[#B0B8C1]'}`}>
                                                     {selectedAddOption === 'assessment' && <div className="w-2.5 h-2.5 rounded-full bg-[#1A4C8B]" />}
                                                 </div>
                                                 <span className="font-bold text-[#222]">Create Assessment Test</span>
                                             </label>
+                                            
                                             <label className={`flex items-center gap-x-4 p-4 rounded-xl border-2 cursor-pointer transition-all bg-white hover:border-[#1A4C8B] ${selectedAddOption === 'dll' ? 'border-[#1A4C8B]' : 'border-[#D1D8DD]'}`} onClick={() => setSelectedAddOption('dll')}>
                                                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${selectedAddOption === 'dll' ? 'border-[#1A4C8B]' : 'border-[#B0B8C1]'}`}>
                                                     {selectedAddOption === 'dll' && <div className="w-2.5 h-2.5 rounded-full bg-[#1A4C8B]" />}
                                                 </div>
                                                 <span className="font-bold text-[#222]">Daily Lesson Log</span>
                                             </label>
+
+                                            {/* --- NEW VIRTUAL BLACKBOARD OPTION --- */}
+                                            <label className={`flex items-center gap-x-4 p-4 rounded-xl border-2 cursor-pointer transition-all bg-white hover:border-[#1A4C8B] ${selectedAddOption === 'virtual_blackboard' ? 'border-[#1A4C8B]' : 'border-[#D1D8DD]'}`} onClick={() => setSelectedAddOption('virtual_blackboard')}>
+                                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${selectedAddOption === 'virtual_blackboard' ? 'border-[#1A4C8B]' : 'border-[#B0B8C1]'}`}>
+                                                    {selectedAddOption === 'virtual_blackboard' && <div className="w-2.5 h-2.5 rounded-full bg-[#1A4C8B]" />}
+                                                </div>
+                                                <span className="font-bold text-[#222]">Virtual Blackboard</span>
+                                            </label>
                                         </div>
+                                        
                                         <button 
                                             onClick={handleProceedToDetails} 
                                             className={`w-full py-3.5 text-[13px] font-black rounded-lg uppercase tracking-wide transition-all outline-none flex items-center justify-center gap-x-2 text-white shadow-md ${selectedAddOption ? 'bg-[#1A4C8B] hover:bg-[#153a6b]' : 'bg-[#0F8B8D]'}`}
@@ -922,7 +942,7 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                                     </>
                                 )}
 
-                                {/* --- NEW: DLL DETAILS FORM --- */}
+                                {/* DLL DETAILS FORM */}
                                 {addStep === 'details' && selectedAddOption === 'dll' && (
                                     <div className="animate-in slide-in-from-right-4 duration-300 flex flex-col">
                                         <div className="flex items-center justify-center mb-1 relative">
@@ -932,7 +952,6 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                                         <p className="text-[12px] font-bold text-center text-[#222] mb-6">Please enter the needed details.</p>
 
                                         <div className="flex flex-col gap-y-4 mb-8">
-                                            {/* Semester Number */}
                                             <div className="relative">
                                                 <input 
                                                     type="text" 
@@ -943,8 +962,6 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                                                 />
                                                 {hasDllDetailsError && !dllSemesterNumber && <ErrorWarningIcon />}
                                             </div>
-
-                                            {/* Week Number */}
                                             <div className="relative mt-2">
                                                 <input 
                                                     type="text" 
@@ -956,7 +973,6 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                                                 {hasDllDetailsError && !dllWeekNumber && <ErrorWarningIcon />}
                                             </div>
                                             
-                                            {/* Date Pickers - using new dedicated DLL picker */}
                                             <div className={`grid grid-cols-2 gap-x-3 transition-all ${hasDllDetailsError && (!dllSemesterNumber || !dllWeekNumber) ? 'mt-4' : 'mt-2'}`}>
                                                 <Gr8DllDatePicker label="Available From" value={dllAvailableFrom} onChange={setDllAvailableFrom} hasError={hasDllDetailsError && !dllAvailableFrom} />
                                                 <Gr8DllDatePicker label="Available Until" value={dllAvailableUntil} onChange={setDllAvailableUntil} hasError={hasDllDetailsError && !dllAvailableUntil} />
