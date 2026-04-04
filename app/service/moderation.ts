@@ -184,7 +184,6 @@ export async function getPendingViolations() {
 
     if (error || !data) return [];
 
-    // Map DB data to match your UI's expected object format
     return data.map((v: any) => ({
         id: v.id,
         studentName: `${v.target_user?.first_name || 'Unknown'} ${v.target_user?.last_name || ''}`.trim(),

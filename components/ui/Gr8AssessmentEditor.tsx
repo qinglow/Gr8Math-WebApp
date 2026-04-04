@@ -43,27 +43,39 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, isEdi
     const [activeMathTarget, setActiveMathTarget] = useState<{ qId: string, choiceIndex?: number } | null>(null);
 
     // --- ASSESSMENT STATE ---
-    const [questions, setQuestions] = useState<QuestionData[]>(
-        initialQuestions && initialQuestions.length > 0
-            ? initialQuestions.map(q => ({ ...q, hasKeyError: false, pendingQuestionImage: null, pendingAnswerImage: null }))
-            : [
-                {
-                    id: Date.now().toString(),
-                    type: 'Multiple Choice',
-                    question: '',
-                    imageUrl: '',
-                    pendingQuestionImage: null,
-                    choices: [''],
-                    hasError: false,
-                    choiceErrors: [false],
-                    points: 1,
-                    correctAnswers: [],
+   // --- ASSESSMENT STATE ---
+    const [questions, setQuestions] = useState<QuestionData[]>(() => {
+        if (initialQuestions && initialQuestions.length > 0) {
+            return initialQuestions.map(q => {
+                let currentPoints = 1;
+                const ptsRegex = /^\[(\d+(?:\.\d+)?)\s*pts\]\s*(.*)/i;
+                
+                const stripPoints = (text: string) => {
+                    const match = text.match(ptsRegex);
+                    if (match) {
+                        currentPoints = parseFloat(match[1]);
+                        return match[2].trim();
+                    }
+                    return text;
+                };
+
+                return { 
+                    ...q, 
+                    hasKeyError: false, 
+                    pendingQuestionImage: null, 
                     pendingAnswerImage: null,
-                    isAnswerKeyMode: false,
-                    hasKeyError: false
-                }
-            ]
-    );
+                    choices: q.type === 'Upload Image' ? [] : q.choices.map(stripPoints),
+                    correctAnswers: q.type === 'Upload Image' ? [] : q.correctAnswers.map(stripPoints),
+                    points: currentPoints
+                };
+            });
+        }
+        return [{
+            id: Date.now().toString(), type: 'Multiple Choice', question: '', imageUrl: '',
+            pendingQuestionImage: null, choices: [''], hasError: false, choiceErrors: [false],
+            points: 1, correctAnswers: [], pendingAnswerImage: null, isAnswerKeyMode: false, hasKeyError: false
+        }];
+    });
 
     const [isPublishing, setIsPublishing] = useState(false);
 
@@ -276,7 +288,24 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, isEdi
                     const res = await uploadLessonMediaToTigris(formData);
                     if (res.success && res.publicUrl) q.imageUrl = res.publicUrl;
                 }
+
+                // ---------- ADD THIS NEW BLOCK RIGHT HERE ----------
+                if (q.type === 'Upload Image') {
+                    // For Upload Image, just save the points (e.g. "[2 pts]") with no extra words
+                    q.choices = [`[${q.points} pts]`];
+                    q.correctAnswers = [`[${q.points} pts]`];
+                } else {
+                    // For everything else, attach the points to the text properly
+                    const formatWithPoints = (text: string, isCorrect: boolean) => {
+                        const clean = text.replace(/^\[\d+(?:\.\d+)?\s*pts\]\s*/i, '').trim();
+                        return isCorrect ? `[${q.points} pts] ${clean}` : clean;
+                    };
+                    q.choices = q.choices.map(c => formatWithPoints(c, q.correctAnswers.includes(c) || q.type === 'Short Answer' || q.type === 'Paragraph'));
+                    q.correctAnswers = q.correctAnswers.map(c => formatWithPoints(c, true));
+                }
+                // ----------------------------------------------------
             }
+            
             onPublish(finalQuestions);
         } catch (error: any) {
             alert(error.message);
@@ -371,12 +400,12 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, isEdi
                                             <input type="text" placeholder="Question Text (use $...$ for math)" value={q.question} onChange={(e) => updateQuestion(q.id, 'question', e.target.value)} className="w-full p-3 text-[15px] bg-transparent outline-none text-[#222]" />
                                             {q.hasError && <ErrorIcon />}
                                         </div>
-                                        <button onClick={() => { setActiveMathTarget({ qId: q.id }); setShowMathModal(true); }} className="shrink-0 p-3 rounded-lg border border-[#D1D8DD] bg-white hover:bg-gray-50 text-[#0A7F93]">
+                                        <button aria-label='dw' onClick={() => { setActiveMathTarget({ qId: q.id }); setShowMathModal(true); }} className="shrink-0 p-3 rounded-lg border border-[#D1D8DD] bg-white hover:bg-gray-50 text-[#0A7F93]">
                                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" /><path d="M8 7h6M11 4v6M8 14h6M8 17h6" /></svg>
                                         </button>
                                         <label className="shrink-0 p-3 rounded-lg cursor-pointer border bg-gray-50 hover:bg-gray-100 border-[#D1D8DD]">
                                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                                            <input type="file" accept="image/*" className="hidden" disabled={isPublishing} onChange={(e) => handleStageQuestionImage(q.id, e)} />
+                                            <input aria-label='sw' type="file" accept="image/*" className="hidden" disabled={isPublishing} onChange={(e) => handleStageQuestionImage(q.id, e)} />
                                         </label>
                                     </div>
                                     {q.hasError && <span className="text-[12px] font-bold text-[#ED1F24] ml-1">Please enter a question or attach an image</span>}
@@ -385,7 +414,7 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, isEdi
                                     {(q.imageUrl || q.pendingQuestionImage) && (
                                         <div className="relative mt-3 inline-block">
                                             <img src={q.pendingQuestionImage ? URL.createObjectURL(q.pendingQuestionImage) : q.imageUrl} alt="Question" className="max-h-[150px] object-contain rounded border border-gray-200" />
-                                            <button onClick={() => removeQuestionImage(q.id)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600">
+                                            <button aria-label='dww' onClick={() => removeQuestionImage(q.id)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600">
                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                                             </button>
                                         </div>
@@ -410,11 +439,11 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, isEdi
                                                         <input type="text" placeholder={`Choice ${cIndex + 1}`} value={choice} onChange={(e) => updateChoice(q.id, cIndex, e.target.value)} className="w-full p-2.5 text-[14px] text-[#222] bg-transparent outline-none" />
                                                         {q.choiceErrors[cIndex] && <ErrorIcon />}
                                                     </div>
-                                                    <button onClick={() => { setActiveMathTarget({ qId: q.id, choiceIndex: cIndex }); setShowMathModal(true); }} className="shrink-0 p-2.5 rounded-lg border border-[#D1D8DD] bg-white hover:bg-gray-50 text-[#0A7F93]">
+                                                    <button aria-label='wq' onClick={() => { setActiveMathTarget({ qId: q.id, choiceIndex: cIndex }); setShowMathModal(true); }} className="shrink-0 p-2.5 rounded-lg border border-[#D1D8DD] bg-white hover:bg-gray-50 text-[#0A7F93]">
                                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" /><path d="M8 7h6M11 4v6M8 14h6M8 17h6" /></svg>
                                                     </button>
                                                     {q.choices.length > 1 && (
-                                                        <button onClick={() => removeChoice(q.id, cIndex)} className="text-[#0A7F93] hover:text-red-500 p-1 transition-colors"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+                                                        <button aria-label='wqqq' onClick={() => removeChoice(q.id, cIndex)} className="text-[#0A7F93] hover:text-red-500 p-1 transition-colors"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
                                                     )}
                                                 </div>
                                                 {q.choiceErrors[cIndex] && <span className="text-[12px] font-bold text-[#ED1F24] ml-1">Please enter a choice</span>}
@@ -432,7 +461,7 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, isEdi
                             </div>
 
                             <div className="flex items-center justify-between border-t border-[#D1D8DD] pt-4 mt-2">
-                                <button onClick={() => removeQuestion(q.id)} className="text-[#0A7F93] hover:text-red-500 transition-colors"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>
+                                <button aria-label='ll' onClick={() => removeQuestion(q.id)} className="text-[#0A7F93] hover:text-red-500 transition-colors"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>
                                 <div className="flex flex-col items-end gap-y-1">
                                     <div className="flex items-center">
                                         <button onClick={() => toggleAnswerKeyMode(q.id)} className={`font-bold text-[14px] hover:underline flex items-center gap-x-1.5 ${q.hasKeyError ? 'text-[#ED1F24]' : 'text-[#1A4C8B]'}`}>
@@ -456,7 +485,7 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, isEdi
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[600px] flex flex-col animate-in zoom-in-95 overflow-hidden">
                         <div className="bg-[#1A4C8B] px-6 py-5 flex items-center justify-between">
                             <h2 className="text-white font-black text-[15px] uppercase tracking-wider">Insert Math Formula</h2>
-                            <button onClick={() => setShowMathModal(false)} className="text-white hover:opacity-70 outline-none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+                            <button aria-label='lo' onClick={() => setShowMathModal(false)} className="text-white hover:opacity-70 outline-none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
                         </div>
                         <div className="p-8 bg-white flex flex-col gap-y-6">
                             <p className="text-[14px] font-bold text-[#666]">Click the keyboard icon to open the math virtual keyboard.</p>

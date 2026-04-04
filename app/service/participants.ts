@@ -56,6 +56,7 @@ export async function getStudentScoresFromDb(classId: number, studentId: number)
                 title,
                 assessment_number,
                 assessment_items,
+                total_points,  
                 course_id
             )
         `)
@@ -70,26 +71,34 @@ export async function getStudentScoresFromDb(classId: number, studentId: number)
     return data.map((item: any) => {
         const ass = item.assessment;
         const score = Number(item.score);
-        const total = Number(ass.assessment_items) || 1;
         
-        // Create a Date object from the timestamp
+        // Literal item count (e.g. 1 question)
+        const itemsCount = Number(ass.assessment_items) || 1;
+        
+        // Actual Total Points from your new DB column (e.g. 2 points)
+        // Falls back to itemsCount if the DB returns null for older assessments
+        const totalPoints = Number(ass.total_points) || itemsCount; 
+
+        let rawPercentage = (score / totalPoints) * 100;
+        if (rawPercentage > 100) rawPercentage = 100; 
+        if (rawPercentage < 0) rawPercentage = 0;
+
         const dateObj = new Date(item.date_accomplished);
 
         return {
             no: ass.assessment_number,
             title: ass.title,
             score: score,
-            items: total,
-            percentage: Math.round((score / total) * 100) + '%',
+            totalPoints: totalPoints, 
+            items: itemsCount,       
+            percentage: Math.round(rawPercentage) + '%',
             
-            // Format 1: Date (e.g., Mar 30, 2026)
             date_accomplished: dateObj.toLocaleDateString('en-US', { 
                 month: 'short', 
                 day: 'numeric', 
                 year: 'numeric' 
             }),
             
-            // Format 2: Time (e.g., 8:05 PM)
             time_accomplished: dateObj.toLocaleTimeString('en-US', { 
                 hour: 'numeric', 
                 minute: '2-digit', 

@@ -29,6 +29,8 @@ export async function publishAssessmentAction(params: {
         const modCheck = await checkContentModeration(allTextToCheck);
         const status = modCheck.isSafe ? 'approved' : 'pending';
 
+        const totalPoints = params.questions.reduce((sum, q) => sum + (Number(q.points) || 1), 0);
+
         const { data: assessment, error: aErr } = await supabase
             .from('assessment_created')
             .insert({
@@ -37,6 +39,7 @@ export async function publishAssessmentAction(params: {
                 start_time: params.startTime,
                 end_time: params.endTime,
                 assessment_items: params.questions.length,
+                total_points: totalPoints,
                 assessment_number: params.assessmentNumber,
                 assessment_quarter: params.assessmentQuarter,
                 status: status
@@ -176,12 +179,15 @@ export async function updateAssessmentAction(params: {
         const modCheck = await checkContentModeration(allTextToCheck);
         const status = modCheck.isSafe ? 'approved' : 'pending';
 
+
         // --- FETCH EXISTING DATES ---
         const { data: existingAssessment } = await supabase
             .from('assessment_created')
             .select('start_time, end_time')
             .eq('id', params.assessmentId)
             .single();
+
+        const totalPoints = params.questions.reduce((sum, q) => sum + (Number(q.points) || 1), 0);
 
         // 1. Update Main Info
         const { error: aErr } = await supabase

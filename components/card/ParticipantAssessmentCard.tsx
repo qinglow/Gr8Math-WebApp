@@ -7,7 +7,7 @@ interface ParticipantAssessmentCardProps {
     title: string;
     date?: string;
     score: number;
-    totalItems: number;
+    totalPossiblePoints: number; 
     onClick: () => void;
 }
 
@@ -16,7 +16,7 @@ export const ParticipantAssessmentCard: React.FC<ParticipantAssessmentCardProps>
     title,
     date = 'N/A', 
     score,
-    totalItems,
+    totalPossiblePoints,
     onClick
 }) => {
     return (
@@ -35,8 +35,10 @@ export const ParticipantAssessmentCard: React.FC<ParticipantAssessmentCardProps>
             </div>
             <div className="flex items-center gap-x-4">
                 <div className="text-right hidden sm:block">
-                    <span className="block text-[16px] font-black text-[#1A4C8B]">{score}/{totalItems}</span>
-                    <span className="block text-[10px] font-bold text-[#A0A0A0] uppercase tracking-wider">Score</span>
+                    {/*  Changed to display as "3/9 Points" */}
+                    <span className="block text-[16px] font-black text-[#1A4C8B]">
+                        {score}/{totalPossiblePoints} Points
+                    </span>
                 </div>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0A7F93" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:translate-x-1 transition-transform shrink-0">
                     <polyline points="9 18 15 12 9 6"></polyline>
