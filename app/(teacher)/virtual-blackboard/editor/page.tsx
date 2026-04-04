@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect, MouseEvent as ReactMouseEvent, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Gr8MathHeader } from '@/components/ui/Gr8MathHeader';
+import { fetchSingleBlackboardAction, saveBlackboardDataAction, uploadBlackboardToTigrisAction } from '@/app/(teacher)/virtual-blackboard/action';
 
 // --- PIXEL CORNER DECORATIONS ---
 const BottomLeftPixels = () => (
@@ -52,7 +53,9 @@ const INITIAL_SAVED_COLORS = [
 
 export default function VirtualBlackboardEditor() {
     const router = useRouter();
-    
+    const [boardId, setBoardId] = useState<number | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
+
     // --- BOARD STATE ---
     const [boardTitle, setBoardTitle] = useState('Untitled Board 1');
     const [lastSaved, setLastSaved] = useState('');
@@ -68,14 +71,14 @@ export default function VirtualBlackboardEditor() {
     const [pan, setPan] = useState({ x: 0, y: 0 });
     const [showZoomIndicator, setShowZoomIndicator] = useState(false);
     const zoomTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    
+
     // Using Refs for instantaneous tracking
     const isPanningRef = useRef(false);
     const isDrawingRef = useRef(false);
     const panStartRef = useRef({ x: 0, y: 0 });
 
     // --- COLOR PICKER STATE ---
-    const [hsv, setHsv] = useState({ h: 244, s: 70, v: 90 }); 
+    const [hsv, setHsv] = useState({ h: 244, s: 70, v: 90 });
     const [alpha, setAlpha] = useState(100);
     const [colorFormat, setColorFormat] = useState<'Hex' | 'RGB'>('Hex');
     const [showFormatDropdown, setShowFormatDropdown] = useState(false);
@@ -99,26 +102,66 @@ export default function VirtualBlackboardEditor() {
     const [undoStack, setUndoStack] = useState<string[]>([]);
     const [redoStack, setRedoStack] = useState<string[]>([]);
 
+    // --- LOAD BOARD FROM DATABASE ---
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const urlTitle = params.get('title');
+        const urlId = params.get('boardId');
+
         if (urlTitle) setBoardTitle(urlTitle);
-        
+
         const canvas = canvasRef.current;
-        if (!canvas) return;
+        const context = canvas?.getContext('2d');
+        if (!canvas || !context) return;
 
         canvas.width = 2400 * 2;
         canvas.height = 1600 * 2;
-        
-        const context = canvas.getContext('2d');
-        if (!context) return;
-        
         context.scale(2, 2);
         context.lineCap = 'round';
         context.lineJoin = 'round';
         contextRef.current = context;
 
-        setUndoStack([canvas.toDataURL()]);
+        if (urlId) {
+            const parsedId = parseInt(urlId);
+            setBoardId(parsedId);
+
+            fetchSingleBlackboardAction(parsedId).then(res => {
+                if (res.success && res.data?.drawing_data) {
+                    const dataObj = res.data.drawing_data;
+
+                    if (dataObj.lastSaved) {
+                        setLastSaved(`Saved on ${dataObj.lastSaved}`);
+                    }
+
+                    if (dataObj.currentFrameUrl) {
+                        const img = new Image();
+                        img.crossOrigin = "anonymous";
+                        const cleanUrl = dataObj.currentFrameUrl.split('?')[0];
+                        img.src = `${cleanUrl}?t=${Date.now()}`;
+
+                        img.onerror = () => {
+                            // console.error('Failed to load image from:', cleanUrl);
+                            // // fallback: blank canvas or show an error message
+                        };
+                        img.onload = () => {
+                            // console.log('Image loaded successfully');
+                            const ctx = contextRef.current;
+                            if (ctx) {
+                                ctx.clearRect(0, 0, 2400, 1600); // Clear first
+                                ctx.drawImage(img, 0, 0, 2400, 1600);
+                                setUndoStack([canvas.toDataURL('image/png')]);
+                            }
+                        };
+                    } else {
+                        setUndoStack([canvas.toDataURL()]);
+                    }
+                } else {
+                    setUndoStack([canvas.toDataURL()]);
+                }
+            });
+        } else {
+            setUndoStack([canvas.toDataURL()]);
+        }
     }, []);
 
     // --- GLOBAL MOUSE FIX ---
@@ -161,7 +204,7 @@ export default function VirtualBlackboardEditor() {
             if (isDraggingSV) handleSVPick(e);
             if (isDraggingHue) handleHuePick(e);
             if (isDraggingAlpha) handleAlphaPick(e);
-            
+
             if (isPanningRef.current && activeTool === 'move') {
                 setPan({
                     x: e.clientX - panStartRef.current.x,
@@ -204,7 +247,7 @@ export default function VirtualBlackboardEditor() {
         }
 
         if (activeTool !== 'pen' && activeTool !== 'eraser') return;
-        
+
         const { x, y } = getCoordinates(e);
         contextRef.current?.beginPath();
         contextRef.current?.moveTo(x, y);
@@ -223,15 +266,15 @@ export default function VirtualBlackboardEditor() {
         }
 
         if (!isDrawingRef.current || !contextRef.current) return;
-        
+
         const { x, y } = getCoordinates(e);
-        
+
         if (activeTool === 'eraser') {
             contextRef.current.globalCompositeOperation = 'destination-out';
-            contextRef.current.lineWidth = brushSize * 3; 
+            contextRef.current.lineWidth = brushSize * 3;
         } else {
             contextRef.current.globalCompositeOperation = 'source-over';
-            contextRef.current.strokeStyle = rgbaString; 
+            contextRef.current.strokeStyle = rgbaString;
             contextRef.current.lineWidth = brushSize;
         }
 
@@ -252,7 +295,7 @@ export default function VirtualBlackboardEditor() {
         if (canvasRef.current) {
             const newState = canvasRef.current.toDataURL();
             setUndoStack((prev) => [...prev, newState]);
-            setRedoStack([]); 
+            setRedoStack([]);
         }
     };
 
@@ -261,7 +304,7 @@ export default function VirtualBlackboardEditor() {
         if (undoStack.length <= 1 || !canvasRef.current || !contextRef.current) return;
         const currentState = undoStack[undoStack.length - 1];
         const previousState = undoStack[undoStack.length - 2];
-        
+
         setUndoStack((prev) => prev.slice(0, -1));
         setRedoStack((prev) => [...prev, currentState]);
 
@@ -276,7 +319,7 @@ export default function VirtualBlackboardEditor() {
     const handleRedo = () => {
         if (redoStack.length === 0 || !canvasRef.current || !contextRef.current) return;
         const nextState = redoStack[redoStack.length - 1];
-        
+
         setRedoStack((prev) => prev.slice(0, -1));
         setUndoStack((prev) => [...prev, nextState]);
 
@@ -307,26 +350,45 @@ export default function VirtualBlackboardEditor() {
         triggerZoomIndicator();
     };
 
-    // --- SAVE AND DOWNLOAD ---
-    const handleSaveAndDownload = () => {
-        if (!canvasRef.current) return;
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = canvasRef.current.width;
-        tempCanvas.height = canvasRef.current.height;
-        const ctx = tempCanvas.getContext('2d');
-        if (ctx) {
-            ctx.fillStyle = '#F8F5EF'; 
-            ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-            ctx.drawImage(canvasRef.current, 0, 0);
-            
-            const dataUrl = tempCanvas.toDataURL('image/png');
-            const link = document.createElement('a');
-            link.download = `${boardTitle.replace(/\s+/g, '_')}.png`;
-            link.href = dataUrl;
-            link.click();
-        }
-        const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-        setLastSaved(`Saved on ${today}`);
+    // --- SAVE---
+    const handleSaveAndDownload = async () => {
+        if (!canvasRef.current || !boardId) return;
+        setIsSaving(true);
+
+        canvasRef.current.toBlob(async (blob) => {
+            if (!blob) {
+                setIsSaving(false);
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', new File([blob], 'board.png', { type: 'image/png' }));
+            formData.append('boardId', boardId.toString());
+
+            const uploadRes = await uploadBlackboardToTigrisAction(formData);
+
+            if (uploadRes.success && uploadRes.publicUrl) {
+                // 1. Pass boardTitle here
+                const dbRes = await saveBlackboardDataAction(boardId, uploadRes.publicUrl, boardTitle);
+
+                if (dbRes.success) {
+                    const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                    setLastSaved(`Saved on ${today}`);
+
+                    // 2. Local Download
+                    const link = document.createElement('a');
+                    link.download = `${boardTitle.replace(/\s+/g, '_')}.png`;
+                    link.href = canvasRef.current!.toDataURL('image/png');
+                    link.click();
+                } else {
+                    alert("Failed to save to database.");
+                }
+            } else {
+                alert(`Tigris Upload Failed: ${uploadRes.error}`);
+            }
+
+            setIsSaving(false);
+        }, 'image/png');
     };
 
     const IconColor = (toolName: string) => activeTool === toolName ? '#EFBD31' : '#0A7F93';
@@ -342,8 +404,8 @@ export default function VirtualBlackboardEditor() {
                         <button onClick={() => router.back()} className="p-1.5 -ml-1.5 text-[#0A7F93] hover:bg-black/5 rounded-lg transition-colors outline-none cursor-pointer">
                             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
                         </button>
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             value={boardTitle}
                             onChange={(e) => setBoardTitle(e.target.value)}
                             className="text-[20px] md:text-[24px] font-black text-[#222] bg-transparent outline-none border-b-2 border-transparent focus:border-[#0A7F93] transition-colors"
@@ -354,12 +416,12 @@ export default function VirtualBlackboardEditor() {
 
             {/* --- WORKSPACE --- */}
             <main className="flex-1 w-full max-w-[1400px] mx-auto px-6 pb-10 flex gap-6 relative">
-                
+
                 {/* CANVAS AREA CONTAINER */}
                 <div className="flex-1 flex flex-col h-[70vh] min-h-[500px] relative">
-                    
+
                     {/* The clipping window for the canvas */}
-                    <div 
+                    <div
                         className="flex-1 w-full bg-[#E9EEF0] border-2 border-[#D1D8DD] rounded-xl relative overflow-hidden shadow-inner"
                         style={{ backgroundImage: 'radial-gradient(#C8D0D5 1px, transparent 1px)', backgroundSize: '24px 24px' }}
                     >
@@ -373,7 +435,7 @@ export default function VirtualBlackboardEditor() {
                         <BottomLeftPixels />
 
                         {/* The Actual Giant Canvas Container */}
-                        <div 
+                        <div
                             className="absolute bg-[#F8F5EF] shadow-[0_0_50px_rgba(0,0,0,0.1)] border border-[#C0C8CF] transition-transform duration-75 origin-center"
                             style={{
                                 width: '2400px',
@@ -414,7 +476,7 @@ export default function VirtualBlackboardEditor() {
 
                 {/* --- TOOLBAR --- */}
                 <div className="flex flex-col gap-3 shrink-0 relative w-[52px] z-50">
-                    
+
                     <button onClick={() => { setActiveTool('pen'); setShowColorPicker(false); setShowBrushSizes(false); }} className={`w-12 h-12 bg-white rounded-xl shadow-sm border-2 flex items-center justify-center outline-none transition-colors ${activeTool === 'pen' ? 'border-[#EFBD31]' : 'border-[#D1D8DD]'}`}>
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={IconColor('pen')} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
                     </button>
@@ -428,14 +490,14 @@ export default function VirtualBlackboardEditor() {
                         <button onClick={() => { setShowColorPicker(!showColorPicker); setShowBrushSizes(false); }} className="w-12 h-12 bg-white rounded-xl shadow-sm border-2 border-[#D1D8DD] flex items-center justify-center outline-none hover:border-[#EFBD31] transition-colors">
                             <div className="w-6 h-6 rounded-full shadow-sm" style={{ backgroundColor: hexColor }}></div>
                         </button>
-                        
+
                         {showColorPicker && (
                             <div className="absolute top-0 right-16 w-[260px] bg-white border border-[#D1D8DD] rounded-2xl shadow-xl p-4 z-50 flex flex-col animate-in slide-in-from-right-2 duration-200">
                                 {/* Gradient Box */}
-                                <div 
+                                <div
                                     ref={svBoxRef}
                                     onMouseDown={(e) => { setIsDraggingSV(true); handleSVPick(e); }}
-                                    className="w-full h-32 rounded-lg relative overflow-hidden mb-3 cursor-crosshair" 
+                                    className="w-full h-32 rounded-lg relative overflow-hidden mb-3 cursor-crosshair"
                                     style={{ backgroundColor: hueColorString }}
                                 >
                                     <div className="absolute inset-0 bg-gradient-to-r from-white to-transparent pointer-events-none"></div>
@@ -444,7 +506,7 @@ export default function VirtualBlackboardEditor() {
                                 </div>
 
                                 {/* Hue Slider */}
-                                <div 
+                                <div
                                     ref={hueSliderRef}
                                     onMouseDown={(e) => { setIsDraggingHue(true); handleHuePick(e); }}
                                     className="w-full h-[10px] rounded-full relative mb-3 cursor-pointer"
@@ -454,10 +516,10 @@ export default function VirtualBlackboardEditor() {
                                 </div>
 
                                 {/* Opacity Slider */}
-                                <div 
+                                <div
                                     ref={alphaSliderRef}
                                     onMouseDown={(e) => { setIsDraggingAlpha(true); handleAlphaPick(e); }}
-                                    className="w-full h-[10px] rounded-full relative mb-4 cursor-pointer" 
+                                    className="w-full h-[10px] rounded-full relative mb-4 cursor-pointer"
                                     style={{ background: 'repeating-conic-gradient(#E5E7EB 0% 25%, white 0% 50%) 50% / 8px 8px' }}
                                 >
                                     <div className="absolute inset-0 rounded-full pointer-events-none" style={{ background: `linear-gradient(to right, transparent, ${hexColor})` }}></div>
@@ -483,13 +545,13 @@ export default function VirtualBlackboardEditor() {
                                             <>
                                                 <span className="text-[#A0A0A0] mr-1">#</span>
                                                 <input type="text" value={hexColor.replace('#', '')} onChange={(e) => {
-                                                        const val = e.target.value.replace(/[^0-9A-Fa-f]/g, '').substring(0, 6);
-                                                        if (val.length === 6) {
-                                                            const [newR, newG, newB] = hexToRgb(val);
-                                                            setHsv(rgbToHsv(newR, newG, newB));
-                                                            setActiveTool('pen');
-                                                        }
-                                                    }} className="w-full outline-none uppercase bg-transparent" maxLength={6} />
+                                                    const val = e.target.value.replace(/[^0-9A-Fa-f]/g, '').substring(0, 6);
+                                                    if (val.length === 6) {
+                                                        const [newR, newG, newB] = hexToRgb(val);
+                                                        setHsv(rgbToHsv(newR, newG, newB));
+                                                        setActiveTool('pen');
+                                                    }
+                                                }} className="w-full outline-none uppercase bg-transparent" maxLength={6} />
                                             </>
                                         ) : (<span className="w-full uppercase bg-transparent text-center">{r}, {g}, {b}</span>)}
                                     </div>
@@ -515,7 +577,7 @@ export default function VirtualBlackboardEditor() {
                         <button onClick={() => { setShowBrushSizes(!showBrushSizes); setShowColorPicker(false); }} className={`w-12 h-12 bg-white rounded-xl shadow-sm border-2 flex items-center justify-center outline-none transition-colors ${showBrushSizes ? 'border-[#EFBD31]' : 'border-[#D1D8DD]'}`}>
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={showBrushSizes ? '#EFBD31' : '#0A7F93'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="19" r="2" fill="currentColor"></circle><circle cx="12" cy="12" r="3" fill="currentColor"></circle><circle cx="19" cy="5" r="4" fill="currentColor"></circle></svg>
                         </button>
-                        
+
                         {showBrushSizes && (
                             <div className="absolute top-0 right-16 bg-white border border-[#D1D8DD] rounded-xl shadow-xl py-3 px-2 z-50 flex flex-col gap-3 items-center animate-in slide-in-from-right-2 duration-200">
                                 {[24, 16, 12, 8, 4, 2].map(size => (
@@ -530,7 +592,7 @@ export default function VirtualBlackboardEditor() {
                     <button onClick={() => { setActiveTool('move'); setShowColorPicker(false); setShowBrushSizes(false); }} className={`w-12 h-12 bg-white rounded-xl shadow-sm border-2 flex items-center justify-center outline-none transition-colors ${activeTool === 'move' ? 'border-[#EFBD31]' : 'border-[#D1D8DD]'}`}>
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={IconColor('move')} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="5 9 2 12 5 15"></polyline><polyline points="9 5 12 2 15 5"></polyline><polyline points="19 9 22 12 19 15"></polyline><polyline points="9 19 12 22 15 19"></polyline><line x1="2" y1="12" x2="22" y2="12"></line><line x1="12" y1="2" x2="12" y2="22"></line></svg>
                     </button>
-                    
+
                     <button onClick={handleZoomIn} className="w-12 h-12 bg-white rounded-xl shadow-sm border-2 border-[#D1D8DD] flex items-center justify-center hover:border-[#0A7F93] transition-colors outline-none cursor-pointer">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0A7F93" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
                     </button>

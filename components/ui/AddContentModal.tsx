@@ -56,7 +56,8 @@ export function AddContentModal({
     const options = [
         { id: 'lesson', label: 'Write a Lesson' },
         { id: 'assessment', label: 'Create Assessment Test' },
-        { id: 'dll', label: 'Daily Lesson Log' }
+        { id: 'dll', label: 'Daily Lesson Log' },
+        { id: 'blackboard', label: 'Virtual Blackboard' }
     ];
 
    // --- HIJACK THE MODAL IF THE USER IS RESTRICTED ---

@@ -1,91 +1,107 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Gr8MathHeader } from '@/components/ui/Gr8MathHeader';
 import { BlackboardCard, BlackboardData } from '@/components/card/BlackboardCard';
+import { fetchBlackboardsAction, createBlackboardAction } from './action';
 
-// --- INITIAL MOCK DATA ---
-const INITIAL_BOARDS: BlackboardData[] = [
-    { id: 1, title: 'Untitled Board 1', date: 'Jan. 1, 2026' },
-    { id: 2, title: 'Untitled Board 2', date: 'Jan. 1, 2026' },
-    { id: 3, title: 'Untitled Board 3', date: 'Jan. 1, 2026' },
-];
+const EmptyState = () => (
+    <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="bg-white/40 border-2 border-dashed border-[#B0B8C1] rounded-3xl p-10 md:p-16 max-w-md">
+            <h2 className="text-[20px] font-black text-[#222] mb-3 uppercase">No content yet.</h2>
+            <p className="text-[14px] text-[#666]">Tap 'Add' to create your first Virtual Blackboard.</p>
+        </div>
+    </div>
+);
 
 export default function VirtualBlackboardSelectionPage() {
     const router = useRouter();
-    
-    // --- STATE ---
-    const [boards, setBoards] = useState<BlackboardData[]>(INITIAL_BOARDS);
+    const searchParams = useSearchParams();
 
-    // --- HANDLERS ---
-    const handleAddBoard = () => {
-        const nextId = boards.length > 0 ? Math.max(...boards.map(b => b.id)) + 1 : 1;
-        
-        const newBoard: BlackboardData = {
-            id: nextId,
-            title: `Untitled Board ${nextId}`,
-            date: 'Jan. 1, 2026' 
+    // We need to know which class this blackboard belongs to!
+    const courseId = parseInt(searchParams.get('courseId') || '0');
+
+    const [boards, setBoards] = useState<BlackboardData[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    // --- FETCH BOARDS ON LOAD ---
+    useEffect(() => {
+        if (courseId === 0) return;
+        const loadBoards = async () => {
+            setIsLoading(true);
+            const res = await fetchBlackboardsAction(courseId);
+            if (res.success && res.data) {
+                const mappedBoards = res.data.map((b: any) => {
+                    const savedDate = b.drawing_data?.lastSaved;
+                    return {
+                        id: b.id,
+                        title: b.session_name,
+                        date: savedDate ? `Saved ${savedDate}` : 'New Board',
+                        previewUrl: b.drawing_data?.currentFrameUrl
+                    };
+                });
+                setBoards(mappedBoards);
+            }
+            setIsLoading(false);
         };
+        loadBoards();
+    }, [courseId]);
 
-        setBoards([...boards, newBoard]);
+    // --- CREATE NEW BOARD ---
+    const handleAddBoard = async () => {
+        if (courseId === 0) {
+            alert("Error: Course ID is missing.");
+            return;
+        }
+
+        const nextNumber = boards.length + 1;
+        const newTitle = `Untitled Board ${nextNumber}`;
+
+        const res = await createBlackboardAction(courseId, newTitle);
+
+        if (res.success && res.data) {
+            router.push(`/virtual-blackboard/editor?boardId=${res.data.id}&title=${encodeURIComponent(newTitle)}`);
+        } else {
+            alert("Failed to create board.");
+        }
     };
 
-    const handleBoardClick = (boardTitle: string) => {
-        // We pass the title in the URL so the editor knows what to display!
-        router.push(`/virtual-blackboard/editor?title=${encodeURIComponent(boardTitle)}`);
+    const handleBoardClick = (boardId: number, boardTitle: string) => {
+        router.push(`/virtual-blackboard/editor?boardId=${boardId}&title=${encodeURIComponent(boardTitle)}`);
     };
 
     return (
         <div className="min-h-screen bg-[#E2E7E9] font-sans flex flex-col relative overflow-x-hidden">
-            
             <Gr8MathHeader />
-
             <main className="flex-1 w-full max-w-7xl mx-auto px-6 md:px-12 py-8 animate-in fade-in duration-500">
-                
-                {/* --- TOP BAR: Back Button & Title --- */}
+
                 <div className="flex items-center gap-3 mb-10">
-                    <button 
-                        onClick={() => router.push('/class-manager')} // Or wherever they should go back to
-                        className="p-1.5 -ml-1.5 text-[#0A7F93] hover:bg-black/5 rounded-lg transition-colors outline-none cursor-pointer"
-                    >
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="15 18 9 12 15 6"></polyline>
-                        </svg>
+                    <button onClick={() => router.back()} className="p-1.5 -ml-1.5 text-[#0A7F93] hover:bg-black/5 rounded-lg transition-colors outline-none cursor-pointer">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
                     </button>
                     <h1 className="text-[20px] md:text-[22px] font-black text-[#222] m-0">Virtual Blackboard</h1>
                 </div>
 
-                {/* --- GRID: Blackboard Cards --- */}
-                {boards.length === 0 ? (
-                    <div className="text-center py-20 text-[#666] font-medium">
-                        No boards yet. Click "Add" to create your first Virtual Blackboard.
-                    </div>
+                {isLoading ? (
+                    <div className="text-center py-20 text-[#666] font-medium font-bold">Loading your boards...</div>
+                ) : boards.length === 0 ? (
+                    <EmptyState />
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-10 pb-24">
                         {boards.map((board) => (
-                            <BlackboardCard 
-                                key={board.id} 
-                                board={board} 
-                                onClick={() => handleBoardClick(board.title)} 
-                            />
+                            <BlackboardCard key={board.id} board={board} onClick={() => handleBoardClick(board.id, board.title)} />
                         ))}
                     </div>
                 )}
-
             </main>
 
-            {/* --- FLOATING ADD BUTTON --- */}
             <div className="fixed bottom-10 right-6 md:right-12 z-50">
-                <button 
-                    onClick={handleAddBoard}
-                    className="bg-[#1A4C8B] text-white px-6 py-2.5 rounded-full font-black text-[13px] tracking-wide shadow-lg hover:shadow-xl hover:-translate-y-0.5 hover:bg-[#153a6b] transition-all flex items-center gap-x-2 outline-none cursor-pointer"
-                >
+                <button onClick={handleAddBoard} className="bg-[#1A4C8B] text-white px-6 py-2.5 rounded-full font-black text-[13px] tracking-wide shadow-lg hover:shadow-xl hover:-translate-y-0.5 hover:bg-[#153a6b] transition-all flex items-center gap-x-2 outline-none cursor-pointer">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                     ADD
                 </button>
             </div>
-
         </div>
     );
 }

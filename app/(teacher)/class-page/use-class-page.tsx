@@ -7,8 +7,10 @@ import { fetchParticipantsAction } from './participants/action';
 import { getDllsAction, saveDllAction } from './dll/action';
 import { prepareDllForDatabase, rebuildDllLocalState } from './dll/helper';
 import type { ClassContentItem } from './class-page-client';
+import { useRouter } from 'next/navigation';
 
 export function useClassManager(courseId: string, initialFeed: ClassContentItem[]) {
+    const router = useRouter();
     // --- STATE ---
     const [currentView, setCurrentView] = useState<'feed' | 'editor' | 'viewer' | 'assessment-editor' | 'dll-editor' | 'dll-viewer'>('feed');
     const [activeTab, setActiveTab] = useState('class');
@@ -184,7 +186,14 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
 
     const isAssessmentFormComplete = quarterNumber.trim() !== '' && assessmentNumber.trim() !== '' && assessmentTitle.trim() !== '' && availableFrom !== '' && availableUntil !== '';
 
-    const handleProceedToDetails = () => { if (selectedAddOption) setAddStep('details'); };
+   const handleProceedToDetails = () => { 
+        if (selectedAddOption === 'blackboard') {
+            setIsAddModalOpen(false); // Close the modal
+            window.location.href = `/virtual-blackboard?courseId=${courseId}`;
+        } else if (selectedAddOption) {
+            setAddStep('details'); 
+        }
+    };
     const handleLessonNextDetails = () => { if (!weekNumber.trim() || !lessonTitle.trim()) { setHasDetailsError(true); return; } setHasDetailsError(false); setIsAddModalOpen(false); setCurrentView('editor'); };
     const handleAssessmentNextDetails = () => { if (!isAssessmentFormComplete) { setHasAssessmentDetailsError(true); return; } setHasAssessmentDetailsError(false); setIsAddModalOpen(false); setCurrentView('assessment-editor'); };
 
