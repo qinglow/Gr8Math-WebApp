@@ -213,7 +213,7 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
 
 const ConfirmModal = ({ title, subtitle, onYes, onNo }: { title: string, subtitle?: string, onYes: () => void, onNo: () => void }) => (
     <div className="fixed inset-0 z-[600] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-[400px] text-left font-sans animate-in zoom-in-95">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-[400px] text-center font-sans animate-in zoom-in-95">
             <h2 className="text-[18px] font-extrabold text-[#222] mb-2">{title}</h2>
             {subtitle && <p className="text-[14px] text-[#666] mb-6">{subtitle}</p>}
             <div className="flex justify-center gap-x-12 mt-4">

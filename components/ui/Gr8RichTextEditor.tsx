@@ -74,6 +74,46 @@ export function Gr8RichTextEditor({ courseId, initialContent, onChange, onSave, 
         if (editorRef.current) {
             editorRef.current.innerHTML = initialContent || '';
             document.execCommand('defaultParagraphSeparator', false, 'p');
+
+            // Handle BOTH old DB format (bare div[align=center] with id)
+            // AND new format (.gr8-media-wrapper) — inject delete button into either
+            editorRef.current.querySelectorAll('div[id]').forEach((wrapper) => {
+                const id = wrapper.id;
+                if (!id) return;
+
+                // Must contain a media element to qualify
+                const hasMedia = wrapper.querySelector('img, video, iframe, span[data-local]');
+                if (!hasMedia) return;
+
+                // Don't double-inject
+                if (wrapper.querySelector('.gr8-delete-btn')) return;
+
+                // Ensure the wrapper itself is position:relative so the button can anchor to it
+                (wrapper as HTMLElement).style.position = 'relative';
+                (wrapper as HTMLElement).style.display = 'block';
+
+                const btn = document.createElement('button');
+                btn.className = 'gr8-delete-btn';
+                btn.type = 'button';
+                btn.setAttribute('data-target', id);
+                btn.setAttribute(
+                    'onclick',
+                    `(function(btn){
+                    var id = btn.getAttribute('data-target');
+                    var el = document.getElementById(id);
+                    if (el) {
+                        var next = el.nextElementSibling;
+                        el.remove();
+                        if (next && next.classList.contains('gr8-media-cursor')) next.remove();
+                    }
+                })(this)`
+                );
+                btn.innerHTML = '✕';
+                btn.style.cssText = 'position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;background:#ED1F24;color:white;border:none;font-size:16px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;z-index:10;';
+
+                wrapper.appendChild(btn);
+            });
+
             checkFormats();
         }
     }, []);
@@ -109,18 +149,65 @@ export function Gr8RichTextEditor({ courseId, initialContent, onChange, onSave, 
 
         onMediaQueued(uniqueId, file, localUrl);
 
-        let previewTag = '';
+        let previewContent = '';
         if (file.type.startsWith('image/')) {
-            previewTag = `<br><div id="${uniqueId}" align="center"><img src="${localUrl}" width="100%" style="max-width: 800px; border-radius: 8px;" /></div><br>`;
+            previewContent = `<img src="${localUrl}" width="100%" style="border-radius: 8px; display: block;" />`;
         } else if (file.type.startsWith('video/')) {
-            previewTag = `<br><div id="${uniqueId}" align="center"><video width="100%" style="max-width: 800px; border-radius: 8px;" controls><source src="${localUrl}" type="${file.type}"></video></div><br>`;
+            previewContent = `<video src="${localUrl}" width="100%" style="border-radius: 8px; display: block;" controls preload="metadata"></video>`;
+        } else if (file.type === 'application/pdf') {
+            previewContent = `<iframe src="${localUrl}" style="width: 100%; height: 600px; border: 2px solid #D1D8DD; border-radius: 8px; display: block;" frameborder="0"></iframe>`;
         } else {
-            previewTag = `<br><div id="${uniqueId}" align="center"><span data-local="${localUrl}" style="color: #1A4C8B; font-weight: bold; background: #F4F6F8; padding: 10px; border-radius: 8px; display: inline-block;">⏳ Pending Upload: ${file.name}</span></div><br>`;
+            previewContent = `<span data-local="${localUrl}" style="color: #1A4C8B; font-weight: bold; background: #F4F6F8; padding: 10px; border-radius: 8px; display: inline-block;">⏳ Pending Upload: ${file.name}</span>`;
         }
+
+        const previewTag = `
+    <div id="${uniqueId}" class="gr8-media-wrapper" contenteditable="false" style="width: 100%; max-width: 800px; margin: 24px auto; user-select: none;">
+        <div style="position: relative; display: inline-block; width: 100%;">
+            <div style="text-align: center;">
+                ${previewContent}
+            </div>
+            <button
+                class="gr8-delete-btn"
+                type="button"
+                onclick="(function(btn){
+                    var id = btn.getAttribute('data-target');
+                    var el = document.getElementById(id);
+                    if (el) {
+                        var next = el.nextElementSibling;
+                        el.remove();
+                        if (next && next.classList.contains('gr8-media-cursor')) next.remove();
+                    }
+                })(this)"
+                data-target="${uniqueId}"
+                style="position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%; background: #ED1F24; color: white; border: none; font-size: 16px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; z-index: 10;"
+            >✕</button>
+        </div>
+    </div><p class="gr8-media-cursor"><br></p>
+`;
 
         editorRef.current?.focus();
         document.execCommand('insertHTML', false, previewTag);
-        handleEditorInput();
+
+        // Move cursor into the sentinel paragraph that follows the media block
+        setTimeout(() => {
+            const editor = editorRef.current;
+            if (!editor) return;
+
+            const sentinels = editor.querySelectorAll('p.gr8-media-cursor');
+            const target = sentinels[sentinels.length - 1] as HTMLElement | null;
+
+            if (target) {
+                const sel = window.getSelection();
+                const range = document.createRange();
+                range.setStart(target, 0);
+                range.collapse(true);
+                sel?.removeAllRanges();
+                sel?.addRange(range);
+                target.scrollIntoView({ block: 'nearest' });
+            }
+
+            handleEditorInput();
+        }, 50);
 
         setIsUploadingMedia(false);
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -181,7 +268,17 @@ export function Gr8RichTextEditor({ courseId, initialContent, onChange, onSave, 
     };
 
     const handleEditorInput = () => {
-        if (editorRef.current) onChange(editorRef.current.innerHTML);
+        if (!editorRef.current) return;
+
+        // Clone the DOM, strip editor-only elements before saving
+        const clone = editorRef.current.cloneNode(true) as HTMLElement;
+        clone.querySelectorAll('.gr8-delete-btn').forEach(el => el.remove());
+        clone.querySelectorAll('.gr8-media-cursor').forEach(el => {
+            // Only remove sentinel paragraphs that are truly empty
+            if (!el.textContent?.trim()) el.remove();
+        });
+
+        onChange(clone.innerHTML);
         checkFormats();
     };
 
@@ -266,6 +363,18 @@ export function Gr8RichTextEditor({ courseId, initialContent, onChange, onSave, 
 
     return (
         <>
+            <style>{`
+                /* Add hover state to the inline button */
+                .gr8-delete-btn:hover {
+                    background: #cc0000 !important;
+                }
+
+                /* Hide the delete row when viewed outside the editor */
+                body:not(:has(.gr8-editor-area)) .gr8-delete-row {
+                    display: none !important;
+                }
+            `}</style>
+
             <div className="p-4 md:p-8 lg:p-12 pb-2 md:pb-4 flex items-center w-full max-w-6xl mx-auto shrink-0">
                 <button onClick={onBack} className="flex items-center gap-x-3 group cursor-pointer outline-none">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#222" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="group-hover:-translate-x-1 transition-transform">
@@ -416,7 +525,7 @@ export function Gr8RichTextEditor({ courseId, initialContent, onChange, onSave, 
                             onClick={(e) => { e.preventDefault(); fileInputRef.current?.click(); }}
                             disabled={isUploadingMedia}
                             className={`flex items-center gap-x-2 text-[13px] font-bold outline-none px-2 py-1.5 rounded transition-colors
-                                ${isUploadingMedia
+                                ${isUploadingMedia
                                     ? 'text-gray-400 cursor-not-allowed'
                                     : 'text-[#0A7F93] hover:text-[#EBB637] hover:bg-[#EBB637]/10'
                                 }`
@@ -441,19 +550,35 @@ export function Gr8RichTextEditor({ courseId, initialContent, onChange, onSave, 
                     onPaste={handlePaste}
                     onMouseUp={handleEditorMouseUp}
                     onKeyUp={checkFormats}
-                    onClick={checkFormats}
-                    className="w-full bg-white border border-[#D1D8DD] rounded-b-xl p-8 md:p-12 text-[16px] text-black font-medium leading-relaxed outline-none transition-all focus:border-[#EBB637] focus:ring-4 focus:ring-[#EBB637]/20 shadow-sm min-h-[500px]
-                        [&_p]:mb-4
-                        [&_h1]:text-4xl [&_h1]:font-black [&_h1]:text-[#222] [&_h1]:mb-4
-                        [&_h2]:text-3xl [&_h2]:font-extrabold [&_h2]:text-[#222] [&_h2]:mb-3
-                        [&_h3]:text-2xl [&_h3]:font-bold [&_h3]:text-[#222] [&_h3]:mb-3
-                        [&_h4]:text-xl [&_h4]:font-bold [&_h4]:text-[#222] [&_h4]:mb-2
-                        [&_h5]:text-lg [&_h5]:font-bold [&_h5]:text-[#222] [&_h5]:mb-2
-                        [&_ul]:list-disc [&_ul]:ml-8 [&_ul]:mb-4
-                        [&_ol]:list-decimal [&_ol]:ml-8 [&_ol]:mb-4
-                        [&_li]:pl-2 [&_li]:mb-1
-                        [&_b]:font-bold [&_i]:italic [&_u]:underline [&_strike]:line-through
-                    "
+                    onClick={(e) => {
+                        const target = e.target as HTMLElement;
+                        const deleteBtn = target.closest('.gr8-delete-btn');
+
+                        if (deleteBtn) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const idToRemove = deleteBtn.getAttribute('data-target');
+                            if (idToRemove) {
+                                // Remove the table
+                                const elementToRemove = document.getElementById(idToRemove);
+                                if (elementToRemove) elementToRemove.remove();
+                                handleEditorInput();
+                            }
+                        }
+                        checkFormats();
+                    }}
+                    className="w-full bg-white border border-[#D1D8DD] rounded-b-xl p-8 md:p-12 text-[16px] text-black font-medium leading-relaxed outline-none transition-all focus:border-[#EBB637] focus:ring-4 focus:ring-[#EBB637]/20 shadow-sm min-h-[500px] gr8-editor-area
+                        [&_p]:mb-4
+                        [&_h1]:text-4xl [&_h1]:font-black [&_h1]:text-[#222] [&_h1]:mb-4
+                        [&_h2]:text-3xl [&_h2]:font-extrabold [&_h2]:text-[#222] [&_h2]:mb-3
+                        [&_h3]:text-2xl [&_h3]:font-bold [&_h3]:text-[#222] [&_h3]:mb-3
+                        [&_h4]:text-xl [&_h4]:font-bold [&_h4]:text-[#222] [&_h4]:mb-2
+                        [&_h5]:text-lg [&_h5]:font-bold [&_h5]:text-[#222] [&_h5]:mb-2
+                        [&_ul]:list-disc [&_ul]:ml-8 [&_ul]:mb-4
+                        [&_ol]:list-decimal [&_ol]:ml-8 [&_ol]:mb-4
+                        [&_li]:pl-2 [&_li]:mb-1
+                        [&_b]:font-bold [&_i]:italic [&_u]:underline [&_strike]:line-through
+                    "
                 />
 
                 <div className="flex justify-center mt-10 shrink-0">
@@ -461,8 +586,8 @@ export function Gr8RichTextEditor({ courseId, initialContent, onChange, onSave, 
                         onClick={onSave}
                         disabled={isSaveDisabled}
                         className={`w-full md:w-auto md:px-32 py-4 rounded-xl font-black text-[15px] uppercase tracking-wide transition-all shadow-md outline-none
-                            ${!isSaveDisabled ? 'bg-[#0A7F93] text-white hover:bg-[#086a7a] hover:shadow-lg hover:-translate-y-1' : 'bg-[#D1D8DD] text-gray-400 cursor-not-allowed shadow-none'}
-                        `}
+                            ${!isSaveDisabled ? 'bg-[#0A7F93] text-white hover:bg-[#086a7a] hover:shadow-lg hover:-translate-y-1' : 'bg-[#D1D8DD] text-gray-400 cursor-not-allowed shadow-none'}
+                        `}
                     >
                         {isEditing ? 'Update' : 'Save'}
                     </button>

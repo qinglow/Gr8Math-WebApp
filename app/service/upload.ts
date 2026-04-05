@@ -1,6 +1,6 @@
 'use server'
 
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 
 const s3Client = new S3Client({
     region: "auto",
@@ -41,6 +41,21 @@ export async function uploadLessonMediaToTigris(formData: FormData) {
         return { success: true, publicUrl };
     } catch (error: any) {
         console.error("Tigris Upload Error:", error);
+        return { success: false, error: error.message };
+    }
+}
+
+export async function deleteMediaFromTigris(fileKey: string) {
+    try {
+        const command = new DeleteObjectCommand({
+            Bucket: process.env.TIGRIS_BUCKET_NAME!, 
+            Key: fileKey,
+        });
+
+        await s3Client.send(command);
+        return { success: true };
+    } catch (error: any) {
+        console.error("Failed to delete from Tigris:", error);
         return { success: false, error: error.message };
     }
 }

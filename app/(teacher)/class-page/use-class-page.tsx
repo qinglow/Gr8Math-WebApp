@@ -281,7 +281,10 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
                     ? prev.map(a => (a.id === editingLessonId && a.type === 'assessment') ? newItem : a) 
                     : [newItem, ...prev]
                 );
-                setToastMessage(isEditingLesson ? 'Assessment Updated!' : 'Assessment Published!'); 
+                
+                setToastMessage(isEditingLesson ? 'Assessment updated!' : 'Assessment published!');
+                setShowToast(true);
+                setTimeout(() => setShowToast(false), 3000);
                 resetEditor();
             } else { 
                 alert(res.error || "Failed to publish."); 

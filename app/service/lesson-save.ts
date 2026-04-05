@@ -24,30 +24,32 @@ export async function handleLessonSave({
     let finalHtmlContent = lessonContent;
     const parsedCourseId = parseInt(courseId, 10);
 
-    // 1. PROCESS DEFERRED UPLOADS
-    if (pendingMedia.length > 0) {
+    if (pendingMedia && pendingMedia.length > 0) {
         for (const media of pendingMedia) {
-            if (finalHtmlContent.includes(media.localUrl)) {
+            // FIX 1: Check by media.id instead of localUrl. This is 100% bulletproof.
+            if (finalHtmlContent.includes(media.id)) {
                 const formData = new FormData();
                 formData.append('file', media.file);
                 formData.append('courseId', courseId);
 
                 const response = await uploadLessonMediaToTigris(formData);
                 if (!response.success) throw new Error(response.error);
-                
+
                 const publicUrl = response.publicUrl;
 
                 let finalTag = '';
                 if (media.file.type.startsWith('image/')) {
-                    finalTag = `<div align="center"><img src="${publicUrl}" width="100%" style="max-width: 800px; border-radius: 8px;" /></div>`;
+                    finalTag = `<div id="${media.id}" align="center"><img src="${publicUrl}" width="100%" style="max-width: 800px; border-radius: 8px;" /></div>`;
                 } else if (media.file.type.startsWith('video/')) {
-                    finalTag = `<div align="center"><video width="100%" style="max-width: 800px; border-radius: 8px;" controls><source src="${publicUrl}" type="${media.file.type}"></video></div>`;
+                    // FIX 2: Use the native video player for the final save
+                    finalTag = `<div id="${media.id}" align="center"><video src="${publicUrl}" width="100%" style="max-width: 800px; border-radius: 8px;" controls></video></div>`;
                 } else if (media.file.type === 'application/pdf') {
-                    finalTag = `<iframe src="https://docs.google.com/gview?embedded=true&url=${publicUrl}" width="100%" height="500px" style="border: none; border-radius: 8px;"></iframe>`;
+                    // FIX 3: Render the PDF in an inline viewer for the final save
+                    finalTag = `<div id="${media.id}" align="center" style="width: 100%; max-width: 800px; height: 600px; margin: 0 auto; border: 2px solid #D1D8DD; border-radius: 8px; overflow: hidden;"><iframe src="${publicUrl}" width="100%" height="100%" frameborder="0"></iframe></div>`;
                 } else {
-                    finalTag = `<a href="${publicUrl}" target="_blank" style="color: #1A4C8B; font-weight: bold;">📄 Attached File: ${media.file.name}</a>`;
+                    finalTag = `<div id="${media.id}" align="center"><a href="${publicUrl}" target="_blank" style="color: #1A4C8B; font-weight: bold;">📄 Attached File: ${media.file.name}</a></div>`;
                 }
-                
+
                 const regex = new RegExp(`<div id="${media.id}"[^>]*>[\\s\\S]*?<\\/div>`, 'g');
                 finalHtmlContent = finalHtmlContent.replace(regex, finalTag);
             } else {
@@ -85,7 +87,7 @@ export async function handleLessonSave({
             parsedCourseId,
             parseInt(weekNumber),
             lessonTitle,
-            finalHtmlContent 
+            finalHtmlContent
         );
 
         if (response.success && response.lesson) {

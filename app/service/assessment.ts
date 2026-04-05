@@ -29,7 +29,14 @@ export async function publishAssessmentAction(params: {
         const modCheck = await checkContentModeration(allTextToCheck);
         const status = modCheck.isSafe ? 'approved' : 'pending';
 
-        const totalPoints = params.questions.reduce((sum, q) => sum + (Number(q.points) || 1), 0);
+        // 🌟 FIX: Calculate total points by multiplying the points value by the number of correct answers
+        const totalPoints = params.questions.reduce((sum, q) => {
+            const pts = Number(q.points) || 1;
+            if (q.type === 'Checkboxes' && q.correctAnswers && q.correctAnswers.length > 0) {
+                return sum + (pts * q.correctAnswers.length);
+            }
+            return sum + pts; // Default to standard points for single-answer types
+        }, 0);
 
         const { data: assessment, error: aErr } = await supabase
             .from('assessment_created')
@@ -71,20 +78,15 @@ export async function publishAssessmentAction(params: {
 
             // 4. Batch Insert Choices
             if (q.choices && q.choices.length > 0) {
+                const stripPts = (s: string) => s.replace(/\s*\[\s*\d+(?:\.\d+)?\s*pts?\s*\]\s*/gi, '').trim();
+
+
                 const choicesToInsert = q.choices.map((choiceText: string) => {
-                    const cleanChoiceText = choiceText.trim();
-                    const pts = q.points !== undefined ? q.points : 1;
-
-                    // 1. Match against the correctAnswers array FIRST
                     const correctArray = Array.isArray(q.correctAnswers) ? q.correctAnswers : [];
-                    const isCorrect = correctArray.some((ans: string) => ans.trim() === cleanChoiceText);
-
-                    // 2. ONLY prefix the choice with points if it is correct!
-                    const finalChoiceText = isCorrect ? `[${pts} pts] ${cleanChoiceText}` : cleanChoiceText;
-
+                    const isCorrect = correctArray.some((ans: string) => ans.trim() === choiceText.trim());
                     return {
                         question_id: savedQ.id,
-                        choice_text: finalChoiceText,
+                        choice_text: choiceText.trim(),
                         is_correct: isCorrect
                     };
                 });
@@ -187,7 +189,14 @@ export async function updateAssessmentAction(params: {
             .eq('id', params.assessmentId)
             .single();
 
-        const totalPoints = params.questions.reduce((sum, q) => sum + (Number(q.points) || 1), 0);
+       
+        const totalPoints = params.questions.reduce((sum, q) => {
+            const pts = Number(q.points) || 1;
+            if (q.type === 'Checkboxes' && q.correctAnswers && q.correctAnswers.length > 0) {
+                return sum + (pts * q.correctAnswers.length);
+            }
+            return sum + pts; // Default to standard points for single-answer types
+        }, 0);
 
         // 1. Update Main Info
         const { error: aErr } = await supabase
@@ -197,6 +206,7 @@ export async function updateAssessmentAction(params: {
                 start_time: params.startTime,
                 end_time: params.endTime,
                 assessment_items: params.questions.length,
+                total_points: totalPoints,
                 assessment_number: params.assessmentNumber,
                 assessment_quarter: params.assessmentQuarter,
                 status: status
@@ -251,14 +261,17 @@ export async function updateAssessmentAction(params: {
             if (qErr) throw qErr;
 
             if (q.choices && q.choices.length > 0) {
-                const choicesToInsert = q.choices.map((choiceText: string) => {
-                    const cleanChoiceText = choiceText.trim();
-                    const pts = q.points !== undefined ? q.points : 1;
-                    const correctArray = Array.isArray(q.correctAnswers) ? q.correctAnswers : [];
-                    const isCorrect = correctArray.some((ans: string) => ans.trim() === cleanChoiceText);
-                    const finalChoiceText = isCorrect ? `[${pts} pts] ${cleanChoiceText}` : cleanChoiceText;
+                const stripPts = (s: string) => s.replace(/\s*\[\s*\d+(?:\.\d+)?\s*pts?\s*\]\s*/gi, '').trim();
 
-                    return { question_id: savedQ.id, choice_text: finalChoiceText, is_correct: isCorrect };
+
+                const choicesToInsert = q.choices.map((choiceText: string) => {
+                    const correctArray = Array.isArray(q.correctAnswers) ? q.correctAnswers : [];
+                    const isCorrect = correctArray.some((ans: string) => ans.trim() === choiceText.trim());
+                    return {
+                        question_id: savedQ.id,
+                        choice_text: choiceText.trim(),
+                        is_correct: isCorrect
+                    };
                 });
 
                 const { error: cErr } = await supabase.from('assessment_choices').insert(choicesToInsert);

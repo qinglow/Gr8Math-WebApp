@@ -17,30 +17,33 @@ export function AddContentModal({
     dllAvailableFrom, setDllAvailableFrom, dllAvailableUntil, setDllAvailableUntil, hasDllDetailsError,
     dllFromError, dllUntilError,
     isRestricted,
-    userId 
+    userId
 }: any) {
 
     // --- 24 HOUR BAN STATE ---
     const [activelyRestricted, setActivelyRestricted] = useState(isRestricted);
     const [timeLeft, setTimeLeft] = useState({ h: 24, m: 0 });
+    const [isValidating, setIsValidating] = useState(true);
 
-   useEffect(() => {
-
+    useEffect(() => {
         async function verify() {
             if (isRestricted && userId) {
+                setIsValidating(true);
                 const result = await checkAndLiftRestriction(userId);
 
                 if (!result.stillRestricted) {
                     setActivelyRestricted(false);
                 } else {
-                    setTimeLeft({ 
-                        h: result.hoursRemaining ?? 24, 
-                        m: result.minutesRemaining ?? 0 
+                    setTimeLeft({
+                        h: result.hoursRemaining ?? 24,
+                        m: result.minutesRemaining ?? 0
                     });
                 }
             } else {
-                // console.warn("BROWSER LOG: verify() skipped. isRestricted:", isRestricted, "userId:", userId);
+                setActivelyRestricted(false);
             }
+
+            setIsValidating(false);
         }
         verify();
     }, [isRestricted, userId]);
@@ -60,32 +63,40 @@ export function AddContentModal({
         { id: 'blackboard', label: 'Virtual Blackboard' }
     ];
 
-   // --- HIJACK THE MODAL IF THE USER IS RESTRICTED ---
+    if (isValidating) {
+        return (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                <div className="w-8 h-8 border-4 border-[#1A4C8B]/20 border-t-[#1A4C8B] rounded-full animate-spin"></div>
+            </div>
+        );
+    }
+
+    // --- HIJACK THE MODAL IF THE USER IS RESTRICTED ---
     if (activelyRestricted) {
         return (
             <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
                 <div className="bg-white rounded-3xl shadow-2xl p-6 md:p-8 w-full max-w-[420px] relative animate-in zoom-in-95 duration-200 flex flex-col text-center">
-                    
+
                     {/* The specific 'X' close button from your image */}
                     <button aria-label="Close modal" onClick={closeAddModal} className="absolute top-5 right-5 p-1.5 text-gray-400 hover:text-gray-800 transition-colors outline-none cursor-pointer">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                     </button>
 
                     <h2 className="text-[22px] font-black text-[#222] mb-4 mt-2">Account Restricted</h2>
-                    
+
                     <p className="text-[14px] text-[#666] font-medium leading-relaxed mb-6">
                         You have reached 3 warning strikes. You are currently restricted from posting new content.
                     </p>
-                    
-                  <div className="bg-red-50 rounded-xl border border-red-100 p-4 mb-2">
-        <span className="text-[12px] font-extrabold text-[#ED1F24] uppercase tracking-wider block mb-1">
-            Restriction lifts automatically in:
-        </span>
-        <span className="text-[18px] font-black text-[#ED1F24]">
-            {/* Show both H and M */}
-            {timeLeft.h}h {timeLeft.m}m
-        </span>
-    </div>
+
+                    <div className="bg-red-50 rounded-xl border border-red-100 p-4 mb-2">
+                        <span className="text-[12px] font-extrabold text-[#ED1F24] uppercase tracking-wider block mb-1">
+                            Restriction lifts automatically in:
+                        </span>
+                        <span className="text-[18px] font-black text-[#ED1F24]">
+                            {/* Show both H and M */}
+                            {timeLeft.h}h {timeLeft.m}m
+                        </span>
+                    </div>
 
                 </div>
             </div>

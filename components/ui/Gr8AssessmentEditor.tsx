@@ -42,30 +42,44 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, isEdi
     const [mathValue, setMathValue] = useState('');
     const [activeMathTarget, setActiveMathTarget] = useState<{ qId: string, choiceIndex?: number } | null>(null);
 
-    // --- ASSESSMENT STATE ---
-   // --- ASSESSMENT STATE ---
     const [questions, setQuestions] = useState<QuestionData[]>(() => {
         if (initialQuestions && initialQuestions.length > 0) {
             return initialQuestions.map(q => {
-                let currentPoints = 1;
-                const ptsRegex = /^\[(\d+(?:\.\d+)?)\s*pts\]\s*(.*)/i;
-                
-                const stripPoints = (text: string) => {
-                    const match = text.match(ptsRegex);
-                    if (match) {
-                        currentPoints = parseFloat(match[1]);
-                        return match[2].trim();
-                    }
-                    return text;
-                };
+                const stripPts = (s: string) => s.replace(/^\s*\[\s*\d+(?:\.\d+)?\s*pts?\s*\]\s*/i, '').trim();
 
-                return { 
-                    ...q, 
-                    hasKeyError: false, 
-                    pendingQuestionImage: null, 
+                // 🌟 FIX: Safely extract points depending on the question type
+                let currentPoints = 1;
+
+                if (q.type === 'Upload Image') {
+                    // Because we saved just the raw number in the backend for Upload Image
+                    if (q.choices && q.choices.length > 0 && !isNaN(parseFloat(q.choices[0]))) {
+                        currentPoints = parseFloat(q.choices[0]);
+                    } else if (typeof q.points === 'number' && q.points > 0) {
+                        currentPoints = q.points;
+                    }
+                } else {
+                    // Points live in the [X pts] tag for text-based questions
+                    const allText = [q.question || '', ...(q.choices || []), ...(q.correctAnswers || [])].join(' ');
+                    const match = allText.match(/\[\s*(\d+(?:\.\d+)?)\s*pts?\s*\]/i);
+                    currentPoints = match ? parseFloat(match[1]) : (typeof q.points === 'number' && q.points > 0 ? q.points : 1);
+                }
+
+                const isUpload = q.type === 'Upload Image';
+
+                const finalChoices = isUpload ? [] : (q.choices || []).map(stripPts).filter(c => c !== '');
+                const finalCorrect = isUpload ? [] : (q.correctAnswers || []).map(stripPts).filter(c => c !== '');
+
+                return {
+                    ...q,
+                    question: stripPts(q.question || ''),
+                    hasError: false,
+                    hasKeyError: false,
+                    isAnswerKeyMode: false,
+                    pendingQuestionImage: null,
                     pendingAnswerImage: null,
-                    choices: q.type === 'Upload Image' ? [] : q.choices.map(stripPoints),
-                    correctAnswers: q.type === 'Upload Image' ? [] : q.correctAnswers.map(stripPoints),
+                    choices: finalChoices.length > 0 ? finalChoices : [''],
+                    correctAnswers: finalCorrect,
+                    choiceErrors: finalChoices.length > 0 ? finalChoices.map(() => false) : [false],
                     points: currentPoints
                 };
             });
@@ -150,16 +164,16 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, isEdi
         setQuestions(questions.map(q => {
             if (q.id === id) {
                 const updatedQ = { ...q, [field]: value, hasError: false };
-                
+
                 if (field === 'type') {
                     updatedQ.correctAnswers = [];
                     updatedQ.choiceErrors = [];
-                    
+
                     if (value === 'Upload Image' || value === 'Short Answer' || value === 'Paragraph') {
-                        updatedQ.choices = []; 
+                        updatedQ.choices = [];
                     } else {
                         // Reset back to standard choices
-                        updatedQ.choices = ['']; 
+                        updatedQ.choices = [''];
                         updatedQ.choiceErrors = [false];
                     }
                 }
@@ -250,7 +264,7 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, isEdi
         const validatedQuestions = questions.map(q => {
             let qError = false;
             let keyError = false;
-            let cErrors = q.choiceErrors.map(() => false);
+            let cErrors = (q.choiceErrors ?? []).map(() => false);
 
             if (!q.question.trim() && !q.imageUrl && !q.pendingQuestionImage) {
                 qError = true; isValid = false;
@@ -260,15 +274,23 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, isEdi
                     if (!choice.trim()) { cErrors[idx] = true; isValid = false; }
                 });
             }
-            
-            // For 'Upload Image', we do not require a typed correct answer.
-            if (q.type !== 'Upload Image') {
-                const validAnswers = q.correctAnswers.filter(ans => ans && ans.trim() !== '');
-                if (validAnswers.length === 0) {
-                    keyError = true; isValid = false;
-                }
-            }
 
+            if (q.type === 'Upload Image') {
+                q.choices = [`[${q.points} pts]`];
+                q.correctAnswers = [`[${q.points} pts]`];
+            } else if (q.type === 'Short Answer' || q.type === 'Paragraph') {
+                // Single answer — tag it
+                const ans = q.correctAnswers[0] || '';
+                q.choices = [`[${q.points} pts] ${ans}`];
+                q.correctAnswers = [`[${q.points} pts] ${ans}`];
+            } else {
+                // Multiple Choice, Checkboxes, Dropdown — tag only correct choices
+                q.choices = q.choices.map(c => {
+                    const isCorrect = q.correctAnswers.includes(c);
+                    return isCorrect ? `[${q.points} pts] ${c}` : c;
+                });
+                q.correctAnswers = q.correctAnswers.map(c => `[${q.points} pts] ${c}`);
+            }
             return { ...q, hasError: qError, hasKeyError: keyError, choiceErrors: cErrors };
         });
 
@@ -279,7 +301,7 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, isEdi
             let finalQuestions = [...validatedQuestions];
             for (let i = 0; i < finalQuestions.length; i++) {
                 let q = finalQuestions[i];
-                
+
                 // 1. Upload pending Question Image
                 if (q.pendingQuestionImage) {
                     const formData = new FormData();
@@ -289,23 +311,30 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, isEdi
                     if (res.success && res.publicUrl) q.imageUrl = res.publicUrl;
                 }
 
+
                 // ---------- ADD THIS NEW BLOCK RIGHT HERE ----------
                 if (q.type === 'Upload Image') {
-                    // For Upload Image, just save the points (e.g. "[2 pts]") with no extra words
-                    q.choices = [`[${q.points} pts]`];
-                    q.correctAnswers = [`[${q.points} pts]`];
+                    // 🌟 FIX: For Upload Image, the database just needs the raw points. No tags.
+                    q.choices = [`${q.points}`];
+                    q.correctAnswers = [`${q.points}`];
+                } else if (q.type === 'Short Answer' || q.type === 'Paragraph') {
+                    const stripPts = (s: string) => s.replace(/\s*\[\s*\d+(?:\.\d+)?\s*pts?\s*\]\s*/gi, '').trim();
+                    const cleanAns = stripPts(q.correctAnswers[0] || '');
+                    q.choices = [`[${q.points} pts] ${cleanAns}`];
+                    q.correctAnswers = [`[${q.points} pts] ${cleanAns}`];
                 } else {
-                    // For everything else, attach the points to the text properly
-                    const formatWithPoints = (text: string, isCorrect: boolean) => {
-                        const clean = text.replace(/^\[\d+(?:\.\d+)?\s*pts\]\s*/i, '').trim();
-                        return isCorrect ? `[${q.points} pts] ${clean}` : clean;
-                    };
-                    q.choices = q.choices.map(c => formatWithPoints(c, q.correctAnswers.includes(c) || q.type === 'Short Answer' || q.type === 'Paragraph'));
-                    q.correctAnswers = q.correctAnswers.map(c => formatWithPoints(c, true));
+                    const stripPts = (s: string) => s.replace(/\s*\[\s*\d+(?:\.\d+)?\s*pts?\s*\]\s*/gi, '').trim();
+                    q.choices = q.choices.map((c: string) => {
+                        const cleanC = stripPts(c);
+                        const isCorrect = q.correctAnswers.some((ans: string) => stripPts(ans) === cleanC);
+                        return isCorrect ? `[${q.points} pts] ${cleanC}` : cleanC;
+                    });
+                    q.correctAnswers = q.correctAnswers.map((c: string) => `[${q.points} pts] ${stripPts(c)}`);
                 }
                 // ----------------------------------------------------
+                // ----------------------------------------------------
             }
-            
+
             onPublish(finalQuestions);
         } catch (error: any) {
             alert(error.message);
@@ -405,7 +434,7 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, isEdi
                                         </button>
                                         <label className="shrink-0 p-3 rounded-lg cursor-pointer border bg-gray-50 hover:bg-gray-100 border-[#D1D8DD]">
                                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                                            <input aria-label='sw' type="file" accept="image/*" className="hidden" disabled={isPublishing} onChange={(e) => handleStageQuestionImage(q.id, e)} />
+                                            <input aria-label='sw' type="file" accept=".jpg, .jpeg, .png" className="hidden" disabled={isPublishing} onChange={(e) => handleStageQuestionImage(q.id, e)} />
                                         </label>
                                     </div>
                                     {q.hasError && <span className="text-[12px] font-bold text-[#ED1F24] ml-1">Please enter a question or attach an image</span>}
@@ -491,19 +520,19 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, isEdi
                             <p className="text-[14px] font-bold text-[#666]">Click the keyboard icon to open the math virtual keyboard.</p>
                             <div className="bg-white border-2 border-[#D1D8DD] rounded-xl p-2 focus-within:border-[#EBB637] transition-colors shadow-inner min-h-[70px] flex items-center cursor-text" onClick={() => mathFieldRef.current?.focus()}>
                                 {/* @ts-ignore */}
-                                <math-field 
-                                    ref={mathFieldRef} 
-                                    style={{ 
-                                        width: '100%', 
-                                        fontSize: '28px', 
-                                        outline: 'none', 
-                                        border: 'none', 
+                                <math-field
+                                    ref={mathFieldRef}
+                                    style={{
+                                        width: '100%',
+                                        fontSize: '28px',
+                                        outline: 'none',
+                                        border: 'none',
                                         backgroundColor: 'transparent',
-                                        color: '#000000' 
+                                        color: '#000000'
                                     }}
                                 >
                                     {mathValue}
-                                {/* @ts-ignore */}
+                                    {/* @ts-ignore */}
                                 </math-field>
                             </div>
                         </div>

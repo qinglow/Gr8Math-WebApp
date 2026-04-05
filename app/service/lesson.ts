@@ -1,6 +1,7 @@
 'use server'
 import { createClient } from "@/lib/supabase/server";
 import { checkContentModeration } from "@/app/service/moderation";
+import { deleteMediaFromTigris } from "@/app/service/upload";
 
 export async function saveLessonWithNotifications(
     sectionId: number,
@@ -117,6 +118,35 @@ export async function updateLesson(
 ) {
     const supabase = await createClient();
 
+    // 🌟 --- NEW: FETCH OLD CONTENT & DELETE ORPHANED TIGRIS FILES ---
+    const { data: oldLesson } = await supabase
+        .from('lesson')
+        .select('lesson_content')
+        .eq('id', lessonId)
+        .single();
+
+    if (oldLesson && oldLesson.lesson_content) {
+        const urlRegex = /https:\/\/[^\s"']+\.fly\.storage\.tigris\.dev\/[^\s"']+/g;
+        
+        const oldUrls: string[] = oldLesson.lesson_content.match(urlRegex) || [];
+        const newUrls: string[] = lessonContent.match(urlRegex) || [];
+
+        // Find URLs that exist in the old content but NOT in the new content
+        const deletedUrls = oldUrls.filter((url: string) => !newUrls.includes(url));
+
+        // Delete orphaned files from Tigris cloud
+        if (deletedUrls.length > 0) {
+            for (const url of deletedUrls) {
+                // Extract just the file key from the end of the URL
+                const fileKey = url.split('.fly.storage.tigris.dev/')[1];
+                if (fileKey) {
+                    await deleteMediaFromTigris(fileKey);
+                }
+            }
+        }
+    }
+    // ----------------------------------------------------------------
+
     // --- MODERATION CHECK ---
     const modCheck = await checkContentModeration(lessonTitle + " " + lessonContent);
     const status = modCheck.isSafe ? 'approved' : 'pending';
@@ -159,7 +189,7 @@ export async function updateLesson(
     
     if (dbUser) {
         await supabase.from('audit_trails').insert({
-            user_id: dbUser.id, // Fixed: use dbUser.id directly
+            user_id: dbUser.id,
             resource: 'Lesson',
             action: 'UPDATE',
             status: 'SUCCESS',
