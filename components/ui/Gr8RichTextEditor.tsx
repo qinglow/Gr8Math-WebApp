@@ -43,7 +43,7 @@ export function Gr8RichTextEditor({ courseId, initialContent, onChange, onSave, 
     const [showHighlightPicker, setShowHighlightPicker] = useState(false);
     const [copiedFormat, setCopiedFormat] = useState<CopiedFormatType>(null);
     const [isUploadingMedia, setIsUploadingMedia] = useState(false);
-
+    const [savedSelection, setSavedSelection] = useState<Range | null>(null);
     // --- NEW: Math States ---
     const [showMathModal, setShowMathModal] = useState(false);
     const [mathValue, setMathValue] = useState('');
@@ -54,7 +54,7 @@ export function Gr8RichTextEditor({ courseId, initialContent, onChange, onSave, 
         insertOrderedList: false, insertUnorderedList: false, formatBlock: '',
     });
 
-   // --- FIX FOR MATHLIVE FONTS & KEYBOARD BLUR ---
+    // --- FIX FOR MATHLIVE FONTS & KEYBOARD BLUR ---
     useEffect(() => {
         // Ensure this only runs in the browser
         if (typeof window !== 'undefined') {
@@ -126,7 +126,6 @@ export function Gr8RichTextEditor({ courseId, initialContent, onChange, onSave, 
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
-    // --- NEW: Function to insert Math as an image ---
     const insertMathFormula = () => {
         if (!mathValue.trim()) {
             setShowMathModal(false);
@@ -135,15 +134,24 @@ export function Gr8RichTextEditor({ courseId, initialContent, onChange, onSave, 
 
         const encodedLatex = encodeURIComponent(mathValue);
         const mathImageUrl = `https://math.now.sh?from=${encodedLatex}&color=black`;
-        
-        const imgTag = `&nbsp;<img src="${mathImageUrl}" alt="Math Formula" style="vertical-align: middle; display: inline-block; max-height: 2em;" />&nbsp;`;
 
+        // Updated the alt tag to be an invisible space so copy-paste is seamless
+        const imgTag = `&nbsp;<img src="${mathImageUrl}" alt=" " style="vertical-align: middle; display: inline-block; max-height: 2em;" />&nbsp;`;
+
+        // Restore the cursor to where it was before the modal opened!
         editorRef.current?.focus();
+        const sel = window.getSelection();
+        if (sel && savedSelection) {
+            sel.removeAllRanges();
+            sel.addRange(savedSelection);
+        }
+
         document.execCommand('insertHTML', false, imgTag);
         handleEditorInput();
 
         setShowMathModal(false);
-        setMathValue(''); 
+        setMathValue('');
+        setSavedSelection(null); // Clear the saved selection
     };
 
     const checkFormats = () => {
@@ -335,11 +343,18 @@ export function Gr8RichTextEditor({ courseId, initialContent, onChange, onSave, 
                         <button onClick={() => execCmd('strikeThrough')} className={`p-2 rounded outline-none transition-colors ${activeFormats.strikeThrough ? 'bg-[#EBB637]/20 text-[#EBB637]' : 'hover:bg-[#EBB637]/20 hover:text-[#EBB637]'}`} title="Strikethrough">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 4H9a3 3 0 0 0-2.83 4"></path><path d="M14 12a4 4 0 0 1 0 8H6"></path><line x1="4" y1="12" x2="20" y2="12"></line></svg>
                         </button>
-                        
+
                         {/* --- NEW: MATH MODAL TRIGGER BUTTON --- */}
-                        <button onClick={() => setShowMathModal(true)} className="p-2 rounded outline-none hover:bg-[#EBB637]/20 hover:text-[#EBB637] transition-colors" title="Insert Math Formula">
+                        <button onClick={() => {
+                            // Save exactly where the cursor is right now
+                            const sel = window.getSelection();
+                            if (sel && sel.rangeCount > 0) {
+                                setSavedSelection(sel.getRangeAt(0));
+                            }
+                            setShowMathModal(true);
+                        }} className="p-2 rounded outline-none hover:bg-[#EBB637]/20 hover:text-[#EBB637] transition-colors" title="Insert Math Formula">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/>
+                                <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" />
                                 <path d="M8 7h6" /><path d="M11 4v6" /><path d="M8 14h6" /><path d="M8 17h6" />
                             </svg>
                         </button>
@@ -458,7 +473,7 @@ export function Gr8RichTextEditor({ courseId, initialContent, onChange, onSave, 
             {showMathModal && (
                 <div className="fixed inset-0 z-[600] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[600px] flex flex-col animate-in zoom-in-95 overflow-hidden">
-                        
+
                         <div className="bg-[#1A4C8B] p-4 flex items-center justify-between">
                             <h2 className="text-white font-black text-[16px] uppercase tracking-wide">Insert Math Formula</h2>
                             <button aria-label='d' onClick={() => setShowMathModal(false)} className="text-white/70 hover:text-white outline-none">
@@ -470,22 +485,22 @@ export function Gr8RichTextEditor({ courseId, initialContent, onChange, onSave, 
                             <p className="text-[13px] font-bold text-gray-500">
                                 Click the keyboard icon to open the math virtual keyboard.
                             </p>
-                            
+
                             <div className="bg-white border-2 border-[#D1D8DD] rounded-xl p-2 focus-within:border-[#EBB637] transition-colors shadow-inner min-h-[70px] flex items-center cursor-text" onClick={() => mathFieldRef.current?.focus()}>
                                 {/* @ts-ignore */}
-                                <math-field 
-                                    ref={mathFieldRef} 
-                                    style={{ 
-                                        width: '100%', 
-                                        fontSize: '28px', 
-                                        outline: 'none', 
-                                        border: 'none', 
+                                <math-field
+                                    ref={mathFieldRef}
+                                    style={{
+                                        width: '100%',
+                                        fontSize: '28px',
+                                        outline: 'none',
+                                        border: 'none',
                                         backgroundColor: 'transparent',
-                                        color: '#000000' 
+                                        color: '#000000'
                                     }}
                                 >
                                     {mathValue}
-                                {/* @ts-ignore */}
+                                    {/* @ts-ignore */}
                                 </math-field>
                             </div>
                         </div>

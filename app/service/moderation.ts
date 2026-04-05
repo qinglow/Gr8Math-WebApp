@@ -81,7 +81,7 @@ export async function decideModeration(actionId: number, decision: 'allowed' | '
             user_id: action.target_user_id,
             type: 'warning',
             title: 'Content Removed',
-            message: `Your content was removed. Warning count: ${newCount}/3.`,
+            message: `Your content was removed due to a ${action.reason_code}. Warning count: ${newCount}/3.`,
             meta: { flash_ui: true }
         });
     }

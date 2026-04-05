@@ -68,14 +68,35 @@ export function ParticipantsTabContent({
     if (!selectedParticipant && !showQuarterlyReport) {
         return (
             <div className="bg-[#F4EFED] rounded-[20px] pb-8 shadow-sm flex-1 flex flex-col overflow-hidden relative min-h-[852px]">
-                {/* Visual Background Decorators Omitted for brevity, keep your existing ones! */}
+              {/* --- Visual Background Decorators --- */}
                 <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-                    <div className="absolute left-[40px] top-[27px] w-[105px] h-[105px]">
-                        <div className="absolute w-[50px] h-[50px] left-[0px] top-[55px] bg-[#1E4B95] opacity-50" />
-                        <div className="absolute w-[50px] h-[50px] left-[55px] top-[55px] bg-[#1E4B95] opacity-50" />
-                        <div className="absolute w-[50px] h-[50px] left-[0px] top-[0px] bg-[#EFBD31] opacity-50" />
+                    {/* Top Left */}
+                    <div className="absolute left-[20px] md:left-[40px] top-[27px] w-[105px] h-[105px]">
+                        <div className="absolute w-[30px] md:w-[50px] h-[30px] md:h-[50px] left-[0px] top-[35px] md:top-[55px] bg-[#1E4B95] opacity-50" />
+                        <div className="absolute w-[30px] md:w-[50px] h-[30px] md:h-[50px] left-[35px] md:left-[55px] top-[35px] md:top-[55px] bg-[#1E4B95] opacity-50" />
+                        <div className="absolute w-[30px] md:w-[50px] h-[30px] md:h-[50px] left-[0px] top-[0px] bg-[#EFBD31] opacity-50" />
                     </div>
-                    {/* ... your other floating cubes ... */}
+
+                    {/* Top Right */}
+                    <div className="absolute right-[20px] md:right-[40px] top-[27px] w-[105px] h-[105px]">
+                        <div className="absolute w-[30px] md:w-[50px] h-[30px] md:h-[50px] right-[0px] top-[0px] bg-[#ED1F24] opacity-50" />
+                        <div className="absolute w-[30px] md:w-[50px] h-[30px] md:h-[50px] right-[35px] md:right-[55px] top-[0px] bg-[#EFBD31] opacity-50" />
+                        <div className="absolute w-[30px] md:w-[50px] h-[30px] md:h-[50px] right-[0px] top-[35px] md:top-[55px] bg-[#1E4B95] opacity-50" />
+                    </div>
+
+                    {/* Bottom Left */}
+                    <div className="absolute left-[20px] md:left-[40px] bottom-[27px] w-[105px] h-[105px]">
+                        <div className="absolute w-[30px] md:w-[50px] h-[30px] md:h-[50px] left-[0px] bottom-[0px] bg-[#EFBD31] opacity-50" />
+                        <div className="absolute w-[30px] md:w-[50px] h-[30px] md:h-[50px] left-[35px] md:left-[55px] bottom-[0px] bg-[#ED1F24] opacity-50" />
+                        <div className="absolute w-[30px] md:w-[50px] h-[30px] md:h-[50px] left-[0px] bottom-[35px] md:bottom-[55px] bg-[#1E4B95] opacity-50" />
+                    </div>
+
+                    {/* Bottom Right */}
+                    <div className="absolute right-[20px] md:right-[40px] bottom-[27px] w-[105px] h-[105px]">
+                        <div className="absolute w-[30px] md:w-[50px] h-[30px] md:h-[50px] right-[0px] bottom-[0px] bg-[#1E4B95] opacity-50" />
+                        <div className="absolute w-[30px] md:w-[50px] h-[30px] md:h-[50px] right-[35px] md:right-[55px] bottom-[0px] bg-[#1E4B95] opacity-50" />
+                        <div className="absolute w-[30px] md:w-[50px] h-[30px] md:h-[50px] right-[0px] bottom-[35px] md:bottom-[55px] bg-[#EFBD31] opacity-50" />
+                    </div>
                 </div>
 
                 <div className="relative flex justify-center items-end mt-12 mb-12 px-2 md:px-4 min-h-[250px] z-10">
