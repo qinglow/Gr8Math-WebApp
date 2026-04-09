@@ -345,3 +345,70 @@ async function notifyStudentsOfAssessment(courseId: number, assessmentId: number
         await supabase.from('notifications').insert(notifications);
     }
 }
+
+export async function fetchStudentAssessmentReview(assessmentId: number, studentId: number) {
+    const supabase = await createClient();
+
+    // 1. LOG THE INCOMING IDs
+    console.log(`\n--- [DEBUG] STARTING FETCH ---`);
+    console.log(`[DEBUG] Received Assessment ID: ${assessmentId}`);
+    console.log(`[DEBUG] Received Student ID: ${studentId}`);
+
+    try {
+        // 2. FETCH QUESTIONS
+        const { data: questions, error: qError } = await supabase
+            .from('assessment_questions')
+            .select(`
+                id, 
+                question_text, 
+                assessment_choices (id, choice_text, is_correct)
+            `)
+            .eq('assessment_id', assessmentId)
+            .order('id', { ascending: true });
+
+        if (qError) throw qError;
+        console.log(`[DEBUG] Successfully fetched ${questions?.length || 0} questions.`);
+
+        // 3. FETCH ANSWERS
+        const { data: answers, error: aError } = await supabase
+            .from('student_answers')
+            .select('question_id, choice_id, text_answer')
+            .eq('assessment_id', assessmentId)
+            .eq('student_id', studentId); // We are querying exactly what the URL passed
+
+        if (aError) throw aError;
+        
+        console.log(`[DEBUG] Successfully fetched ${answers?.length || 0} answers for student_id = ${studentId}`);
+        
+        if (answers && answers.length > 0) {
+            console.log(`[DEBUG] Sample Answer Data:`, answers[0]);
+        } else {
+            console.log(`[DEBUG] 🚨 WARNING: 0 answers found for student_id = ${studentId}. (Did you mean 43?)`);
+            
+            // EMERGENCY FALLBACK CHECK: Let's see if 43 was stored under user_id by mistake
+            const { data: fallbackAnswers } = await supabase
+                .from('student_answers')
+                .select('question_id')
+                .eq('assessment_id', assessmentId)
+                .limit(1);
+                
+            if (fallbackAnswers && fallbackAnswers.length > 0) {
+                console.log(`[DEBUG] Note: There ARE answers for this assessment in the DB, just not for student_id = ${studentId}.`);
+            }
+        }
+
+        // 4. MERGE DATA
+        const mergedData = (questions || []).map(q => {
+            const matchingAnswers = (answers || []).filter(a => a.question_id === q.id);
+            return {
+                ...q,
+                student_answers: matchingAnswers
+            };
+        });
+
+        return { success: true, data: mergedData };
+
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}

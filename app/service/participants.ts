@@ -86,6 +86,7 @@ export async function getStudentScoresFromDb(classId: number, studentId: number)
         const dateObj = new Date(item.date_accomplished);
 
         return {
+            assessment_id: ass.id,
             no: ass.assessment_number,
             title: ass.title,
             score: score,

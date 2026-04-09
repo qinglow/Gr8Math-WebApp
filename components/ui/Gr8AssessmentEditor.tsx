@@ -47,7 +47,6 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, isEdi
             return initialQuestions.map(q => {
                 const stripPts = (s: string) => s.replace(/^\s*\[\s*\d+(?:\.\d+)?\s*pts?\s*\]\s*/i, '').trim();
 
-                // 🌟 FIX: Safely extract points depending on the question type
                 let currentPoints = 1;
 
                 if (q.type === 'Upload Image') {

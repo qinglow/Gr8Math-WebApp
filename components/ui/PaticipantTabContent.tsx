@@ -1,9 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { ParticipantAssessmentCard } from '@/components/card/ParticipantAssessmentCard';
 import { Gr8RankPill } from '@/components/card/Gr8RankPill';
+import { useRouter } from 'next/navigation';
 
 import goldTrophy from '../../app/(teacher)/class-page/photos/gold-trophy.png';
 import silverTrophy from '../../app/(teacher)/class-page/photos/silver-trophy.png';
@@ -11,16 +12,24 @@ import bronzeTrophy from '../../app/(teacher)/class-page/photos/bronze-trophy.pn
 import blueBanner from '../../app/(teacher)/class-page/photos/blue-banner.png';
 import redBanner from '../../app/(teacher)/class-page/photos/red-banner.png';
 import yellowRect from '../../app/(teacher)/class-page/photos/horizontal-yellow-rectangle.png';
+import AssessmentViewPage from '@/app/(teacher)/class-page/assesssment-view/page';
+
 
 export function ParticipantsTabContent({
     participantsList = [],
     selectedParticipant,
     setSelectedParticipant,
-    showQuarterlyReport, 
+    showQuarterlyReport,
     setShowQuarterlyReport,
     selectedAssessmentResult,
     setSelectedAssessmentResult
 }: any) {
+    const router = useRouter();
+
+    // --- NEW STATES FOR FILTER AND DOWNLOAD ---
+    const [selectedMonthYear, setSelectedMonthYear] = useState('');
+    const [showDownloadOptions, setShowDownloadOptions] = useState(false);
+    const [viewingAnswers, setViewingAnswers] = useState<any | null>(null);
 
     if (!participantsList || participantsList.length === 0) {
         return (
@@ -29,11 +38,6 @@ export function ParticipantsTabContent({
             </div>
         );
     }
-
-    const now = new Date();
-    const currentMonthName = now.toLocaleString('default', { month: 'long' });
-    const currentYear = now.getFullYear();
-    const currentMonthYearLabel = `${currentMonthName} ${currentYear}`;
 
     const top1 = participantsList[0];
     const top2 = participantsList[1];
@@ -45,30 +49,79 @@ export function ParticipantsTabContent({
         return n + (s[(v - 20) % 10] || s[v] || s[0]);
     };
 
+    // --- DOWNLOAD LOGIC: PDF (Simple Table) ---
     const handleDownloadPDF = async () => {
         const html2pdf = (await import('html2pdf.js')).default;
-        
-        const element = document.getElementById('pdf-report-container');
+
+        // Target the HIDDEN simple table container instead of the UI container
+        const element = document.getElementById('simple-pdf-container');
         if (!element) return;
 
+        // Temporarily display it for the capture, then hide it again
+        element.style.display = 'block';
+
         const safeName = selectedParticipant?.name.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'student';
-        const fileName = `Monthly_Report_${safeName}_${currentMonthName}_${currentYear}.pdf`;
+        const fileName = `Monthly_Report_${safeName}_${selectedMonthYear}.pdf`;
 
         const opt: any = {
-            margin:       0.5,
-            filename:     fileName,
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true },
-            jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }
+            margin: 0.5,
+            filename: fileName,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' } // Portrait works better for simple tables
         };
 
-        html2pdf().set(opt).from(element).save();
+        html2pdf().set(opt).from(element).save().then(() => {
+            element.style.display = 'none'; // Hide it again after saving
+            setShowDownloadOptions(false);
+        });
     };
+
+    // --- DOWNLOAD LOGIC: EXCEL (CSV) ---
+    const handleDownloadExcel = () => {
+        let csvContent = "data:text/csv;charset=utf-8,";
+
+        // Headers
+        csvContent += "Assessment Test No.,Assessment Test Score,Percentage of Score,No. of Items\n";
+
+        // Rows (Use the filtered monthlyData defined below)
+        const monthlyData = getFilteredData();
+        monthlyData.forEach((row: any) => {
+            csvContent += `${row.no},="${row.score}/${row.totalPoints || row.items}",${row.percentage},${row.items}\n`;
+        });
+
+        // Footer Totals
+        const totalScore = monthlyData.reduce((acc: number, curr: any) => acc + curr.score, 0);
+        const sumTotalItems = monthlyData.reduce((acc: number, curr: any) => acc + curr.items, 0);
+        csvContent += `Total Score,${totalScore},Total No. of Items,${sumTotalItems}\n`;
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        const safeName = selectedParticipant?.name.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'student';
+        link.setAttribute("download", `Monthly_Report_${safeName}_${selectedMonthYear}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setShowDownloadOptions(false);
+    };
+
+    // --- HELPER: GET FILTERED DATA ---
+    const getFilteredData = () => {
+        if (!selectedParticipant) return [];
+        return (selectedParticipant.reportData || []).filter((item: any) => {
+            if (!item.date_accomplished || item.date_accomplished === 'N/A') return false;
+            const date = new Date(item.date_accomplished);
+            const itemMonthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            return itemMonthYear === selectedMonthYear;
+        });
+    };
+
 
     if (!selectedParticipant && !showQuarterlyReport) {
         return (
             <div className="bg-[#F4EFED] rounded-[20px] pb-8 shadow-sm flex-1 flex flex-col overflow-hidden relative min-h-[852px]">
-              {/* --- Visual Background Decorators --- */}
+                {/* --- Visual Background Decorators --- */}
                 <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
                     {/* Top Left */}
                     <div className="absolute left-[20px] md:left-[40px] top-[27px] w-[105px] h-[105px]">
@@ -175,12 +228,12 @@ export function ParticipantsTabContent({
                     ) : (
                         selectedParticipant.reportData.map((report: any, idx: number) => (
                             <ParticipantAssessmentCard
-                                key={`${report.no}-${idx}`} 
+                                key={`${report.no}-${idx}`}
                                 assessmentNumber={report.no}
                                 title={report.title}
                                 date={report.date_accomplished}
                                 score={report.score}
-                                totalPossiblePoints={report.totalPoints || report.items} 
+                                totalPossiblePoints={report.totalPoints || report.items}
                                 onClick={() => setSelectedAssessmentResult(report)}
                             />
                         ))
@@ -207,13 +260,28 @@ export function ParticipantsTabContent({
                                 <div className="flex justify-between border-b border-[#D1D8DD] pb-2"><span className="text-[#222] font-bold text-[13px]">Assessment Test Number:</span><span className="text-[#222] font-extrabold text-[13px]">{selectedAssessmentResult.no}</span></div>
                                 <div className="flex justify-between border-b border-[#D1D8DD] pb-2"><span className="text-[#222] font-bold text-[13px]">Assessment Test Title:</span><span className="text-[#222] font-medium text-[13px]">{selectedAssessmentResult.title}</span></div>
                                 <div className="flex justify-between border-b border-[#D1D8DD] pb-2 mt-4"><span className="text-[#222] font-bold text-[13px]">Student's Assessment Test Score:</span><span className="text-[#222] font-extrabold text-[13px]">{selectedAssessmentResult.score}</span></div>
-                                
-                                {/*  Modal remains strictly "Number of Items" */}
+
+                                {/* Modal remains strictly "Number of Items" */}
                                 <div className="flex justify-between border-b border-[#D1D8DD] pb-2"><span className="text-[#222] font-bold text-[13px]">Number of Items:</span><span className="text-[#222] font-extrabold text-[13px]">{selectedAssessmentResult.items}</span></div>
-                                
+
                                 <div className="flex justify-between border-b border-[#D1D8DD] pb-2"><span className="text-[#222] font-bold text-[13px]">Percentage of Score:</span><span className="text-[#222] font-extrabold text-[13px]">{selectedAssessmentResult.percentage}</span></div>
                                 <div className="flex justify-between border-b border-[#D1D8DD] pb-2 mt-4"><span className="text-[#222] font-bold text-[13px]">Date Accomplished:</span><span className="text-[#222] font-extrabold text-[13px]">{selectedAssessmentResult.date_accomplished || 'N/A'}</span></div>
                                 <div className="flex justify-between border-b border-[#D1D8DD] pb-2 mt-4"><span className="text-[#222] font-bold text-[13px]">Time Accomplished:</span><span className="text-[#222] font-extrabold text-[13px]">{selectedAssessmentResult.time_accomplished || 'N/A'}</span></div>
+
+                               <button
+                                    onClick={() => {
+                                        const aid = selectedAssessmentResult.assessment_id || selectedAssessmentResult.id;
+                                        const sid = selectedParticipant.id;
+                                        const title = encodeURIComponent(selectedAssessmentResult.title);
+                                        
+                                        // CORRECTED URL: Match folder name (triple 's') and remove groups like (teacher)
+                                        router.push(`/class-page/assesssment-view?aid=${aid}&sid=${sid}&title=${title}`);
+                                    }}
+                                    className="w-full mt-4 bg-[#0F8B8D] text-white py-4 rounded-xl font-bold text-[14px] hover:brightness-95 transition-all shadow-md flex justify-center items-center gap-2"
+                                >
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                    View Exact Answers
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -223,27 +291,84 @@ export function ParticipantsTabContent({
     }
 
     if (showQuarterlyReport && selectedParticipant) {
-        
-        const monthlyData = (selectedParticipant.reportData || []).filter((item: any) => {
-            if (!item.date_accomplished || item.date_accomplished === 'N/A') return false;
-            const date = new Date(item.date_accomplished);
-            return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-        });
+        const now = new Date();
+        const START_MONTH = 6;
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth() + 1; // 1-12
 
+        // 1. Determine the start year of the CURRENT Academic Year
+        // If today is before June, we are still in last year's academic year.
+        const acadStartYear = currentMonth >= START_MONTH ? currentYear : currentYear - 1;
+
+        // 2. Generate months from June of the Academic Start Year up to Today
+        const availableMonths: string[] = [];
+        let iterYear = acadStartYear;
+        let iterMonth = START_MONTH;
+
+        while (iterYear < currentYear || (iterYear === currentYear && iterMonth <= currentMonth)) {
+            availableMonths.push(`${iterYear}-${String(iterMonth).padStart(2, '0')}`);
+            iterMonth++;
+            if (iterMonth > 12) {
+                iterMonth = 1;
+                iterYear++;
+            }
+        }
+
+        // Put the newest month at the top of the dropdown
+        availableMonths.reverse();
+
+
+        // 2. SET DEFAULT TO CURRENT MONTH
+        if (!selectedMonthYear) {
+            setSelectedMonthYear(availableMonths[0]);
+        }
+
+        // 3. FILTER THE DATA
+        const monthlyData = getFilteredData();
         const totalScore = monthlyData.reduce((acc: number, curr: any) => acc + curr.score, 0);
         const sumTotalItems = monthlyData.reduce((acc: number, curr: any) => acc + curr.items, 0);
 
+        // 4. GET THE READABLE LABEL FOR THE UI
+        let currentMonthYearLabel = "";
+        if (selectedMonthYear) {
+            const [yy, mm] = selectedMonthYear.split('-');
+            const d = new Date(parseInt(yy), parseInt(mm) - 1, 1);
+            currentMonthYearLabel = d.toLocaleString('default', { month: 'long', year: 'numeric' });
+        }
+
         return (
             <div className="flex-1 flex flex-col animate-in slide-in-from-right-8 duration-300 min-h-full bg-[#F4EFED] rounded-[20px] overflow-hidden shadow-sm border border-[#D1D8DD]">
-                <div className="bg-[#1E4B95] text-white p-6 md:px-10 flex items-center gap-x-6">
-                    <button aria-label='dwdd' onClick={() => setShowQuarterlyReport(false)} className="hover:opacity-70 transition-opacity outline-none">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                    </button>
-                    <h2 className="text-[20px] md:text-[24px] font-black tracking-wide font-lexend">Monthly Completion Report</h2>
+                <div className="bg-[#1E4B95] text-white p-6 md:px-10 flex items-center justify-between">
+                    <div className="flex items-center gap-x-6">
+                        <button aria-label='dwdd' onClick={() => setShowQuarterlyReport(false)} className="hover:opacity-70 transition-opacity outline-none">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                        </button>
+                        <h2 className="text-[20px] md:text-[24px] font-black tracking-wide font-lexend">Monthly Completion Report</h2>
+                    </div>
+
+                    {/* --- MONTH PICKER DROPDOWN --- */}
+                    {availableMonths.length > 0 && (
+                        <select
+                            aria-label='e'
+                            value={selectedMonthYear}
+                            onChange={(e) => setSelectedMonthYear(e.target.value)}
+                            className="bg-white/20 border border-white/40 text-white rounded-lg px-4 py-2 font-bold outline-none cursor-pointer"
+                        >
+                            {availableMonths.map(month => {
+                                const [y, m] = month.split('-');
+                                const d = new Date(parseInt(y), parseInt(m) - 1, 1);
+                                return (
+                                    <option key={month} value={month} className="text-black">
+                                        {d.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                                    </option>
+                                );
+                            })}
+                        </select>
+                    )}
                 </div>
 
                 <div className="p-8 md:p-12 flex-1 flex flex-col">
-                    <div id="pdf-report-container" className="bg-[#F4EFED] p-4 rounded-xl">
+                    <div className="bg-[#F4EFED] p-4 rounded-xl">
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="text-[22px] font-black text-[#101720] font-lexend">{currentMonthYearLabel}</h3>
                             <h3 className="text-[18px] font-bold text-[#1E4B95] font-lexend">{selectedParticipant.name}</h3>
@@ -263,19 +388,17 @@ export function ParticipantsTabContent({
                                     {monthlyData.length === 0 ? (
                                         <tr>
                                             <td colSpan={4} className="py-10 text-gray-400 font-bold italic">
-                                                No assessments found for {currentMonthName}.
+                                                No assessments found for {currentMonthYearLabel}.
                                             </td>
                                         </tr>
                                     ) : (
                                         monthlyData.map((row: any, i: number) => (
                                             <tr key={`${row.no}-${i}`} className="border-b border-[#D1D8DD]">
                                                 <td className="py-5 font-bold text-[#101720] text-[15px] border-r border-[#D1D8DD]">{row.no}</td>
-                                                {/* Displays e.g., "3/9 Points" */}
                                                 <td className="py-5 font-bold text-[#101720] text-[15px] border-r border-[#D1D8DD]">
-                                                    {row.score}/{row.totalPoints || row.items} 
+                                                    {row.score}/{row.totalPoints || row.items}
                                                 </td>
                                                 <td className="py-5 font-bold text-[#101720] text-[15px] border-r border-[#D1D8DD]">{row.percentage}</td>
-                                                {/* Displays Items strictly as item count */}
                                                 <td className="py-5 font-bold text-[#101720] text-[15px]">{row.items}</td>
                                             </tr>
                                         ))
@@ -294,17 +417,85 @@ export function ParticipantsTabContent({
                     </div>
 
                     <div className="mt-auto pt-10 flex justify-end">
-                        <button 
-                            onClick={handleDownloadPDF} 
+                        {/* Changed this button to open the modal instead of instantly downloading */}
+                        <button
+                            onClick={() => setShowDownloadOptions(true)}
                             className="bg-[#1E4B95] text-white px-10 py-3 rounded-xl font-bold text-[16px] hover:opacity-80 transition-all shadow-md active:scale-95 font-lexend"
                         >
                             Generate a copy
                         </button>
                     </div>
                 </div>
+
+                {/* --- DOWNLOAD OPTIONS MODAL --- */}
+                {showDownloadOptions && (
+                    <div className="fixed inset-0 z-[700] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in">
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[400px] flex flex-col p-8 text-center animate-in zoom-in-95">
+                            <h2 className="text-2xl font-black text-[#101720] mb-2">Export Report</h2>
+                            <p className="text-gray-500 mb-8 font-medium">Choose a format to download the monthly report for {selectedParticipant.name}.</p>
+
+                            <div className="flex flex-col gap-y-3">
+                                <button onClick={handleDownloadPDF} className="w-full bg-[#ED1F24] text-white py-4 rounded-xl font-bold hover:bg-[#cc0000] shadow-md transition-colors outline-none flex justify-center items-center gap-x-2">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                    Download PDF
+                                </button>
+                                <button onClick={handleDownloadExcel} className="w-full bg-[#107c41] text-white py-4 rounded-xl font-bold hover:bg-[#0a5c30] shadow-md transition-colors outline-none flex justify-center items-center gap-x-2">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                                    Download Excel (CSV)
+                                </button>
+                                <button onClick={() => setShowDownloadOptions(false)} className="w-full bg-gray-100 text-gray-600 py-3 rounded-xl font-bold mt-2 hover:bg-gray-200 transition-colors outline-none">
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* --- HIDDEN SIMPLE PDF TABLE --- */}
+                {/* This element is rendered completely off-screen and without the complex UI designs. */}
+                <div className="hidden">
+                    <div id="simple-pdf-container" className="p-10 bg-white text-black font-sans">
+                        <div className="mb-8">
+                            <h1 className="text-2xl m-0 mb-2.5 font-bold">Monthly Completion Report</h1>
+                            <h2 className="text-lg m-0 text-[#555555]">Student: {selectedParticipant.name}</h2>
+                            <h3 className="text-base mt-1.5 mb-0 text-[#555555]">Month: {currentMonthYearLabel}</h3>
+                        </div>
+
+                        <table className="w-full border-collapse text-center">
+                            <thead>
+                                <tr className="bg-[#f0f0f0]">
+                                    <th className="border border-[#cccccc] p-3 font-bold">Assessment Test No.</th>
+                                    <th className="border border-[#cccccc] p-3 font-bold">Assessment Test Score</th>
+                                    <th className="border border-[#cccccc] p-3 font-bold">Percentage of Score</th>
+                                    <th className="border border-[#cccccc] p-3 font-bold">No. of Items</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {monthlyData.map((row: any, i: number) => (
+                                    <tr key={i}>
+                                        <td className="border border-[#cccccc] p-2.5">{row.no}</td>
+                                        <td className="border border-[#cccccc] p-2.5">{row.score}/{row.totalPoints || row.items}</td>
+                                        <td className="border border-[#cccccc] p-2.5">{row.percentage}</td>
+                                        <td className="border border-[#cccccc] p-2.5">{row.items}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                            <tfoot>
+                                <tr className="bg-[#f0f0f0] font-bold">
+                                    <td className="border border-[#cccccc] p-3">Total Score</td>
+                                    <td className="border border-[#cccccc] p-3">{totalScore}</td>
+                                    <td className="border border-[#cccccc] p-3">Total No. of Items</td>
+                                    <td className="border border-[#cccccc] p-3">{sumTotalItems}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
             </div>
         );
     }
+
 
     return null;
 }
