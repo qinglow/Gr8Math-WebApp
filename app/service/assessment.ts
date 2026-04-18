@@ -7,6 +7,7 @@ export async function publishAssessmentAction(params: {
     title: string;
     startTime: string;
     endTime: string;
+    timeLimit: number;
     assessmentNumber: number;
     assessmentQuarter: number;
     questions: any[];
@@ -45,6 +46,7 @@ export async function publishAssessmentAction(params: {
                 title: params.title,
                 start_time: params.startTime,
                 end_time: params.endTime,
+                time_limit_minutes: params.timeLimit,
                 assessment_items: params.questions.length,
                 total_points: totalPoints,
                 assessment_number: params.assessmentNumber,
@@ -166,6 +168,7 @@ export async function updateAssessmentAction(params: {
     title: string;
     startTime: string;
     endTime: string;
+    timeLimit: number;
     assessmentNumber: number;
     assessmentQuarter: number;
     questions: any[];
@@ -205,6 +208,7 @@ export async function updateAssessmentAction(params: {
                 title: params.title,
                 start_time: params.startTime,
                 end_time: params.endTime,
+                time_limit_minutes: params.timeLimit,
                 assessment_items: params.questions.length,
                 total_points: totalPoints,
                 assessment_number: params.assessmentNumber,
@@ -410,5 +414,96 @@ export async function fetchStudentAssessmentReview(assessmentId: number, student
 
     } catch (error: any) {
         return { success: false, error: error.message };
+    }
+}
+
+export async function fetchPastQuestionsForWordBank() {
+    const supabase = await createClient();
+
+    try {
+        // 1. Get the current logged-in teacher
+        const { data: { user } } = await supabase.auth.getUser();
+        const { data: dbUser } = await supabase.from('user').select('id').eq('email_add', user?.email).single();
+        if (!dbUser) return { success: false, data: [] };
+
+        // 2. Fetch all classes taught by this teacher (Using 'class' and 'adviser_id' from your schema)
+        const { data: sections } = await supabase
+            .from('class') 
+            .select('id')
+            .eq('adviser_id', dbUser.id);
+            
+        const sectionIds = sections?.map(s => s.id) || [];
+
+        if (sectionIds.length === 0) return { success: true, data: [] };
+
+        // 3. Find all course_content records linked to those classes
+        const { data: courseContents } = await supabase
+            .from('course_content')
+            .select('id')
+            .in('section_id', sectionIds);
+            
+        const courseContentIds = courseContents?.map(cc => cc.id) || [];
+
+        if (courseContentIds.length === 0) return { success: true, data: [] };
+
+        // 4. Fetch ALL assessments from ALL of those courses!
+        const { data: assessments, error } = await supabase
+            .from('assessment_created')
+            .select(`
+                title,
+                assessment_questions (
+                    id, question_text,
+                    assessment_choices ( id, choice_text, is_correct )
+                )
+            `)
+            .in('course_id', courseContentIds) 
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        // 5. Transform the DB data into your Word Bank JSON format!
+        const dynamicBank = assessments.map(ass => {
+            const mappedQuestions = ass.assessment_questions.map((dbQ: any) => {
+                let rawText = dbQ.question_text;
+                
+                // Strip the type out of the question text
+                const qMatch = rawText.match(/^\[(.*?)\]\s*(.*)$/);
+                const type = qMatch ? qMatch[1] : 'Multiple Choice';
+                const cleanQuestion = qMatch ? qMatch[2].split(' ||| ')[0] : rawText.split(' ||| ')[0];
+
+                let points = 1;
+                const choices: string[] = [];
+                const correctAnswers: string[] = [];
+
+                dbQ.assessment_choices?.forEach((dbC: any) => {
+                    const cMatch = dbC.choice_text.match(/^\[(\d+(?:\.\d+)?)\s*pts\]\s*(.*)$/i);
+                    let cleanChoice = dbC.choice_text;
+                    if (cMatch) { 
+                        points = parseFloat(cMatch[1]); 
+                        cleanChoice = cMatch[2].trim(); 
+                    }
+                    choices.push(cleanChoice);
+                    if (dbC.is_correct) correctAnswers.push(cleanChoice);
+                });
+
+                return {
+                    type,
+                    question: cleanQuestion,
+                    choices: choices.length > 0 ? choices : [''],
+                    correctAnswers,
+                    points
+                };
+            });
+
+            return {
+                topic: `Past Test: ${ass.title}`, 
+                questions: mappedQuestions
+            };
+        }).filter(bank => bank.questions.length > 0); 
+
+        return { success: true, data: dynamicBank };
+    } catch (e: any) {
+        console.error("Fetch Error: ", e);
+        return { success: false, data: [] };
     }
 }

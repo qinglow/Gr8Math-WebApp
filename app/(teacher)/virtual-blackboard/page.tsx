@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Gr8MathHeader } from '@/components/ui/Gr8MathHeader';
 import { BlackboardCard, BlackboardData } from '@/components/card/BlackboardCard';
 import { fetchBlackboardsAction, createBlackboardAction } from './action';
+import { Gr8LoadingOverlay } from '@/components/ui/Gr8LoadingOverlay';
 
 const EmptyState = () => (
     <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -74,20 +75,21 @@ export default function VirtualBlackboardSelectionPage() {
     return (
         <div className="min-h-screen bg-[#E2E7E9] font-sans flex flex-col relative overflow-x-hidden">
             <Gr8MathHeader />
+            <Gr8LoadingOverlay isLoading={isLoading} message="Loading..." />
             <main className="flex-1 w-full max-w-7xl mx-auto px-6 md:px-12 py-8 animate-in fade-in duration-500">
 
                 <div className="flex items-center gap-3 mb-10">
-                    <button onClick={() => router.back()} className="p-1.5 -ml-1.5 text-[#0A7F93] hover:bg-black/5 rounded-lg transition-colors outline-none cursor-pointer">
+                    <button aria-label='e' onClick={() => router.back()} className="p-1.5 -ml-1.5 text-[#0A7F93] hover:bg-black/5 rounded-lg transition-colors outline-none cursor-pointer">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
                     </button>
                     <h1 className="text-[20px] md:text-[22px] font-black text-[#222] m-0">Virtual Blackboard</h1>
                 </div>
 
-                {isLoading ? (
-                    <div className="text-center py-20 text-[#666] font-medium font-bold">Loading your boards...</div>
-                ) : boards.length === 0 ? (
+                {!isLoading && boards.length === 0 && (
                     <EmptyState />
-                ) : (
+                )}
+
+                {!isLoading && boards.length > 0 && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-10 pb-24">
                         {boards.map((board) => (
                             <BlackboardCard key={board.id} board={board} onClick={() => handleBoardClick(board.id, board.title)} />

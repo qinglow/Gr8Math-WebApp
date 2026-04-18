@@ -49,7 +49,7 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
         handleSetAvailableFrom, handleSetAvailableUntil, handleSetDllAvailableFrom, handleSetDllAvailableUntil, handleProceedToDetails,
         handleLessonNextDetails, handleAssessmentNextDetails, handleDllNextDetails, openAddModal, resetEditor, cancelDiscard, closeAddModal,
         onPublishAssessment, onExecuteSave, handleEditAssessment, handleEditLesson, isAssessmentFormComplete,
-        activeWarning, dismissWarning, userProfile
+        activeWarning, dismissWarning, userProfile,assessmentTimeLimit
     } = useClassManager(courseId, initialFeed);
 
     // ============================================================================
@@ -75,6 +75,7 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                 <Gr8AssessmentEditor
                     onBack={() => setIsDiscardModalOpen(true)}
                     initialQuestions={assessmentInitialQuestions}
+                    initialTimeLimit={assessmentTimeLimit}
                     isEditing={isEditingLesson}
                     onPublish={onPublishAssessment}
                     courseId={courseId}

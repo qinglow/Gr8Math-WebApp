@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { uploadLessonMediaToTigris } from '@/app/service/upload';
 import 'mathlive';
+import { WordBankModal } from '@/components/ui/WordBankModal'; // Adjust path
 
 export type QuestionType = 'Multiple Choice' | 'Short Answer' | 'Paragraph' | 'Checkboxes' | 'Dropdown' | 'Upload Image';
 
@@ -24,8 +25,9 @@ export interface QuestionData {
 
 interface Gr8AssessmentEditorProps {
     onBack: () => void;
-    onPublish: (questions: QuestionData[]) => void;
+    onPublish: (questions: QuestionData[], timeLimit: number) => void;
     initialQuestions?: QuestionData[];
+    initialTimeLimit?: number;
     isEditing?: boolean;
     courseId: string;
 }
@@ -34,9 +36,11 @@ const QUESTION_TYPES: QuestionType[] = [
     'Multiple Choice', 'Checkboxes', 'Dropdown', 'Short Answer', 'Paragraph', 'Upload Image'
 ];
 
-export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, isEditing, courseId }: Gr8AssessmentEditorProps) {
+export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, initialTimeLimit = 0, isEditing, courseId }: Gr8AssessmentEditorProps) {
 
     // --- MATH REFS & STATE ---
+    const [showWordBank, setShowWordBank] = useState(false);
+    const [timeLimit, setTimeLimit] = useState<number>(initialTimeLimit);
     const mathFieldRef = useRef<any>(null);
     const [showMathModal, setShowMathModal] = useState(false);
     const [mathValue, setMathValue] = useState('');
@@ -152,6 +156,25 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, isEdi
             pendingQuestionImage: null, choices: [''], hasError: false, choiceErrors: [false],
             points: 1, correctAnswers: [], pendingAnswerImage: null, isAnswerKeyMode: false, hasKeyError: false
         }]);
+    };
+
+    const importFromWordBank = (bankQuestion: any) => {
+        setQuestions([...questions, {
+            id: Date.now().toString(),
+            type: bankQuestion.type as QuestionType,
+            question: bankQuestion.question,
+            imageUrl: '',
+            pendingQuestionImage: null,
+            choices: [...bankQuestion.choices],
+            hasError: false,
+            choiceErrors: bankQuestion.choices.map(() => false),
+            points: bankQuestion.points || 1,
+            correctAnswers: [...bankQuestion.correctAnswers],
+            pendingAnswerImage: null,
+            isAnswerKeyMode: false,
+            hasKeyError: false
+        }]);
+        setShowWordBank(false);
     };
 
     const removeQuestion = (id: string) => {
@@ -334,7 +357,7 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, isEdi
                 // ----------------------------------------------------
             }
 
-            onPublish(finalQuestions);
+            onPublish(finalQuestions, timeLimit);
         } catch (error: any) {
             alert(error.message);
         } finally {
@@ -361,6 +384,20 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, isEdi
                 </button>
             </div>
 
+            {/* --- TIME LIMIT SETTINGS --- */}
+            <div className="flex items-center gap-x-4 bg-white p-4 rounded-xl shadow-sm border border-[#D1D8DD] mb-6">
+                <span className="font-bold text-[#222] text-[15px]">Time Limit:</span>
+                <input
+                    aria-label='we'
+                    type="number"
+                    min="0"
+                    value={timeLimit}
+                    onChange={(e) => setTimeLimit(parseInt(e.target.value) || 0)}
+                    className="w-20 p-2 text-center text-[15px] text-[#222] font-black bg-[#F4F6F8] border border-[#D1D8DD] rounded-lg outline-none focus:border-[#1E4B95]"
+                />
+                <span className="font-bold text-[#222] text-[15px]">minute(s)</span>
+                <span className="text-[12px] text-gray-400 font-bold italic">(Set to 0 for unlimited time)</span>
+            </div>
             <div className="flex flex-col gap-y-6">
                 {questions.map((q) => {
                     if (q.isAnswerKeyMode) {
@@ -506,7 +543,22 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, isEdi
                 })}
             </div>
 
-            <button onClick={addQuestion} disabled={isPublishing} className="w-full mt-6 py-3 bg-[#1A4C8B] text-white text-[14px] font-bold rounded-lg hover:bg-[#153a6b] shadow-md transition-colors disabled:opacity-50">Add Question</button>
+           <div className="flex gap-4 mt-6">
+                <button onClick={addQuestion} disabled={isPublishing} className="flex-1 py-3.5 bg-[#1A4C8B] text-white text-[14px] font-bold rounded-xl hover:bg-[#153a6b] shadow-md transition-colors disabled:opacity-50 outline-none">
+                    + Add Blank Question
+                </button>
+                <button onClick={() => setShowWordBank(true)} disabled={isPublishing} className="flex-1 py-3.5 bg-white border-2 border-[#1A4C8B] text-[#1A4C8B] text-[14px] font-black rounded-xl hover:bg-[#F4F6F8] shadow-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-x-2 outline-none">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"></path><line x1="8" y1="7" x2="16" y2="7"></line><line x1="8" y1="11" x2="16" y2="11"></line><line x1="8" y1="15" x2="12" y2="15"></line></svg>
+                    Browse Word Bank
+                </button>
+            </div>
+
+            {showWordBank && (
+                <WordBankModal 
+                    onClose={() => setShowWordBank(false)} 
+                    onSelectQuestion={importFromWordBank} 
+                />
+            )}
 
             {showMathModal && (
                 <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in">

@@ -38,7 +38,9 @@ const EmptyState = () => (
     <div className="flex flex-col items-center justify-center py-20 text-center">
         <div className="bg-white/40 border-2 border-dashed border-[#B0B8C1] rounded-3xl p-10 md:p-16 max-w-md">
             <h2 className="text-[20px] font-black text-[#222] mb-3 uppercase">No content yet.</h2>
-            <p className="text-[14px] text-[#666]">Tap 'Add' to create your first lesson or assessment.</p>
+            <p className="text-[14px] text-[#666]">
+                Tap <span className="font-black text-[#1A4C8B]">'Add'</span> to create your first lesson or assessment.
+            </p>
         </div>
     </div>
 );

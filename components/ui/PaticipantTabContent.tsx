@@ -123,32 +123,66 @@ export function ParticipantsTabContent({
             <div className="bg-[#F4EFED] rounded-[20px] pb-8 shadow-sm flex-1 flex flex-col overflow-hidden relative min-h-[852px]">
                 {/* --- Visual Background Decorators --- */}
                 <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+                    
                     {/* Top Left */}
-                    <div className="absolute left-[20px] md:left-[40px] top-[27px] w-[105px] h-[105px]">
-                        <div className="absolute w-[30px] md:w-[50px] h-[30px] md:h-[50px] left-[0px] top-[35px] md:top-[55px] bg-[#1E4B95] opacity-50" />
-                        <div className="absolute w-[30px] md:w-[50px] h-[30px] md:h-[50px] left-[35px] md:left-[55px] top-[35px] md:top-[55px] bg-[#1E4B95] opacity-50" />
-                        <div className="absolute w-[30px] md:w-[50px] h-[30px] md:h-[50px] left-[0px] top-[0px] bg-[#EFBD31] opacity-50" />
+                    <div className="absolute left-[20px] md:left-[40px] top-[27px]">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="105" height="105" viewBox="0 0 105 105" fill="none">
+                            <rect y="55" width="50" height="50" fill="#1E4B95" fillOpacity="0.5"/>
+                            <rect x="55" y="55" width="50" height="50" fill="#1E4B95" fillOpacity="0.5"/>
+                            <rect width="50" height="50" fill="#EFBD31" fillOpacity="0.5"/>
+                        </svg>
                     </div>
 
                     {/* Top Right */}
-                    <div className="absolute right-[20px] md:right-[40px] top-[27px] w-[105px] h-[105px]">
-                        <div className="absolute w-[30px] md:w-[50px] h-[30px] md:h-[50px] right-[0px] top-[0px] bg-[#ED1F24] opacity-50" />
-                        <div className="absolute w-[30px] md:w-[50px] h-[30px] md:h-[50px] right-[35px] md:right-[55px] top-[0px] bg-[#EFBD31] opacity-50" />
-                        <div className="absolute w-[30px] md:w-[50px] h-[30px] md:h-[50px] right-[0px] top-[35px] md:top-[55px] bg-[#1E4B95] opacity-50" />
+                    <div className="absolute right-[20px] md:right-[40px] top-[27px]">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="105" height="105" viewBox="0 0 105 105" fill="none">
+                            <rect width="50" height="50" fill="#1E4B95" fillOpacity="0.5"/>
+                            <rect x="55" width="50" height="50" fill="#0F8B8D" fillOpacity="0.5"/>
+                            <rect y="55" width="50" height="50" fill="#E91D26" fillOpacity="0.5"/>
+                        </svg>
+                    </div>
+
+                    {/* Middle Left */}
+                    <div className="absolute left-0 top-[40%]">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="126" height="160" viewBox="0 0 126 160" fill="none">
+                            <rect x="76" y="110" width="50" height="50" fill="#1E4B95" fillOpacity="0.5"/>
+                            <rect x="21" y="110" width="50" height="50" fill="#1E4B95" fillOpacity="0.5"/>
+                            <rect x="21" y="55" width="50" height="50" fill="#D9D9D9"/>
+                            <rect x="21" width="50" height="50" fill="#0F8B8D" fillOpacity="0.5"/>
+                            <rect y="55" width="16" height="50" fill="#E91D26" fillOpacity="0.5"/>
+                            <rect x="21" y="55" width="50" height="50" fill="#0F8B8D" fillOpacity="0.5"/>
+                            <rect x="76" y="55" width="50" height="50" fill="#EFBD31" fillOpacity="0.5"/>
+                        </svg>
+                    </div>
+
+                    {/* Middle Right */}
+                    <div className="absolute right-0 top-[40%]">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="140" height="160" viewBox="0 0 140 160" fill="none">
+                            <rect width="50" height="50" transform="matrix(-1 0 0 1 105 110)" fill="#E91D26" fillOpacity="0.5"/>
+                            <rect width="50" height="50" transform="matrix(-1 0 0 1 50 110)" fill="#E91D26" fillOpacity="0.5"/>
+                            <rect width="50" height="50" transform="matrix(-1 0 0 1 105 55)" fill="#D9D9D9"/>
+                            <rect width="50" height="50" transform="matrix(-1 0 0 1 105 0)" fill="#EFBD31" fillOpacity="0.5"/>
+                            <rect width="30" height="50" transform="matrix(-1 0 0 1 140 55)" fill="#EFBD31" fillOpacity="0.5"/>
+                            <rect width="50" height="50" transform="matrix(-1 0 0 1 105 55)" fill="#0F8B8D" fillOpacity="0.5"/>
+                            <rect width="50" height="50" transform="matrix(-1 0 0 1 50 55)" fill="#1E4B95" fillOpacity="0.5"/>
+                        </svg>
                     </div>
 
                     {/* Bottom Left */}
-                    <div className="absolute left-[20px] md:left-[40px] bottom-[27px] w-[105px] h-[105px]">
-                        <div className="absolute w-[30px] md:w-[50px] h-[30px] md:h-[50px] left-[0px] bottom-[0px] bg-[#EFBD31] opacity-50" />
-                        <div className="absolute w-[30px] md:w-[50px] h-[30px] md:h-[50px] left-[35px] md:left-[55px] bottom-[0px] bg-[#ED1F24] opacity-50" />
-                        <div className="absolute w-[30px] md:w-[50px] h-[30px] md:h-[50px] left-[0px] bottom-[35px] md:bottom-[55px] bg-[#1E4B95] opacity-50" />
+                    <div className="absolute left-[12%] bottom-[18%]">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="105" height="105" viewBox="0 0 105 105" fill="none">
+                            <rect width="50" height="50" fill="#E91D26" fillOpacity="0.5"/>
+                            <rect x="55" width="50" height="50" fill="#EFBD31" fillOpacity="0.5"/>
+                            <rect x="49" y="55" width="50" height="50" fill="#0F8B8D" fillOpacity="0.5"/>
+                        </svg>
                     </div>
 
                     {/* Bottom Right */}
-                    <div className="absolute right-[20px] md:right-[40px] bottom-[27px] w-[105px] h-[105px]">
-                        <div className="absolute w-[30px] md:w-[50px] h-[30px] md:h-[50px] right-[0px] bottom-[0px] bg-[#1E4B95] opacity-50" />
-                        <div className="absolute w-[30px] md:w-[50px] h-[30px] md:h-[50px] right-[35px] md:right-[55px] bottom-[0px] bg-[#1E4B95] opacity-50" />
-                        <div className="absolute w-[30px] md:w-[50px] h-[30px] md:h-[50px] right-[0px] bottom-[35px] md:bottom-[55px] bg-[#EFBD31] opacity-50" />
+                    <div className="absolute right-[22%] bottom-[12%]">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="105" height="50" viewBox="0 0 105 50" fill="none">
+                            <rect width="50" height="50" fill="#1E4B95" fillOpacity="0.5"/>
+                            <rect x="55" width="50" height="50" fill="#EFBD31" fillOpacity="0.5"/>
+                        </svg>
                     </div>
                 </div>
 
@@ -274,7 +308,6 @@ export function ParticipantsTabContent({
                                         const sid = selectedParticipant.id;
                                         const title = encodeURIComponent(selectedAssessmentResult.title);
                                         
-                                        // CORRECTED URL: Match folder name (triple 's') and remove groups like (teacher)
                                         router.push(`/class-page/assesssment-view?aid=${aid}&sid=${sid}&title=${title}`);
                                     }}
                                     className="w-full mt-4 bg-[#0F8B8D] text-white py-4 rounded-xl font-bold text-[14px] hover:brightness-95 transition-all shadow-md flex justify-center items-center gap-2"
@@ -294,7 +327,7 @@ export function ParticipantsTabContent({
         const now = new Date();
         const START_MONTH = 6;
         const currentYear = now.getFullYear();
-        const currentMonth = now.getMonth() + 1; // 1-12
+        const currentMonth = now.getMonth() + 1; 
 
         // 1. Determine the start year of the CURRENT Academic Year
         // If today is before June, we are still in last year's academic year.

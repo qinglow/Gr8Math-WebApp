@@ -11,6 +11,7 @@ import { Gr8Toast } from '@/components/ui/Gr8Toast';
 import { Gr8Cache } from '@/lib/utils/cache';
 import Link from 'next/link';
 import { DllTabContent } from '../class-page/dll/DllTabContent';
+import { Gr8LoadingOverlay } from '@/components/ui/Gr8LoadingOverlay'; 
 
 // --- SIDEBAR IMAGE IMPORTS ---
 import profileIcon from './photos/DefaultTemporaryProfile.png';
@@ -255,7 +256,7 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
 
                 {/* --- CLASS GRID --- */}
                 <div className="px-4 md:px-8 pb-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 overflow-y-auto">
-                    {isFetchingClasses && <div className="col-span-full py-10 text-center text-[#1A4C8B] font-bold">Updating list...</div>}
+                   <Gr8LoadingOverlay isLoading={isFetchingClasses} message="Updating list..." />
 
                     {!isFetchingClasses && classesList.map((cls) => (
                         <Link
@@ -289,12 +290,7 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
                         <div className="bg-white rounded-xl shadow-2xl p-6 md:p-8 w-full max-w-[420px] relative">
                             {!showSuccess ? (
                                 <>
-                                    {isLoading && (
-                                        <div className="absolute inset-0 z-[110] bg-white/80 flex flex-col items-center justify-center rounded-xl">
-                                            <div className="w-12 h-12 border-4 border-[#E0E0E0] border-t-[#1A4C8B] rounded-full animate-spin mb-4"></div>
-                                            <span className="text-[#1A4C8B] font-bold text-sm">Creating Class...</span>
-                                        </div>
-                                    )}
+                                    <Gr8LoadingOverlay isLoading={isLoading} message="Creating Class..." />
                                     <h2 className="text-[20px] font-extrabold text-[#222] mb-6">Add Classes</h2>
                                     <div className="flex flex-col gap-y-1">
                                         <Gr8TextField label="Class Name" value={className} onChange={setClassName} hasError={!!errors.className} errorMessage={errors.className} showTopLabel />

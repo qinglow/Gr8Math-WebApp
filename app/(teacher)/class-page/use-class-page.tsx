@@ -58,6 +58,7 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
     const [activeWarning, setActiveWarning] = useState<any>(null);
     const [isRestrictedModalOpen, setIsRestrictedModalOpen] = useState(false);
     const [userProfile, setUserProfile] = useState<any>(null);
+    const [assessmentTimeLimit, setAssessmentTimeLimit] = useState<number>(0);
 
     // --- EFFECTS ---
     useEffect(() => { setCourseContent(initialFeed); }, [initialFeed]);
@@ -118,7 +119,6 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
             if (dbUser) setUserProfile(dbUser);
 
             if (dbUser) {
-                // Check for unread flash warnings
                 const { data: notices } = await supabase.from('notifications')
                     .select('*')
                     .eq('user_id', dbUser.id)
@@ -230,7 +230,7 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
         }, 200);
     };
 
-    const onPublishAssessment = async (questions: any[]) => {
+    const onPublishAssessment = async (questions: any[], timeLimit: number = 0) => {
         
         // --- NEW: STRICT ANSWER KEY CHECK ---
         // This stops the teacher from publishing if any question is missing a correct answer
@@ -261,6 +261,7 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
                 title: assessmentTitle, 
                 startTime: start, 
                 endTime: end, 
+                timeLimit: timeLimit,
                 assessmentNumber: parseInt(assessmentNumber), 
                 assessmentQuarter: parseInt(quarterNumber), 
                 questions 
@@ -314,6 +315,8 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
             const dbData = res.data;
             setAssessmentTitle(dbData.title || ''); setAssessmentNumber(dbData.assessment_number?.toString() || ''); setQuarterNumber(dbData.assessment_quarter?.toString() || '');
             setAvailableFrom(revertIsoToPicker(dbData.start_time)); setAvailableUntil(revertIsoToPicker(dbData.end_time));
+           setAssessmentTimeLimit(dbData.time_limit_minutes ?? 0);
+            
 
             const parsedQuestions = dbData.assessment_questions.map((dbQ: any) => {
                 // 1. Separate Image URL from Question Text
@@ -382,6 +385,6 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
         handleSetAvailableFrom, handleSetAvailableUntil, handleSetDllAvailableFrom, handleSetDllAvailableUntil, handleProceedToDetails,
         handleLessonNextDetails, handleAssessmentNextDetails, handleDllNextDetails, openAddModal, resetEditor, cancelDiscard, closeAddModal,
         onPublishAssessment, onExecuteSave, handleEditAssessment, handleEditLesson, isAssessmentFormComplete,
-        activeWarning, dismissWarning, userProfile
+        activeWarning, dismissWarning, userProfile, assessmentTimeLimit
     };
 }
