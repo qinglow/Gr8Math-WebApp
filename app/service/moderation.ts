@@ -12,9 +12,9 @@ export async function checkContentModeration(text: string) {
 
     const linkRegex = /(?:https?:\/\/|www\.)[^\s"<>]+/g;
     const matches = text.match(linkRegex) || [];
-    
-    const suspiciousLinks = matches.filter(link => 
-        !link.includes('fly.storage.tigris.dev') && 
+
+    const suspiciousLinks = matches.filter(link =>
+        !link.includes('fly.storage.tigris.dev') &&
         !link.includes('math.now.sh')
     );
 
@@ -49,7 +49,7 @@ export async function decideModeration(actionId: number, decision: 'allowed' | '
                 if (students && students.length > 0) {
                     const notifications = students.map((s: any) => ({
                         user_id: s.student.user_id,
-                        type: action.content_type, 
+                        type: action.content_type,
                         title: `New ${action.content_type === 'lesson' ? 'Lesson' : 'Assessment'} Approved`,
                         message: `A new ${action.content_type} is now available.`,
                         meta: {
@@ -71,29 +71,29 @@ export async function decideModeration(actionId: number, decision: 'allowed' | '
         const newCount = (userData?.warning_count || 0) + 1;
         const shouldRestrict = newCount >= 3;
 
-        await supabase.from('user').update({ 
-            warning_count: newCount, 
+        await supabase.from('user').update({
+            warning_count: newCount,
             is_restricted: shouldRestrict,
-            restricted_at: shouldRestrict ? new Date().toISOString() : null 
+            restricted_at: shouldRestrict ? new Date().toISOString() : null
         }).eq('id', action.target_user_id);
 
         await supabase.from('notifications').insert({
             user_id: action.target_user_id,
             type: 'warning',
             title: 'Content Removed',
-            message: `Your content was removed due to a ${action.reason_code}. Warning count: ${newCount}/3.`,
+            message: `Your content was removed due to a ${action.reason_code}.|${newCount}`,
             meta: { flash_ui: true }
         });
     }
 
     const { data: { user } } = await supabase.auth.getUser();
-    
+
     if (user && user.email) {
         const { data: modUser } = await supabase.from('user').select('id').eq('email_add', user.email).single();
-        
+
         if (modUser) {
             await supabase.from('audit_trails').insert({
-                user_id: modUser.id, 
+                user_id: modUser.id,
                 resource: 'Moderation',
                 action: decision === 'allowed' ? 'APPROVE' : 'DISAPPROVE',
                 status: 'SUCCESS',
@@ -118,15 +118,15 @@ export async function checkAndLiftRestriction(userId: number) {
     const restrictionDate = new Date(user.restricted_at).getTime();
     const now = new Date().getTime();
     const diffMs = now - restrictionDate;
-    
+
     const minutesPassed = diffMs > 0 ? Math.floor(diffMs / (1000 * 60)) : 0;
-    const totalMinutesInDay = 1440; 
+    const totalMinutesInDay = 1440;
 
     if (minutesPassed >= totalMinutesInDay) {
         await supabase.from('user').update({
             is_restricted: false,
             restricted_at: null,
-            warning_count: 0 
+            warning_count: 0
         }).eq('id', userId);
         return { stillRestricted: false, hoursRemaining: 0, minutesRemaining: 0 };
     }
@@ -135,10 +135,10 @@ export async function checkAndLiftRestriction(userId: number) {
     const h = Math.floor(minutesRemainingTotal / 60);
     const m = minutesRemainingTotal % 60;
 
-    return { 
-        stillRestricted: true, 
-        hoursRemaining: h, 
-        minutesRemaining: m 
+    return {
+        stillRestricted: true,
+        hoursRemaining: h,
+        minutesRemaining: m
     };
 }
 
@@ -196,7 +196,7 @@ export async function getPendingViolations() {
 export async function submitAppealAction(reason: string, imageUrl: string | null) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    
+
     if (!user) return { error: "User not authenticated." };
 
     const { data: dbUser } = await supabase.from('user').select('id').eq('email_add', user.email).single();
@@ -212,8 +212,8 @@ export async function submitAppealAction(reason: string, imageUrl: string | null
     if (existing) return { error: "You already have a pending appeal." };
 
     // We can append the image URL to the violation details or save it if you have an image column
-    const formattedDetails = imageUrl 
-        ? `${reason}\n\n[PROOF IMAGE]\n${imageUrl}` 
+    const formattedDetails = imageUrl
+        ? `${reason}\n\n[PROOF IMAGE]\n${imageUrl}`
         : reason;
 
     // Insert the appeal into the database

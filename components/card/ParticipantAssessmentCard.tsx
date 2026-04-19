@@ -7,20 +7,20 @@ interface ParticipantAssessmentCardProps {
     title: string;
     date?: string;
     score: number;
-    totalPossiblePoints: number; 
+    totalPossiblePoints: number;
     onClick: () => void;
 }
 
 export const ParticipantAssessmentCard: React.FC<ParticipantAssessmentCardProps> = ({
     assessmentNumber,
     title,
-    date = 'N/A', 
+    date = 'N/A',
     score,
     totalPossiblePoints,
     onClick
 }) => {
     return (
-        <button 
+        <button
             onClick={onClick}
             className="flex items-center justify-between w-full bg-white border border-[#D1D8DD] border-l-4 border-l-[#0A7F93] rounded-xl p-4 md:p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all outline-none group"
         >
@@ -37,7 +37,10 @@ export const ParticipantAssessmentCard: React.FC<ParticipantAssessmentCardProps>
                 <div className="text-right hidden sm:block">
                     {/*  Changed to display as "3/9 Points" */}
                     <span className="block text-[16px] font-black text-[#1A4C8B]">
-                        {score}/{totalPossiblePoints} Points
+                        {score}/{totalPossiblePoints}
+                    </span>
+                    <span className="block text-[10px] font-bold text-[#76828E] tracking-[0.15em] uppercase mt-0.5">
+                        SCORE
                     </span>
                 </div>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0A7F93" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:translate-x-1 transition-transform shrink-0">

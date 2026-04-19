@@ -283,48 +283,68 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, initi
     const handlePublishClick = async () => {
         let isValid = true;
 
+        // --- 1. VALIDATION ONLY (Do NOT modify the strings with points yet) ---
         const validatedQuestions = questions.map(q => {
             let qError = false;
             let keyError = false;
             let cErrors = (q.choiceErrors ?? []).map(() => false);
 
+            // Check if question text/image is empty
             if (!q.question.trim() && !q.imageUrl && !q.pendingQuestionImage) {
-                qError = true; isValid = false;
-            }
-            if (['Multiple Choice', 'Checkboxes', 'Dropdown'].includes(q.type)) {
-                q.choices.forEach((choice, idx) => {
-                    if (!choice.trim()) { cErrors[idx] = true; isValid = false; }
-                });
+                qError = true; 
+                isValid = false;
             }
 
-            if (q.type === 'Upload Image') {
-                q.choices = [`[${q.points} pts]`];
-                q.correctAnswers = [`[${q.points} pts]`];
-            } else if (q.type === 'Short Answer' || q.type === 'Paragraph') {
-                // Single answer — tag it
-                const ans = q.correctAnswers[0] || '';
-                q.choices = [`[${q.points} pts] ${ans}`];
-                q.correctAnswers = [`[${q.points} pts] ${ans}`];
-            } else {
-                // Multiple Choice, Checkboxes, Dropdown — tag only correct choices
-                q.choices = q.choices.map(c => {
-                    const isCorrect = q.correctAnswers.includes(c);
-                    return isCorrect ? `[${q.points} pts] ${c}` : c;
+            if (['Multiple Choice', 'Checkboxes', 'Dropdown'].includes(q.type)) {
+                // Check for empty choices
+                q.choices.forEach((choice, idx) => {
+                    if (!choice.trim()) { 
+                        cErrors[idx] = true; 
+                        isValid = false; 
+                    }
                 });
-                q.correctAnswers = q.correctAnswers.map(c => `[${q.points} pts] ${c}`);
+                
+                // FIX: Check if an answer key was actually selected
+                if (q.correctAnswers.length === 0) {
+                    keyError = true; 
+                    isValid = false;
+                }
+            } else if (['Short Answer', 'Paragraph'].includes(q.type)) {
+                // FIX: Check if text answer key is empty
+                if (!q.correctAnswers[0] || !q.correctAnswers[0].trim()) {
+                    keyError = true; 
+                    isValid = false;
+                }
             }
-            return { ...q, hasError: qError, hasKeyError: keyError, choiceErrors: cErrors };
+
+            // Force the question into Answer Key Mode if there is a key error so the user can see it!
+            const forceKeyMode = keyError ? true : q.isAnswerKeyMode;
+
+            return { 
+                ...q, 
+                hasError: qError, 
+                hasKeyError: keyError, 
+                choiceErrors: cErrors,
+                isAnswerKeyMode: forceKeyMode 
+            };
         });
 
-        if (!isValid) { setQuestions(validatedQuestions); return; }
+        // If validation fails, update the UI to show errors and STOP.
+        if (!isValid) { 
+            setQuestions(validatedQuestions); 
+            return; 
+        }
 
+        // --- 2. FORMATTING & PUBLISHING ---
         setIsPublishing(true);
         try {
+            // Clone the questions so we don't accidentally mutate the UI state
             let finalQuestions = [...validatedQuestions];
+            
             for (let i = 0; i < finalQuestions.length; i++) {
-                let q = finalQuestions[i];
+                let q = { ...finalQuestions[i] }; // Deep clone the specific question
 
-                // 1. Upload pending Question Image
+                // Upload pending Question Image
                 if (q.pendingQuestionImage) {
                     const formData = new FormData();
                     formData.append('file', q.pendingQuestionImage);
@@ -333,28 +353,29 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, initi
                     if (res.success && res.publicUrl) q.imageUrl = res.publicUrl;
                 }
 
-
-                // ---------- ADD THIS NEW BLOCK RIGHT HERE ----------
+                // FIX: Safely append the [pts] tags ONLY to the payload going to the database
                 if (q.type === 'Upload Image') {
-                    // 🌟 FIX: For Upload Image, the database just needs the raw points. No tags.
                     q.choices = [`${q.points}`];
                     q.correctAnswers = [`${q.points}`];
                 } else if (q.type === 'Short Answer' || q.type === 'Paragraph') {
                     const stripPts = (s: string) => s.replace(/\s*\[\s*\d+(?:\.\d+)?\s*pts?\s*\]\s*/gi, '').trim();
                     const cleanAns = stripPts(q.correctAnswers[0] || '');
+                    
                     q.choices = [`[${q.points} pts] ${cleanAns}`];
                     q.correctAnswers = [`[${q.points} pts] ${cleanAns}`];
                 } else {
                     const stripPts = (s: string) => s.replace(/\s*\[\s*\d+(?:\.\d+)?\s*pts?\s*\]\s*/gi, '').trim();
+                    
                     q.choices = q.choices.map((c: string) => {
                         const cleanC = stripPts(c);
                         const isCorrect = q.correctAnswers.some((ans: string) => stripPts(ans) === cleanC);
                         return isCorrect ? `[${q.points} pts] ${cleanC}` : cleanC;
                     });
+                    
                     q.correctAnswers = q.correctAnswers.map((c: string) => `[${q.points} pts] ${stripPts(c)}`);
                 }
-                // ----------------------------------------------------
-                // ----------------------------------------------------
+                
+                finalQuestions[i] = q;
             }
 
             onPublish(finalQuestions, timeLimit);
@@ -408,7 +429,7 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, initi
                                         <div className="flex items-center gap-x-2 mb-1">
                                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1E4B95" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                                             <h3 className="text-[14px] font-extrabold text-[#1E4B95] uppercase tracking-wide">Answer Key</h3>
-                                            {q.hasKeyError && <span className="text-[12px] font-bold text-[#ED1F24] ml-2 bg-red-50 px-2 py-0.5 rounded">Please select/enter the correct answer</span>}
+                                            {q.hasKeyError && <span className="text-[12px] font-bold text-[#ED1F24] ml-2 bg-red-50 px-2 py-0.5 rounded">Please set an answer key</span>}
                                         </div>
                                         <div className="text-[16px] font-medium text-[#222]">{q.question || "Untitled Question"}</div>
                                         {q.imageUrl && <img src={q.imageUrl} alt="Question" className="mt-3 max-h-[150px] object-contain rounded border border-gray-200" />}

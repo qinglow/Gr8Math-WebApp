@@ -193,13 +193,28 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                 <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-[#ED1F24]/90 backdrop-blur-md animate-in fade-in duration-500">
                     <div className="text-center p-8 max-w-md bg-white rounded-3xl shadow-2xl scale-in-center">
                         <div className="w-20 h-20 bg-red-100 text-[#ED1F24] rounded-full flex items-center justify-center mx-auto mb-6">
-                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                                <line x1="12" y1="9" x2="12" y2="13" />
+                                <line x1="12" y1="17" x2="12.01" y2="17" />
+                            </svg>
                         </div>
                         <h2 className="text-2xl font-black text-[#222] mb-2">Content Removed</h2>
+                        
+                        {/* FIX: Split the message by the pipe to extract the hidden count! */}
                         <p className="text-[#444] font-bold mb-6">
-                            {activeWarning.message}
-                            <br /> <span className="text-[#ED1F24]">Warning Strike: {activeWarning.count}/3</span>
+                            {activeWarning.message?.split('|')[0]}
+                            
+                            {activeWarning.message?.includes('|') && (
+                                <>
+                                    <br /> 
+                                    <span className="text-[#ED1F24]">
+                                        Warning Strike: {activeWarning.message.split('|')[1]}/3
+                                    </span>
+                                </>
+                            )}
                         </p>
+
                         <button onClick={dismissWarning} className="w-full py-4 bg-[#222] text-white rounded-xl font-black uppercase tracking-widest hover:bg-black transition-colors outline-none cursor-pointer">
                             I Understand
                         </button>

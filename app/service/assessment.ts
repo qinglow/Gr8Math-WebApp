@@ -461,6 +461,9 @@ export async function fetchPastQuestionsForWordBank() {
 
         if (error) throw error;
 
+        // NEW: Create a tracker to count how many times a title appears
+        const titleCounts: Record<string, number> = {};
+
         // 5. Transform the DB data into your Word Bank JSON format!
         const dynamicBank = assessments.map(ass => {
             const mappedQuestions = ass.assessment_questions.map((dbQ: any) => {
@@ -495,8 +498,16 @@ export async function fetchPastQuestionsForWordBank() {
                 };
             });
 
+            // NEW: Check if we've seen this title before and append a number if we have
+            const baseTitle = ass.title;
+            titleCounts[baseTitle] = (titleCounts[baseTitle] || 0) + 1;
+            
+            const displayTitle = titleCounts[baseTitle] > 1 
+                ? `${baseTitle} (${titleCounts[baseTitle]})` 
+                : baseTitle;
+
             return {
-                topic: `Past Test: ${ass.title}`, 
+                topic: `Past Test: ${displayTitle}`, 
                 questions: mappedQuestions
             };
         }).filter(bank => bank.questions.length > 0); 
