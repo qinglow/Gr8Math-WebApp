@@ -1,4 +1,3 @@
-// components/AssessmentCard.tsx
 import React from 'react';
 import Image from 'next/image';
 import assessmentIcon from '@/app/(teacher)/class-page/photos/assessment.png'

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { uploadLessonMediaToTigris } from '@/app/service/upload';
 import 'mathlive';
-import { WordBankModal } from '@/components/ui/WordBankModal'; // Adjust path
+import { WordBankModal } from '@/components/ui/WordBankModal'; 
 
 export type QuestionType = 'Multiple Choice' | 'Short Answer' | 'Paragraph' | 'Checkboxes' | 'Dropdown' | 'Upload Image';
 
