@@ -14,6 +14,7 @@ export default function TermsAndConditionsPage() {
             <main className="flex-1 w-full max-w-[1000px] mx-auto px-6 py-10 animate-in fade-in duration-500">
                 <div className="flex items-center gap-3 mb-8">
                     <button 
+                        aria-label='de'
                         onClick={() => router.back()} 
                         className="p-1 -ml-1 text-[#0A7F93] hover:bg-black/5 rounded-lg transition-colors outline-none cursor-pointer"
                     >

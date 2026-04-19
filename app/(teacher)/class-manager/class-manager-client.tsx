@@ -11,7 +11,7 @@ import { Gr8Toast } from '@/components/ui/Gr8Toast';
 import { Gr8Cache } from '@/lib/utils/cache';
 import Link from 'next/link';
 import { DllTabContent } from '../class-page/dll/DllTabContent';
-import { Gr8LoadingOverlay } from '@/components/ui/Gr8LoadingOverlay'; 
+import { Gr8LoadingOverlay } from '@/components/ui/Gr8LoadingOverlay';
 
 // --- SIDEBAR IMAGE IMPORTS ---
 import profileIcon from './photos/DefaultTemporaryProfile.png';
@@ -149,15 +149,15 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
         setErrors({});
     };
 
-   const handleLogout = async () => {
-    Gr8Cache.clearAll();
-    const { createClient } = await import('@/lib/supabase/client');
-    const supabase = createClient();
+    const handleLogout = async () => {
+        Gr8Cache.clearAll();
+        const { createClient } = await import('@/lib/supabase/client');
+        const supabase = createClient();
 
-    await supabase.auth.signOut();
+        await supabase.auth.signOut();
 
-    window.location.replace('/');
-  };
+        window.location.replace('/');
+    };
 
     return (
         <div className="flex h-screen bg-[#E2E7E9] font-sans overflow-hidden">
@@ -185,13 +185,21 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
                     </div>
 
                     <div className="flex-1 flex flex-col gap-y-8 pt-10 px-8">
-                        <button className="flex items-center justify-start w-full gap-x-4 text-[16px] font-bold text-[#222] transition-all hover:drop-shadow-lg bg-transparent border-none cursor-pointer p-0 text-left">
+                        <Link
+                            href="/terms-and-conditions"
+                            className="flex items-center justify-start w-full gap-x-4 text-[16px] font-bold text-[#222] transition-all hover:drop-shadow-lg bg-transparent border-none cursor-pointer p-0 text-left"
+                        >
                             <Image src={termsIcon} alt="Terms and Conditions" width={24} height={24} className="object-contain shrink-0" />
                             <span className="leading-tight">Terms and Conditions</span>
-                        </button>
+                        </Link>
                         <button className="flex items-center justify-start w-full gap-x-4 text-[16px] font-bold text-[#222] transition-all hover:drop-shadow-lg bg-transparent border-none cursor-pointer p-0 text-left">
-                            <Image src={privacyIcon} alt="Privacy Policy" width={24} height={24} className="object-contain shrink-0" />
+                            <Link
+                            href="/privacy-policy"
+                            className="flex items-center justify-start w-full gap-x-4 text-[16px] font-bold text-[#222] transition-all hover:drop-shadow-lg bg-transparent border-none cursor-pointer p-0 text-left"
+                        >
+                            <Image src={privacyIcon} alt="Terms and Conditions" width={24} height={24} className="object-contain shrink-0" />
                             <span className="leading-tight">Privacy Policy</span>
+                        </Link>
                         </button>
                         <button
                             onClick={handleLogout}
@@ -256,7 +264,7 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
 
                 {/* --- CLASS GRID --- */}
                 <div className="px-4 md:px-8 pb-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 overflow-y-auto">
-                   <Gr8LoadingOverlay isLoading={isFetchingClasses} message="Updating list..." />
+                    <Gr8LoadingOverlay isLoading={isFetchingClasses} message="Updating list..." />
 
                     {!isFetchingClasses && classesList.map((cls) => (
                         <Link

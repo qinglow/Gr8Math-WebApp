@@ -217,10 +217,10 @@ export default function SignUpPage() {
           {step === 'role' && (
             <div className="flex flex-col items-center">
               <div className="flex items-center mb-8 gap-x-4 w-full text-left">
-                <Link 
-                href="/auth/login" 
-                aria-label="Go back to Login Page"
-                onClick={resetRegistration}>
+                <Link
+                  href="/auth/login"
+                  aria-label="Go back to Login Page"
+                  onClick={resetRegistration}>
                   <Image src={backArrowIcon} alt="Back" width={20} height={20} />
                 </Link>
                 <h2 className="text-[22px] font-bold text-[#222] m-0">Register</h2>
@@ -326,7 +326,14 @@ export default function SignUpPage() {
             <div className="flex items-start gap-x-3 mt-4 mb-6">
               <input id="terms-checkbox" type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} className="mt-1 w-5 h-5 accent-[#1A4C8B] cursor-pointer" />
               <label htmlFor="terms-checkbox" className="text-[12px] font-extrabold text-[#222] leading-tight m-0 cursor-pointer">
-                By checking this box, you agree to our Terms and Conditions and Privacy Policy.
+                By checking this box, you agree to our{' '}
+                <Link href="/terms-and-conditions" className="text-[#1A4C8B] underline hover:opacity-80" target="_blank">
+                  Terms and Conditions
+                </Link>{' '}
+                and{' '}
+                <Link href="/privacy-policy" className="text-[#1A4C8B] underline hover:opacity-80" target="_blank">
+                  Privacy Policy
+                </Link>.
               </label>
             </div>
             <button onClick={handleProceedRegistration} disabled={!termsAccepted} className={`px-8 py-2 w-full rounded text-white text-xs font-bold ${termsAccepted ? 'bg-[#1A4C8B]' : 'bg-gray-400'}`}>Proceed</button>

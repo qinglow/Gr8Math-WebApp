@@ -222,14 +222,20 @@ export default function ModeratorDashboard({ profile }: { profile: any }) {
                     </div>
 
                     <div className="flex-1 flex flex-col gap-y-8 pt-10 px-8">
-                        <button className="flex items-center justify-start w-full gap-x-4 text-[16px] font-bold text-[#222] transition-all hover:drop-shadow-lg bg-transparent border-none cursor-pointer p-0 text-left">
+                        <Link
+                            href="/terms-and-conditions"
+                            className="flex items-center justify-start w-full gap-x-4 text-[16px] font-bold text-[#222] transition-all hover:drop-shadow-lg bg-transparent border-none cursor-pointer p-0 text-left"
+                        >
                             <Image src={termsIcon} alt="Terms and Conditions" width={24} height={24} className="object-contain shrink-0" />
                             <span className="leading-tight">Terms and Conditions</span>
-                        </button>
-                        <button className="flex items-center justify-start w-full gap-x-4 text-[16px] font-bold text-[#222] transition-all hover:drop-shadow-lg bg-transparent border-none cursor-pointer p-0 text-left">
+                        </Link>
+                        <Link
+                            href="/privacy-policy"
+                            className="flex items-center justify-start w-full gap-x-4 text-[16px] font-bold text-[#222] transition-all hover:drop-shadow-lg bg-transparent border-none cursor-pointer p-0 text-left"
+                        >
                             <Image src={privacyIcon} alt="Privacy Policy" width={24} height={24} className="object-contain shrink-0" />
                             <span className="leading-tight">Privacy Policy</span>
-                        </button>
+                        </Link>
                         <button
                             onClick={handleLogout}
                             className="flex items-center justify-start w-full gap-x-4 text-[16px] font-bold text-[#222] transition-all hover:drop-shadow-lg bg-transparent border-none cursor-pointer p-0 text-left">
@@ -274,7 +280,7 @@ export default function ModeratorDashboard({ profile }: { profile: any }) {
                                     violations.map((violation) => (
                                         <div key={violation.id} className="bg-[#F4EBE6] border border-[#DCD3CC] rounded-xl p-6 relative overflow-hidden">
                                             <h3 className="text-[15px] font-bold text-[#222] mb-3">{violation.studentName}</h3>
-                                            
+
                                             {/* PREVIEW PORTION ON CARD (Uses Helper) */}
                                             <p className="text-[13px] text-[#444] font-medium leading-relaxed mb-6 text-justify">
                                                 {getPreviewText(violation.description)?.substring(0, 100)}...
