@@ -84,6 +84,22 @@ export async function insertSearchHistory(userId: string, term: string) {
 export async function insertClass(userId: string, className: string, size: number, start: string, end: string) {
     const supabase = await createClient();
 
+    // 1. Check if the class name already exists for this specific user
+    const { count, error: checkError } = await supabase
+        .from('class')
+        .select('id', { count: 'exact', head: true })
+        .eq('adviser_id', userId)
+        .ilike('class_name', className);
+
+    if (checkError) {
+        // console.error("Error checking class name:", checkError);
+        throw checkError;
+    }
+
+    if ((count ?? 0) > 0) {
+        throw new Error("You already have a class with this name.");
+    }
+
     const classCode = await generateUniqueClassCode();
 
     const { data: insertedClass, error: classError } = await supabase
@@ -101,7 +117,7 @@ export async function insertClass(userId: string, className: string, size: numbe
         .single();
 
     if (classError) {
-        console.error("Error inserting class:", classError);
+        // console.error("Error inserting class:", classError);
         throw classError;
     }
 
@@ -112,7 +128,7 @@ export async function insertClass(userId: string, className: string, size: numbe
         });
 
     if (contentError) {
-        console.error("Error inserting course_content:", contentError);
+        // console.error("Error inserting course_content:", contentError);
         throw contentError;
     }
 

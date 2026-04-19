@@ -97,7 +97,7 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleCreateClass = async () => {
+   const handleCreateClass = async () => {
         if (!validateForm() || !profile?.id) return;
 
         setErrors({});
@@ -112,7 +112,11 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
                 endTime
             );
 
-            if (result.success) {
+            if (result && result.error) {
+                throw new Error(result.error);
+            }
+
+            if (result && result.success) {
                 setGeneratedCode(result.classCode || '');
                 setShowSuccess(true);
                 Gr8Cache.invalidate('teacher-classes');
@@ -120,8 +124,12 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
                 setClassesList(updatedClasses);
                 Gr8Cache.set('teacher-classes', updatedClasses, searchQuery);
             }
-        } catch (err) {
-            triggerToast("Failed to create class. Please try again.");
+        } catch (err: any) {
+            const errorMessage = err.message || "Failed to create class. Please try again.";
+
+            if (errorMessage.includes("already have a class")) {
+                setErrors({ className: "You already have a class with this name." });
+            }
         } finally {
             setIsLoading(false);
         }
@@ -194,12 +202,12 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
                         </Link>
                         <button className="flex items-center justify-start w-full gap-x-4 text-[16px] font-bold text-[#222] transition-all hover:drop-shadow-lg bg-transparent border-none cursor-pointer p-0 text-left">
                             <Link
-                            href="/privacy-policy"
-                            className="flex items-center justify-start w-full gap-x-4 text-[16px] font-bold text-[#222] transition-all hover:drop-shadow-lg bg-transparent border-none cursor-pointer p-0 text-left"
-                        >
-                            <Image src={privacyIcon} alt="Terms and Conditions" width={24} height={24} className="object-contain shrink-0" />
-                            <span className="leading-tight">Privacy Policy</span>
-                        </Link>
+                                href="/privacy-policy"
+                                className="flex items-center justify-start w-full gap-x-4 text-[16px] font-bold text-[#222] transition-all hover:drop-shadow-lg bg-transparent border-none cursor-pointer p-0 text-left"
+                            >
+                                <Image src={privacyIcon} alt="Terms and Conditions" width={24} height={24} className="object-contain shrink-0" />
+                                <span className="leading-tight">Privacy Policy</span>
+                            </Link>
                         </button>
                         <button
                             onClick={handleLogout}
