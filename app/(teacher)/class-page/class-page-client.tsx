@@ -62,7 +62,7 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
             <div className="flex flex-col min-h-screen bg-[#E2E7E9] font-sans relative">
                 <Gr8MathHeader /> <Gr8LoadingOverlay isLoading={isSaving} message="Loading..." />
                 <Gr8RichTextEditor courseId={courseId} initialContent={lessonContent} onChange={setLessonContent} onSave={() => setIsSaveConfirmModalOpen(true)} onBack={() => setIsDiscardModalOpen(true)} isEditing={isEditingLesson} onMediaQueued={(id: string, file: File, url: string) => setPendingMedia(p => [...p, { id, file, url }])} />
-                {isSaveConfirmModalOpen && <ConfirmModal title={`Confirm ${isEditingLesson ? 'Update' : 'Save'}?`} onYes={onExecuteSave} onNo={() => setIsSaveConfirmModalOpen(false)} />}
+                {isSaveConfirmModalOpen && <ConfirmModal title={`Are you sure you want to save?`} onYes={onExecuteSave} onNo={() => setIsSaveConfirmModalOpen(false)} />}
                 {isDiscardModalOpen && <ConfirmModal title="Discard Changes?" subtitle="You have unsaved content. If you go back, your changes will be lost." onYes={resetEditor} onNo={cancelDiscard} />}
             </div>
         );

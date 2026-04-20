@@ -118,7 +118,7 @@ export async function updateLesson(
 ) {
     const supabase = await createClient();
 
-    // 🌟 --- NEW: FETCH OLD CONTENT & DELETE ORPHANED TIGRIS FILES ---
+    //  --- NEW: FETCH OLD CONTENT & DELETE ORPHANED TIGRIS FILES ---
     const { data: oldLesson } = await supabase
         .from('lesson')
         .select('lesson_content')

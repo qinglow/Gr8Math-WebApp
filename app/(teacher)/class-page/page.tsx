@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -5,24 +7,15 @@ import { getClassFeed, getClassDetails } from "./action";
 import ClassPageClient from "./class-page-client";
 import { Gr8LoadingOverlay } from "@/components/ui/Gr8LoadingOverlay";
 
-
 export default async function Page({ 
     searchParams 
 }: { 
     searchParams: Promise<{ id?: string }> 
 }) {
-  
     const { id } = await searchParams;
 
     if (!id) {
         redirect('/class-manager');
-    }
-
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-        redirect('/auth/login');
     }
 
     return (
@@ -33,7 +26,6 @@ export default async function Page({
 }
 
 async function ClassContentLoader({ courseId }: { courseId: string }) {
-    // 3. Fetch data using the query ID
     const [feed, details] = await Promise.all([
         getClassFeed(courseId),
         getClassDetails(courseId)

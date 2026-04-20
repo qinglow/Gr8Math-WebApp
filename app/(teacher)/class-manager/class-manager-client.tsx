@@ -14,10 +14,10 @@ import { DllTabContent } from '../class-page/dll/DllTabContent';
 import { Gr8LoadingOverlay } from '@/components/ui/Gr8LoadingOverlay';
 
 // --- SIDEBAR IMAGE IMPORTS ---
-import profileIcon from './photos/DefaultTemporaryProfile.png';
-import termsIcon from './photos/TermsAndCondition.png';
-import privacyIcon from './photos/PrivacyPolicy.png';
-import logoutIcon from './photos/Logout.png';
+import profileIcon from '@/app/(teacher)/class-manager/photos/DefaultTemporaryProfile.png';
+import termsIcon from '@/app/(teacher)/class-manager/photos/TermsAndCondition.png';
+import privacyIcon from '@/app/(teacher)/class-manager/photos/PrivacyPolicy.png';
+import logoutIcon from '@/app/(teacher)/class-manager/photos/Logout.png';
 
 interface UserProfile {
     id: string;
@@ -119,6 +119,7 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
             if (result && result.success) {
                 setGeneratedCode(result.classCode || '');
                 setShowSuccess(true);
+                triggerToast("Class Created Successfully!");
                 Gr8Cache.invalidate('teacher-classes');
                 const updatedClasses = await getTeacherClasses(profile.id, searchQuery);
                 setClassesList(updatedClasses);

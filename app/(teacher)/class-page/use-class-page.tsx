@@ -188,7 +188,7 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
 
    const handleProceedToDetails = () => { 
         if (selectedAddOption === 'blackboard') {
-            setIsAddModalOpen(false); // Close the modal
+            setIsAddModalOpen(false); 
             window.location.href = `/virtual-blackboard?courseId=${courseId}`;
         } else if (selectedAddOption) {
             setAddStep('details'); 
@@ -283,7 +283,7 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
                     : [newItem, ...prev]
                 );
                 
-                setToastMessage(isEditingLesson ? 'Assessment updated!' : 'Assessment published!');
+                setToastMessage(isEditingLesson ? 'Assessment Test updated!' : 'Assessment Test posted!');
                 setShowToast(true);
                 setTimeout(() => setShowToast(false), 3000);
                 resetEditor();
@@ -303,7 +303,7 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
             if (result.success) {
                 const updated = { ...result.lesson, type: 'lesson' } as ClassContentItem;
                 setCourseContent(prev => result.isEdit ? prev.map(l => (l.id === editingLessonId && l.type === 'lesson') ? updated : l) : [updated, ...prev]);
-                setToastMessage(result.isEdit ? 'Lesson updated!' : 'Lesson posted!'); resetEditor();
+                setToastMessage(result.isEdit ? 'Lesson edited!' : 'Lesson posted!'); resetEditor();
             }
         } catch (e: any) { alert(e.message); } finally { setIsSaving(false); setShowToast(true); setTimeout(() => setShowToast(false), 3000); }
     };

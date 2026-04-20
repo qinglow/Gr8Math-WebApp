@@ -1,35 +1,3 @@
-import { createClient } from '@/lib/supabase/server';
-import { getUserProfile } from '@/app/service/auth';
-import { redirect } from 'next/navigation';
-import { Suspense } from 'react'; // 1. Import Suspense
-
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-  if (authError || !user || !user.email) {
-    redirect('/auth/login'); 
-  }
-
-  const { data: profile } = await getUserProfile(user.email);
-
-  if (profile?.roles === 'Teacher') {
-    redirect('/class-manager');
-  }
-
-  if (!profile || profile.roles === 'Student') {
-    await supabase.auth.signOut();
-    redirect('/auth/access-denied');
-  }
-
-  if (profile?.roles === 'Admin') {
-    // 2. Wrap children in Suspense to fix the Next.js 15 Error
-    return (
-      <Suspense fallback={null}>
-        {children}
-      </Suspense>
-    );
-  }
-
-  redirect('/auth/login');
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  return <>{children}</>;
 }

@@ -30,7 +30,7 @@ export async function publishAssessmentAction(params: {
         const modCheck = await checkContentModeration(allTextToCheck);
         const status = modCheck.isSafe ? 'approved' : 'pending';
 
-        // 🌟 FIX: Calculate total points by multiplying the points value by the number of correct answers
+        // FIX: Calculate total points by multiplying the points value by the number of correct answers
         const totalPoints = params.questions.reduce((sum, q) => {
             const pts = Number(q.points) || 1;
             if (q.type === 'Checkboxes' && q.correctAnswers && q.correctAnswers.length > 0) {

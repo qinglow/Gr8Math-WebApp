@@ -147,6 +147,7 @@ export default function AuditTrailsPage() {
         return (
             <div className="relative inline-block ml-2">
                 <button
+                    aria-label='ede'
                     onClick={() => setActiveFilterCol(activeFilterCol === columnKey ? null : columnKey)}
                     className={`p-1.5 rounded transition-colors outline-none flex items-center justify-center
                         ${currentFilter ? 'bg-[#0A7F93] text-white' : 'text-[#888] hover:bg-gray-200'}

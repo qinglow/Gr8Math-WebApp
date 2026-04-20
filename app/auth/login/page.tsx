@@ -121,6 +121,7 @@ function LoginForm() {
       setMfaStep(result.mfaType as 'setup' | 'verify');
       setLoading(false);
     } else {
+      setToastMsg("Login Successful!");
       resetForm();
     }
   };
@@ -243,7 +244,7 @@ function LoginForm() {
             )}
 
             <Gr8Button
-              text={mfaStep !== 'none' ? "Verify & Continue" : "Login"}
+              text={mfaStep !== 'none' ? "Verify" : "Login"}
               type="submit"
               variant="solid"
               disabled={loading}

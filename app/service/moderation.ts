@@ -167,6 +167,8 @@ export async function removeBannedWord(word: string) {
     return await supabase.from('banned_words').delete().eq('word', word);
 }
 
+
+//future uses
 export async function getPendingViolations() {
     const supabase = await createClient();
 
@@ -187,7 +189,7 @@ export async function getPendingViolations() {
     return data.map((v: any) => ({
         id: v.id,
         studentName: `${v.target_user?.first_name || 'Unknown'} ${v.target_user?.last_name || ''}`.trim(),
-        description: v.violation_details, // This holds the full context we built earlier
+        description: v.violation_details, // This holds the full context 
         issue: `Content contains ${v.reason_code}`,
         offendingWord: v.reason_code // Or extract the specific word if you want
     }));
@@ -211,7 +213,6 @@ export async function submitAppealAction(reason: string, imageUrl: string | null
 
     if (existing) return { error: "You already have a pending appeal." };
 
-    // We can append the image URL to the violation details or save it if you have an image column
     const formattedDetails = imageUrl
         ? `${reason}\n\n[PROOF IMAGE]\n${imageUrl}`
         : reason;
