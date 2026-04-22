@@ -276,7 +276,42 @@ export async function verifyResetCode(formData: FormData) {
         await logAuditTrail(targetUserId, 'Authentication', 'VERIFY_RESET', 'FAILED', 'Failed OTP verification.');
         return { error: "Invalid code or expired" };
     }
-    return { success: true };
+
+    // --- Check for Authenticator App (MFA) ---
+    const { data: factorsData } = await supabase.auth.mfa.listFactors();
+    const allFactors = (factorsData as any)?.all || (factorsData as any)?.factors || [];
+    const totpFactor = allFactors.find((f: any) => f.factor_type === 'totp' && f.status === 'verified');
+
+    if (totpFactor) {
+        // User has MFA enrolled, AAL2 upgrade required next
+        return { success: true, mfaRequired: true, factorId: totpFactor.id };
+    }
+
+    // No MFA enrolled, safe to proceed
+    return { success: true, mfaRequired: false };
+}
+
+export async function verifyRecoveryMfa(formData: FormData) {
+    const supabase = await createClient();
+    const factorId = formData.get('factorId') as string;
+    const code = formData.get('code') as string;
+
+    try {
+        const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({ factorId });
+        if (challengeError) return { error: "Session expired. Please start over." };
+
+        const { error: verifyError } = await supabase.auth.mfa.verify({
+            factorId,
+            challengeId: challengeData.id,
+            code
+        });
+
+        if (verifyError) return { error: "Incorrect Authenticator code." };
+
+        return { success: true };
+    } catch (err: any) {
+        return { error: "An unexpected error occurred." };
+    }
 }
 
 export async function updatePassword(formData: FormData) {
@@ -285,7 +320,9 @@ export async function updatePassword(formData: FormData) {
 
     const { data: { user } } = await supabase.auth.getUser();
 
+   
     const { error } = await supabase.auth.updateUser({ password });
+    
     if (error) {
         if (user && user.email) {
             const { data: profile } = await AuthService.getUserProfile(user.email);
@@ -303,6 +340,7 @@ export async function updatePassword(formData: FormData) {
         }
     }
 
+    await supabase.auth.signOut(); 
     const message = encodeURIComponent("Password updated successfully");
     redirect(`/auth/login?msg=${message}`);
 }

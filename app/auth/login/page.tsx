@@ -48,9 +48,7 @@ function LoginForm() {
     setActiveField(null);
   };
 
-  // --- NEW: THE CLEAN SLATE EFFECT ---
-  // If the user reloads the page or hits the browser's back button,
-  // this immediately fires and destroys any "half-logged-in" MFA sessions.
+ 
   useEffect(() => {
     cancelLoginAction();
   }, []);
