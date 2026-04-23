@@ -5,6 +5,7 @@ import { redirect } from "next/navigation"
 import { z } from "zod"
 import * as AuthService from "@/app/service/auth";
 import { logAuditTrail } from "@/app/service/audit-trails";
+import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
 
 
 export async function login(formData: FormData) {
@@ -33,7 +34,8 @@ export async function login(formData: FormData) {
     if (userError || !user) return { error: "Email or Password not found" };
 
     // --- NEW: STRICT MFA ENFORCEMENT FOR TEACHERS ---
-    if (user.roles === 'Teacher') {
+   // --- MFA ENFORCEMENT FOR TEACHERS AND ADMINS ---
+if (user.roles === 'Teacher' || user.roles === 'Admin')  {
         const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors();
 
         if (factorsError || !factorsData) {
@@ -98,7 +100,7 @@ export async function login(formData: FormData) {
     redirect('/class-manager');
 }
 
-export async function verifyMfaAction(factorId: string, code: string) {
+export async function verifyMfaAction(factorId: string, code: string, isSetup: boolean = false) {
     const supabase = await createClient();
 
     const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -125,13 +127,7 @@ export async function verifyMfaAction(factorId: string, code: string) {
 
         if (verifyError) {
             if (profileId) {
-                await logAuditTrail(
-                    profileId,
-                    'Authentication',
-                    'MFA_VERIFY',
-                    'FAILED',
-                    'Failed MFA verification attempt.'
-                );
+                await logAuditTrail(profileId, 'Authentication', 'MFA_VERIFY', 'FAILED', 'Failed MFA verification attempt.');
             }
             return { error: "Incorrect code. Please try again." };
         }
@@ -141,32 +137,54 @@ export async function verifyMfaAction(factorId: string, code: string) {
     }
 
     if (profileId) {
-        await logAuditTrail(
-            profileId,
-            'Authentication',
-            'LOGIN',
-            'SUCCESS',
-            'Successful Login via MFA.'
-        );
+        await logAuditTrail(profileId, 'Authentication', 'LOGIN', 'SUCCESS', 'Successful Login via MFA.');
     }
 
-    if (userRole === 'Admin') {
-        redirect('/dashboard');
-    } else if (userRole === 'Student') {
-        redirect('/auth/access-denied');
+    let targetUrl = '/class-manager';
+    if (userRole === 'Admin') targetUrl = '/dashboard';
+    else if (userRole === 'Student') targetUrl = '/auth/access-denied';
+
+    if (isSetup && authUser) {
+        try {
+            const singleBackupCode = await AuthService.generateMasterBackupCode(authUser.id);
+            return { success: true, backupCode: singleBackupCode, targetUrl };
+        } catch (error: any) {
+            return { error: error.message || "Server Error configuring backup codes." };
+        }
     }
 
-    redirect('/class-manager');
+    // Normal login: Redirect immediately
+    redirect(targetUrl);
 }
 
-// --- NEW: Securely destroy partial session if user backs out ---
+export async function verifyBackupCodeAction(backupCode: string) {
+    const supabase = await createClient();
+    
+    // Grab the user from the partial AAL1 session
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: "Session expired. Please log in again." };
+
+    try {
+        // Hand off the logic to the Service Layer
+        const result = await AuthService.verifyAndConsumeBackupCode(user.id, backupCode);
+        
+        if (result.error) return result;
+
+        // If successful, log them out to force a clean re-login and new setup
+        await supabase.auth.signOut();
+        return { success: true };
+        
+    } catch (error: any) {
+        return { error: error.message || "Server Error verifying backup code." };
+    }
+}
+
+
 export async function cancelLoginAction() {
     const supabase = await createClient();
     await supabase.auth.signOut();
 }
 
-
-// --- EVERYTHING BELOW THIS LINE IS UNTOUCHED ---
 
 const RegistrationSchema = z.object({
     email: z.string().email("Invalid email format"),
@@ -277,7 +295,6 @@ export async function verifyResetCode(formData: FormData) {
         return { error: "Invalid code or expired" };
     }
 
-    // --- Check for Authenticator App (MFA) ---
     const { data: factorsData } = await supabase.auth.mfa.listFactors();
     const allFactors = (factorsData as any)?.all || (factorsData as any)?.factors || [];
     const totpFactor = allFactors.find((f: any) => f.factor_type === 'totp' && f.status === 'verified');
@@ -343,4 +360,21 @@ export async function updatePassword(formData: FormData) {
     await supabase.auth.signOut(); 
     const message = encodeURIComponent("Password updated successfully");
     redirect(`/auth/login?msg=${message}`);
+}
+
+export async function consumeBackupCodeForRecovery(backupCode: string) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: "Session expired. Please request a new code." };
+
+    try {
+        const result = await AuthService.verifyAndConsumeBackupCode(user.id, backupCode);
+        
+        if (result.error) return result;
+
+        return { success: true };
+        
+    } catch (error: any) {
+        return { error: error.message || "Server Error verifying backup code." };
+    }
 }

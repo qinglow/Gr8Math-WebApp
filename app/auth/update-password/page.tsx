@@ -10,7 +10,7 @@ import backArrowIcon from '../photos/back-arrow.png';
 import { Gr8TextField } from '../../../components/ui/Gr8TextField';
 import { Gr8Button } from '../../../components/ui/Gr8Button';
 import { Gr8Toast } from '@/components/ui/Gr8Toast';
-import { sendResetCode, verifyResetCode, verifyRecoveryMfa, updatePassword } from '../action';
+import { sendResetCode, verifyResetCode, verifyRecoveryMfa, consumeBackupCodeForRecovery, updatePassword } from '../action';
 import { counter } from '@/app/hooks/counter';
 import { PasswordDetailsForm } from '@/components/form/PasswordForm';
 
@@ -24,7 +24,11 @@ export default function UpdatePasswordPage() {
   const [mfaCode, setMfaCode] = useState('');
   const [factorId, setFactorId] = useState('');
 
-  const [activeField, setActiveField] = useState<'email' | 'code' | 'mfaCode' | 'newPassword' | 'confirmPassword' | null>(null);
+  // --- NEW: Master Backup Code States ---
+  const [isUsingBackup, setIsUsingBackup] = useState(false);
+  const [backupInput, setBackupInput] = useState('');
+
+  const [activeField, setActiveField] = useState<'email' | 'code' | 'mfaCode' | 'backup' | 'newPassword' | 'confirmPassword' | null>(null);
   const [step, setStep] = useState<'request' | 'verify' | 'verify-mfa' | 'new-password'>('request');
 
   const [emailError, setEmailError] = useState(false);
@@ -33,7 +37,7 @@ export default function UpdatePasswordPage() {
   const [passwordErrorMessage, setPasswordErrorMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [toastError, setToastError] = useState<string | null>(null);
-  
+
   const [failedCode, setFailedCode] = useState('');
   const { timeLeft, startCountdown } = counter(0);
 
@@ -46,6 +50,8 @@ export default function UpdatePasswordPage() {
     setEmail('');
     setCode('');
     setMfaCode('');
+    setIsUsingBackup(false);
+    setBackupInput('');
     setNewPassword('');
     setConfirmPassword('');
     setEmailError(false);
@@ -111,11 +117,10 @@ export default function UpdatePasswordPage() {
 
     if (result?.error) {
       setCodeError(true);
-      setFailedCode(code); 
+      setFailedCode(code);
       setToastError("Invalid code.");
       setTimeout(() => setToastError(null), 3000);
     } else {
-      // Moves to MFA if they are a Teacher, otherwise skips straight to password
       if (result?.mfaRequired) {
         setFactorId(result.factorId!);
         setStep('verify-mfa');
@@ -130,6 +135,31 @@ export default function UpdatePasswordPage() {
   const handleVerifyMfaCode = async () => {
     setToastError(null);
 
+    // --- HANDLE MASTER BACKUP CODE SUBMISSION ---
+    if (isUsingBackup) {
+      if (!backupInput || backupInput.length < 14) {
+        setToastError("Please enter your Recovery Code.");
+        setTimeout(() => setToastError(null), 3000);
+        return;
+      }
+
+      setLoading(true);
+      const result = await consumeBackupCodeForRecovery(backupInput);
+      setLoading(false);
+
+      if (result?.error) {
+        setToastError(result.error);
+        setTimeout(() => setToastError(null), 3000);
+      } else {
+        setToastError("Please proceed to change your password.");
+        setTimeout(() => setToastError(null), 3000);
+        setStep('new-password');
+        setActiveField('newPassword');
+      }
+      return;
+    }
+
+    // --- HANDLE AUTHENTICATOR CODE SUBMISSION ---
     if (!mfaCode || mfaCode.length < 6) {
       setToastError("Please enter your 6-digit Authenticator code.");
       setTimeout(() => setToastError(null), 3000);
@@ -235,28 +265,28 @@ export default function UpdatePasswordPage() {
                   {timeLeft > 0 ? `${timeLeft} s` : (loading ? "Sending..." : "Get Code")}
                 </button>
               </div>
-              <Gr8TextField 
-                label="Code" 
-                type="text" 
-                value={code} 
-                onChange={(val) => { 
-                  setCode(val); 
-                  setCodeError(false); 
-                  if (val !== failedCode) setFailedCode(''); 
-                }} 
-                isActive={activeField === 'code'} 
-                onFocus={() => setActiveField('code')} 
-                onBlur={() => setActiveField(null)} 
-                hasError={codeError} 
-                errorMessage="Please enter the verification code." 
+              <Gr8TextField
+                label="Code"
+                type="text"
+                value={code}
+                onChange={(val) => {
+                  setCode(val);
+                  setCodeError(false);
+                  if (val !== failedCode) setFailedCode('');
+                }}
+                isActive={activeField === 'code'}
+                onFocus={() => setActiveField('code')}
+                onBlur={() => setActiveField(null)}
+                hasError={codeError}
+                errorMessage="Please enter the verification code."
               />
               <div className="mt-6">
-                <Gr8Button 
-                  type="button" 
-                  text={loading ? "Verifying..." : "Verify"} 
-                  onClick={handleVerifyCode} 
-                  variant="solid" 
-                  disabled={loading || !code || code === failedCode || timeLeft === 0} 
+                <Gr8Button
+                  type="button"
+                  text={loading ? "Verifying..." : "Verify"}
+                  onClick={handleVerifyCode}
+                  variant="solid"
+                  disabled={loading || !code || code === failedCode || timeLeft === 0}
                 />
               </div>
             </div>
@@ -264,25 +294,65 @@ export default function UpdatePasswordPage() {
 
           {step === 'verify-mfa' && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-500">
-              <p className="text-[12px] font-semibold text-[#222] mb-4">
-                Your account is protected by Two-Factor Authentication. Please enter the 6-digit code from your Authenticator app.
-              </p>
-              <Gr8TextField 
-                label="6-Digit Authenticator Code" 
-                type="text" 
-                value={mfaCode} 
-                onChange={(val) => { setMfaCode(val.replace(/\D/g, '').slice(0, 6)); }} 
-                isActive={activeField === 'mfaCode'} 
-                onFocus={() => setActiveField('mfaCode')} 
-                onBlur={() => setActiveField(null)} 
-              />
+              {!isUsingBackup ? (
+                <>
+                  <p className="text-[12px] font-semibold text-[#222] mb-4">
+                    Your account is protected by Two-Factor Authentication. Please enter the 6-digit code from your Authenticator app.
+                  </p>
+                  <Gr8TextField
+                    label="6-Digit Authenticator Code"
+                    type="text"
+                    value={mfaCode}
+                    onChange={(val) => { setMfaCode(val.replace(/\D/g, '').slice(0, 6)); }}
+                    isActive={activeField === 'mfaCode'}
+                    onFocus={() => setActiveField('mfaCode')}
+                    onBlur={() => setActiveField(null)}
+                  />
+                  <div className="flex justify-end mb-8 mt-[-8px]">
+                    <Gr8Button
+                      text="Use Recovery Code"
+                      variant="link"
+                      onClick={() => setIsUsingBackup(true)}
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-[12px] font-semibold text-[#222] mb-4">
+                    Enter your Recovery Code to bypass Authenticator and reset your password.
+                  </p>
+                  <Gr8TextField
+                    label="XXXX-XXXX-XXXX"
+                    type="text"
+                    value={backupInput}
+                    onChange={(val) => {
+                      const raw = val.replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 12);
+                      const formatted = raw.match(/.{1,4}/g)?.join('-') || '';
+
+                      setBackupInput(formatted);
+                    }}
+                    isActive={activeField === 'backup'}
+                    onFocus={() => setActiveField('backup')}
+                    onBlur={() => setActiveField(null)}
+                  />
+                  <div className="text-center mt-4">
+                    <button
+                      type="button"
+                      onClick={() => setIsUsingBackup(false)}
+                      className="text-[12px] font-semibold text-[#666] hover:opacity-70 transition-opacity bg-transparent border-none cursor-pointer underline"
+                    >
+                      Back to Authenticator
+                    </button>
+                  </div>
+                </>
+              )}
+
               <div className="mt-6">
-                <Gr8Button 
-                  type="button" 
-                  text={loading ? "Verifying..." : "Verify"} 
-                  onClick={handleVerifyMfaCode} 
-                  variant="solid" 
-                  disabled={loading || mfaCode.length < 6} 
+                <Gr8Button
+                  type="button"
+                  text={loading ? "Verifying..." : "Verify"}
+                  onClick={handleVerifyMfaCode}
+                  disabled={loading || (!isUsingBackup && mfaCode.length < 6) || (isUsingBackup && backupInput.length < 14)}
                 />
               </div>
             </div>
