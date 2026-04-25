@@ -41,6 +41,7 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [processedMsg, setProcessedMsg] = useState<string | null>(null);
+  const [hasDownloadedCode, setHasDownloadedCode] = useState(false);
 
   const resetForm = () => {
     setEmail('');
@@ -52,6 +53,7 @@ function LoginForm() {
     setIsUsingBackup(false);
     setBackupInput('');
     setBackupCodeStr('');
+    setHasDownloadedCode(false);
     setEmptyError(false);
     setActiveField(null);
   };
@@ -158,6 +160,67 @@ function LoginForm() {
     await cancelLoginAction();
   };
 
+ 
+  const handleDownloadCode = () => {
+    const element = document.createElement("a");
+    const file = new Blob([`Gr8Math Recovery Code\n\nCode: ${backupCodeStr}\n\nKeep this safe! You will need it if you lose access to your Authenticator app.`], {type: 'text/plain'});
+    element.href = URL.createObjectURL(file);
+    element.download = "Gr8Math-Recovery-Code.txt";
+    document.body.appendChild(element); 
+    element.click();
+    document.body.removeChild(element);
+    
+    setHasDownloadedCode(true); 
+  };
+
+ 
+  useEffect(() => {
+    // 1. Catch Tab Close or Hard Refresh (F5)
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Only warn if on backup screen AND haven't downloaded
+      if (mfaStep === 'show-backup' && !hasDownloadedCode) {
+        e.preventDefault();
+        e.returnValue = ''; 
+      }
+    };
+
+    // 2. Catch the Browser/Mobile "Back" Button
+    const handlePopState = (e: PopStateEvent) => {
+      if (mfaStep === 'show-backup' && !hasDownloadedCode) {
+        const confirmLeave = window.confirm("You haven't downloaded your Recovery Code yet. If you leave, you will have to log in again. Are you sure you want to go back?");
+        
+        if (confirmLeave) {
+          // They clicked 'Yes, leave' -> Wipe session and go back to login
+          cancelLoginAction();
+          resetForm();
+          setToastMsg("Setup cancelled. Please log in again.");
+          setTimeout(() => setToastMsg(null), 4000);
+        } else {
+          // They clicked 'Cancel' -> Push state again to keep them trapped on this page
+          window.history.pushState(null, '', window.location.href);
+        }
+      } else if (mfaStep === 'show-backup' && hasDownloadedCode) {
+         // They downloaded it, so let them leave, but still wipe the partial session to be safe
+         cancelLoginAction();
+         resetForm();
+      }
+    };
+
+    // Apply listeners if they reach the backup screen
+    if (mfaStep === 'show-backup') {
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      
+      // Push initial trap state for the back button
+      window.history.pushState(null, '', window.location.href);
+      window.addEventListener('popstate', handlePopState);
+    }
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [mfaStep, hasDownloadedCode]); 
+
   return (
     <div className="flex flex-col lg:flex-row min-h-screen overflow-hidden">
       {/* LEFT PANEL */}
@@ -184,11 +247,11 @@ function LoginForm() {
           {mfaStep === 'show-backup' ? (
             <div className="animate-in fade-in slide-in-from-right-4 duration-700">
               <p className="text-[14px] leading-relaxed text-center text-[#444] mb-8 px-2">
-                <strong className="text-[#222]">Important:</strong> Copy this Recovery Code and keep it in a safe place. If you lose access to your Authenticator app, you will need this to regain access to your account.
+                <strong className="text-[#222]">Important:</strong> Copy or download this Recovery Code. If you lose access to your Authenticator app, you will need this to regain access to your account.
               </p>
 
               {/* THE CODE BOX */}
-              <div className="bg-[#F2F6F9] rounded-2xl p-6 md:p-10 mb-10 flex flex-col items-center justify-center border border-[#E5E9F0] w-full">
+              <div className="bg-[#F2F6F9] rounded-2xl p-6 md:p-10 mb-4 flex flex-col items-center justify-center border border-[#E5E9F0] w-full">
                 <span className="text-[#88909B] text-[11px] font-bold tracking-[0.2em] uppercase mb-4">
                   RECOVERY CODE
                 </span>
@@ -216,11 +279,39 @@ function LoginForm() {
                 </div>
               </div>
 
+              {/* SINGLE DOWNLOAD BUTTON */}
+              <div className="flex justify-center mb-10">
+                <button type="button" onClick={handleDownloadCode} className="text-[13px] font-bold text-[#1E40AF] hover:underline bg-transparent border-none cursor-pointer flex items-center gap-x-2">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                  </svg>
+                  Download .txt
+                </button>
+              </div>
+
+              {/* CONTINUE BUTTON WITH STRICT AUTO-DOWNLOAD LOGIC */}
               <Gr8Button
-                text="Continue"
+                text={loading ? "Loading..." : "Continue"}
                 type="button"
                 variant="solid"
-                onClick={() => router.push(targetRedirectUrl)}
+                disabled={loading}
+                onClick={() => {
+                  if (!hasDownloadedCode) {
+                    handleDownloadCode();
+                    setLoading(true);
+                    
+                    // Give the browser 1.5 seconds to start the download before routing
+                    setTimeout(() => {
+                      router.push(targetRedirectUrl);
+                    }, 1500);
+                  } else {
+                    // User already explicitly downloaded it, proceed instantly
+                    setLoading(true);
+                    router.push(targetRedirectUrl);
+                  }
+                }}
               />
             </div>
           ) : (
@@ -353,7 +444,10 @@ function LoginForm() {
               )}
 
               <Gr8Button
-                text={mfaStep !== 'none' ? "Verify" : "Login"}
+                text={loading
+                  ? (mfaStep === 'none' ? "Logging in..." : "Verifying...")
+                  : (mfaStep === 'none' ? "Login" : "Verify")
+                }
                 type="submit"
                 variant="solid"
                 disabled={loading || (mfaStep === 'verify' && ((!isUsingBackup && mfaCode.length < 6) || (isUsingBackup && backupInput.length < 14)))}
