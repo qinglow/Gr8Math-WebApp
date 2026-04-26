@@ -12,6 +12,8 @@ import { Gr8Cache } from '@/lib/utils/cache';
 import Link from 'next/link';
 import { DllTabContent } from '../class-page/dll/DllTabContent';
 import { Gr8LoadingOverlay } from '@/components/ui/Gr8LoadingOverlay';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 
 // --- SIDEBAR IMAGE IMPORTS ---
 import profileIcon from '@/app/(teacher)/class-manager/photos/DefaultTemporaryProfile.png';
@@ -28,6 +30,7 @@ interface UserProfile {
 
 export default function ClassManagerClient({ profile }: { profile: UserProfile | null }) {
     // Layout State
+    const router = useRouter();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     // Data States
@@ -97,7 +100,7 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
         return Object.keys(newErrors).length === 0;
     };
 
-   const handleCreateClass = async () => {
+    const handleCreateClass = async () => {
         if (!validateForm() || !profile?.id) return;
 
         setErrors({});
@@ -159,13 +162,18 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
     };
 
     const handleLogout = async () => {
-        Gr8Cache.clearAll();
-        const { createClient } = await import('@/lib/supabase/client');
-        const supabase = createClient();
+        try {
+            Gr8Cache.clearAll();
 
-        await supabase.auth.signOut();
+            const supabase = createClient();
+            await supabase.auth.signOut();
 
-        window.location.replace('/');
+            router.refresh();
+
+            router.push('/');
+        } catch (error) {
+            console.error("Logout failed:", error);
+        }
     };
 
     return (
