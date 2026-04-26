@@ -161,16 +161,13 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
         setErrors({});
     };
 
-    const handleLogout = async () => {
+   const handleLogout = async () => {
         try {
             Gr8Cache.clearAll();
-
             const supabase = createClient();
             await supabase.auth.signOut();
 
-            router.refresh();
-
-            router.push('/');
+            window.location.href = '/auth/login'; 
         } catch (error) {
             console.error("Logout failed:", error);
         }

@@ -112,27 +112,57 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
     useEffect(() => {
         const fetchUserStatus = async () => {
             const supabase = createClient();
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+            
+            // 1. Get session first (More reliable on fast production initial loads)
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            const user = session?.user;
 
-            const { data: dbUser } = await supabase.from('user').select('id, is_restricted, warning_count').eq('email_add', user.email).single();
+            if (!user) {
+                console.log("[DEBUG] No user session found on mount. Auth race condition triggered.");
+                return;
+            }
+
+            console.log("[DEBUG] Fetching status for:", user.email);
+
+            // 2. Fetch User Profile
+            const { data: dbUser, error: userError } = await supabase
+                .from('user')
+                .select('id, is_restricted, warning_count')
+                .eq('email_add', user.email)
+                .single();
+
+            if (userError) console.error("[DEBUG] Error fetching user:", userError);
             if (dbUser) setUserProfile(dbUser);
 
             if (dbUser) {
-                const { data: notices } = await supabase.from('notifications')
+                // 3. Fetch Notifications
+                const { data: notices, error: noticeError } = await supabase
+                    .from('notifications')
                     .select('*')
                     .eq('user_id', dbUser.id)
                     .eq('is_read', false)
                     .eq('type', 'warning');
 
+                if (noticeError) console.error("[DEBUG] Error fetching notices (Check RLS Policies!):", noticeError);
+                console.log("[DEBUG] Raw notices found:", notices);
+
                 if (notices && notices.length > 0) {
                     const flashNotice = notices.find((n: any) => n.meta?.flash_ui);
+                    
                     if (flashNotice) {
-                        setActiveWarning({ id: flashNotice.id, message: flashNotice.message, count: flashNotice.meta?.warning_count });
+                        console.log("[DEBUG] Flash notice matched! Setting active warning.");
+                        setActiveWarning({ 
+                            id: flashNotice.id, 
+                            message: flashNotice.message, 
+                            count: flashNotice.meta?.warning_count 
+                        });
+                    } else {
+                        console.log("[DEBUG] Notices exist, but none have meta.flash_ui == true");
                     }
                 }
             }
         };
+        
         fetchUserStatus();
     }, []);
 
