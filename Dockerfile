@@ -10,6 +10,14 @@ RUN npm install
 # 2. Copy the rest of your source code
 COPY . .
 
+# This grabs the variables from Render and injects them into the Next.js build
+ARG NEXT_PUBLIC_SUPABASE_URL
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+
+ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+ENV NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+
+
 # 3. BUILD the Next.js app for production (CRITICAL STEP)
 RUN npm run build
 
