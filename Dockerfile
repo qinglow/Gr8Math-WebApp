@@ -31,7 +31,8 @@ WORKDIR /src
 COPY --from=builder /src/.next ./.next
 COPY --from=builder /src/node_modules ./node_modules
 COPY --from=builder /src/package.json ./package.json
-# COPY --from=builder /src/public ./public
+COPY --from=builder /src/next.config.ts ./next.config.ts
+COPY --from=builder /src/public ./public
 
 # 5. Start the production server
 CMD ["npm", "start"]
