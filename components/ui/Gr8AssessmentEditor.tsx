@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { uploadLessonMediaToTigris } from '@/app/service/upload';
 import 'mathlive';
-import { WordBankModal } from '@/components/ui/WordBankModal'; 
+import { WordBankModal } from '@/components/ui/WordBankModal';
 
 export type QuestionType = 'Multiple Choice' | 'Short Answer' | 'Paragraph' | 'Checkboxes' | 'Dropdown' | 'Upload Image';
 
@@ -291,28 +291,28 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, initi
 
             // Check if question text/image is empty
             if (!q.question.trim() && !q.imageUrl && !q.pendingQuestionImage) {
-                qError = true; 
+                qError = true;
                 isValid = false;
             }
 
             if (['Multiple Choice', 'Checkboxes', 'Dropdown'].includes(q.type)) {
                 // Check for empty choices
                 q.choices.forEach((choice, idx) => {
-                    if (!choice.trim()) { 
-                        cErrors[idx] = true; 
-                        isValid = false; 
+                    if (!choice.trim()) {
+                        cErrors[idx] = true;
+                        isValid = false;
                     }
                 });
-                
+
                 // FIX: Check if an answer key was actually selected
                 if (q.correctAnswers.length === 0) {
-                    keyError = true; 
+                    keyError = true;
                     isValid = false;
                 }
             } else if (['Short Answer', 'Paragraph'].includes(q.type)) {
                 // FIX: Check if text answer key is empty
                 if (!q.correctAnswers[0] || !q.correctAnswers[0].trim()) {
-                    keyError = true; 
+                    keyError = true;
                     isValid = false;
                 }
             }
@@ -320,19 +320,19 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, initi
             // Force the question into Answer Key Mode if there is a key error so the user can see it!
             const forceKeyMode = keyError ? true : q.isAnswerKeyMode;
 
-            return { 
-                ...q, 
-                hasError: qError, 
-                hasKeyError: keyError, 
+            return {
+                ...q,
+                hasError: qError,
+                hasKeyError: keyError,
                 choiceErrors: cErrors,
-                isAnswerKeyMode: forceKeyMode 
+                isAnswerKeyMode: forceKeyMode
             };
         });
 
         // If validation fails, update the UI to show errors and STOP.
-        if (!isValid) { 
-            setQuestions(validatedQuestions); 
-            return; 
+        if (!isValid) {
+            setQuestions(validatedQuestions);
+            return;
         }
 
         // --- 2. FORMATTING & PUBLISHING ---
@@ -340,7 +340,7 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, initi
         try {
             // Clone the questions so we don't accidentally mutate the UI state
             let finalQuestions = [...validatedQuestions];
-            
+
             for (let i = 0; i < finalQuestions.length; i++) {
                 let q = { ...finalQuestions[i] }; // Deep clone the specific question
 
@@ -360,21 +360,21 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, initi
                 } else if (q.type === 'Short Answer' || q.type === 'Paragraph') {
                     const stripPts = (s: string) => s.replace(/\s*\[\s*\d+(?:\.\d+)?\s*pts?\s*\]\s*/gi, '').trim();
                     const cleanAns = stripPts(q.correctAnswers[0] || '');
-                    
+
                     q.choices = [`[${q.points} pts] ${cleanAns}`];
                     q.correctAnswers = [`[${q.points} pts] ${cleanAns}`];
                 } else {
                     const stripPts = (s: string) => s.replace(/\s*\[\s*\d+(?:\.\d+)?\s*pts?\s*\]\s*/gi, '').trim();
-                    
+
                     q.choices = q.choices.map((c: string) => {
                         const cleanC = stripPts(c);
                         const isCorrect = q.correctAnswers.some((ans: string) => stripPts(ans) === cleanC);
                         return isCorrect ? `[${q.points} pts] ${cleanC}` : cleanC;
                     });
-                    
+
                     q.correctAnswers = q.correctAnswers.map((c: string) => `[${q.points} pts] ${stripPts(c)}`);
                 }
-                
+
                 finalQuestions[i] = q;
             }
 
@@ -547,7 +547,11 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, initi
                             </div>
 
                             <div className="flex items-center justify-between border-t border-[#D1D8DD] pt-4 mt-2">
-                                <button aria-label='ll' onClick={() => removeQuestion(q.id)} className="text-[#0A7F93] hover:text-red-500 transition-colors"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>
+                                <button aria-label='ll' onClick={() => removeQuestion(q.id)} className="text-[#0A7F93] hover:text-[#ED1F24] transition-colors outline-none cursor-pointer">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M15 3V4H4V6H20V4H15V3C15 2.45 14.55 2 14 2H10C9.45 2 9 2.45 9 3ZM7 20C7 21.1 7.9 22 9 22H15C16.1 22 17 21.1 17 20V8H7V20ZM8.5 10H10V19H8.5V10ZM11.25 10H12.75V19H11.25V10ZM14 10H15.5V19H14V10Z" />
+                                    </svg>
+                                </button>
                                 <div className="flex flex-col items-end gap-y-1">
                                     <div className="flex items-center">
                                         <button onClick={() => toggleAnswerKeyMode(q.id)} className={`font-bold text-[14px] hover:underline flex items-center gap-x-1.5 ${q.hasKeyError ? 'text-[#ED1F24]' : 'text-[#1A4C8B]'}`}>
@@ -564,7 +568,7 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, initi
                 })}
             </div>
 
-           <div className="flex gap-4 mt-6">
+            <div className="flex gap-4 mt-6">
                 <button onClick={addQuestion} disabled={isPublishing} className="flex-1 py-3.5 bg-[#1A4C8B] text-white text-[14px] font-bold rounded-xl hover:bg-[#153a6b] shadow-md transition-colors disabled:opacity-50 outline-none">
                     + Add Blank Question
                 </button>
@@ -575,9 +579,9 @@ export function Gr8AssessmentEditor({ onBack, onPublish, initialQuestions, initi
             </div>
 
             {showWordBank && (
-                <WordBankModal 
-                    onClose={() => setShowWordBank(false)} 
-                    onSelectQuestion={importFromWordBank} 
+                <WordBankModal
+                    onClose={() => setShowWordBank(false)}
+                    onSelectQuestion={importFromWordBank}
                 />
             )}
 

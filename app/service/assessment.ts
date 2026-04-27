@@ -385,9 +385,9 @@ export async function fetchStudentAssessmentReview(assessmentId: number, student
         console.log(`[DEBUG] Successfully fetched ${answers?.length || 0} answers for student_id = ${studentId}`);
         
         if (answers && answers.length > 0) {
-            console.log(`[DEBUG] Sample Answer Data:`, answers[0]);
+            // console.log(`[DEBUG] Sample Answer Data:`, answers[0]);
         } else {
-            console.log(`[DEBUG] 🚨 WARNING: 0 answers found for student_id = ${studentId}. (Did you mean 43?)`);
+            // console.log(`[DEBUG] 🚨 WARNING: 0 answers found for student_id = ${studentId}. (Did you mean 43?)`);
             
             // EMERGENCY FALLBACK CHECK: Let's see if 43 was stored under user_id by mistake
             const { data: fallbackAnswers } = await supabase
@@ -397,7 +397,7 @@ export async function fetchStudentAssessmentReview(assessmentId: number, student
                 .limit(1);
                 
             if (fallbackAnswers && fallbackAnswers.length > 0) {
-                console.log(`[DEBUG] Note: There ARE answers for this assessment in the DB, just not for student_id = ${studentId}.`);
+                // console.log(`[DEBUG] Note: There ARE answers for this assessment in the DB, just not for student_id = ${studentId}.`);
             }
         }
 

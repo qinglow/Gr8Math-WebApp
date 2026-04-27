@@ -26,7 +26,7 @@ export function Sidebar({ isOpen, setIsOpen, activeTab, setActiveTab, title, onB
                     <button 
                         key={tab.id}
                         onClick={() => { setActiveTab(tab.id); setIsOpen(false); }}
-                        className={`flex items-center gap-x-4 px-5 py-3.5 rounded-xl font-bold transition-all border-2 outline-none ${activeTab === tab.id ? 'bg-[#0F8B8D]/80 border-[#EFBD31] text-[#EFBD31] shadow-sm' : 'bg-transparent border-transparent text-[#0F8B8D] hover:bg-[#D1D8DD]/50'}`}
+                        className={`flex items-center gap-x-4 px-5 py-3.5 rounded-xl font-bold transition-all border-2 outline-none ${activeTab === tab.id ? 'bg-[#1E4B95]/80 border-[#EFBD31] text-[#EFBD31] shadow-sm' : 'bg-transparent border-transparent text-[#0F8B8D] hover:bg-[#D1D8DD]/50'}`}
                     >
                         <Image src={activeTab === tab.id ? tab.active : tab.inactive} alt={tab.label} width={24} height={24} />
                         <span className="text-[15px] tracking-wide">{tab.label}</span>
