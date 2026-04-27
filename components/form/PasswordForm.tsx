@@ -14,6 +14,7 @@ interface FormProps {
     errorMessage?: string;
     activeField: string | null;
     setActiveField: (val: any) => void;
+    disabled?: boolean;
 }
 
 export const PasswordDetailsForm = ({
@@ -27,7 +28,8 @@ export const PasswordDetailsForm = ({
     error,
     errorMessage,
     activeField,
-    setActiveField
+    setActiveField,
+    disabled
 }: FormProps) => {
     return (
         <div className="animate-in fade-in slide-in-from-right-4 duration-500">

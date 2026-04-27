@@ -99,7 +99,7 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                             const localData = rebuildDllLocalState(data, dbPayload);
                             const newDllRecord = { id: res.id, from: currentDllDates?.from || '', to: currentDllDates?.to || '', data: localData };
                             setDllRecords(prev => [newDllRecord, ...prev]);
-                            setCurrentDllDates(null); setToastMessage('DLL Saved Successfully!'); setCurrentView('feed'); setActiveTab('dll');
+                            setCurrentDllDates(null); setToastMessage('Daily Lesson Log created!'); setCurrentView('feed'); setActiveTab('dll');
                             setShowToast(true); setTimeout(() => setShowToast(false), 3000);
                             setDllSemesterNumber(''); setDllWeekNumber(''); setDllAvailableFrom(''); setDllAvailableUntil('');
                         } else {
@@ -108,7 +108,7 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                         setIsSaving(false);
                     }}
                 />
-                {isDiscardModalOpen && <ConfirmModal title="Discard Changes?" subtitle="Unsaved work will be lost." onYes={resetEditor} onNo={cancelDiscard} />}
+                {isDiscardModalOpen && <ConfirmModal title="Discard Changes?" subtitle="You have unsaved content. If you go back, your changes will be lost." onYes={resetEditor} onNo={cancelDiscard} />}
             </div>
         );
     }

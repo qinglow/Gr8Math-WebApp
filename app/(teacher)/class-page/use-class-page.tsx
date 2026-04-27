@@ -400,7 +400,6 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
     };
 
     return {
-        // Expose state and functions to the UI
         currentView, setCurrentView, activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpen, isSaving, setIsSaving,
         courseContent, viewingLesson, setViewingLesson, selectedParticipant, setSelectedParticipant, selectedAssessmentResult, setSelectedAssessmentResult,
         showQuarterlyReport, setShowQuarterlyReport, isAddModalOpen, setIsAddModalOpen, addStep, setAddStep, selectedAddOption, setSelectedAddOption,

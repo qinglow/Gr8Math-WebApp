@@ -47,6 +47,7 @@ export default function ModeratorDashboard({ profile }: { profile: any }) {
     const [selectedViolation, setSelectedViolation] = useState<any | null>(null);
     const [showDetailsModal, setShowDetailsModal] = useState(false);
     const [showConfirmRemoveModal, setShowConfirmRemoveModal] = useState(false);
+    const [showConfirmAllowModal, setShowConfirmAllowModal] = useState(false);
 
     // --- HANDLERS ---
     const triggerToast = (msg: string) => {
@@ -130,6 +131,23 @@ export default function ModeratorDashboard({ profile }: { profile: any }) {
             setViolations(violations.filter(v => v.id !== selectedViolation?.id));
             setSelectedViolation(null);
             triggerToast('Content Removed');
+        }, 1500);
+    };
+
+    const handleConfirmAllow = async () => {
+        setShowConfirmAllowModal(false);
+        setLoadingMessage('Allowing...');
+        setIsLoading(true);
+
+        if (selectedViolation) {
+            await decideModeration(selectedViolation.id, 'allowed');
+        }
+
+        setTimeout(() => {
+            setIsLoading(false);
+            setViolations(violations.filter(v => v.id !== selectedViolation?.id));
+            setSelectedViolation(null);
+            triggerToast('Content Allowed');
         }, 1500);
     };
 
@@ -383,18 +401,16 @@ export default function ModeratorDashboard({ profile }: { profile: any }) {
 
                             <div className="flex flex-col gap-3">
                                 <button
-                                    onClick={async () => {
-                                        if (selectedViolation) await decideModeration(selectedViolation.id, 'allowed');
-                                        setViolations(violations.filter(v => v.id !== selectedViolation?.id));
-                                        setShowDetailsModal(false);
-                                        triggerToast('Content Allowed');
-                                    }}
+                                    onClick={() => { setShowDetailsModal(false); setShowConfirmAllowModal(true); }} // <-- UPDATED
                                     className="w-full py-3.5 rounded-lg text-white font-black text-[13px] transition-colors outline-none shadow-md hover:opacity-90"
                                     style={{ backgroundColor: '#1E4B95' }}
                                 >
                                     Allow Content
                                 </button>
-                                <button onClick={() => { setShowDetailsModal(false); setShowConfirmRemoveModal(true); }} className="w-full py-3.5 rounded-lg bg-[#ED1F24] text-white font-black text-[13px] hover:bg-[#c9181c] transition-colors shadow-md outline-none">
+                                <button
+                                    onClick={() => { setShowDetailsModal(false); setShowConfirmRemoveModal(true); }}
+                                    className="w-full py-3.5 rounded-lg bg-[#ED1F24] text-white font-black text-[13px] hover:bg-[#c9181c] transition-colors shadow-md outline-none"
+                                >
                                     Remove Content
                                 </button>
                             </div>
@@ -402,16 +418,21 @@ export default function ModeratorDashboard({ profile }: { profile: any }) {
                     </div>
                 )}
 
+                {/* --- CONFIRMATION MODALS --- */}
                 {showConfirmRemoveModal && (
-                    <div className="fixed inset-0 z-[250] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-                        <div className="bg-white rounded-2xl shadow-2xl p-6 md:p-8 w-full max-w-[400px] text-center animate-in zoom-in-95 duration-200">
-                            <h2 className="text-[16px] font-extrabold text-[#222] mb-8 leading-snug">Are you sure you want to remove this content?</h2>
-                            <div className="flex justify-center gap-x-12">
-                                <button onClick={handleConfirmRemove} className="text-[#ED1F24] font-black text-[15px] hover:opacity-70 transition-opacity outline-none">Yes</button>
-                                <button onClick={() => setShowConfirmRemoveModal(false)} className="text-[#ED1F24] font-black text-[15px] hover:opacity-70 transition-opacity outline-none">No</button>
-                            </div>
-                        </div>
-                    </div>
+                    <ConfirmModal
+                        title="Are you sure you want to remove this content?"
+                        onYes={handleConfirmRemove}
+                        onNo={() => setShowConfirmRemoveModal(false)}
+                    />
+                )}
+
+                {showConfirmAllowModal && (
+                    <ConfirmModal
+                        title="Are you sure you want to allow this content?"
+                        onYes={handleConfirmAllow}
+                        onNo={() => setShowConfirmAllowModal(false)}
+                    />
                 )}
             </div>
 
@@ -419,3 +440,17 @@ export default function ModeratorDashboard({ profile }: { profile: any }) {
         </div>
     );
 }
+
+// --- REUSABLE CONFIRM MODAL COMPONENT ---
+const ConfirmModal = ({ title, subtitle, onYes, onNo }: { title: string, subtitle?: string, onYes: () => void, onNo: () => void }) => (
+    <div className="fixed inset-0 z-[600] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-[400px] text-center font-sans animate-in zoom-in-95">
+            <h2 className="text-[18px] font-extrabold text-[#222] mb-2">{title}</h2>
+            {subtitle && <p className="text-[14px] text-[#666] mb-6">{subtitle}</p>}
+            <div className="flex justify-center gap-x-12 mt-4">
+                <button onClick={onYes} className="text-[#ED1F24] font-black outline-none cursor-pointer hover:opacity-70 transition-opacity">Yes</button>
+                <button onClick={onNo} className="text-[#ED1F24] font-black outline-none cursor-pointer hover:opacity-70 transition-opacity">No</button>
+            </div>
+        </div>
+    </div>
+);

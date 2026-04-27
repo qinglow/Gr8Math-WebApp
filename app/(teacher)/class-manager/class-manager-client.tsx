@@ -132,7 +132,7 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
             const errorMessage = err.message || "Failed to create class. Please try again.";
 
             if (errorMessage.includes("already have a class")) {
-                setErrors({ className: "You already have a class with this name." });
+                setErrors({ className: "Already have a class with this name." });
             }
         } finally {
             setIsLoading(false);
@@ -279,6 +279,12 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
                 {/* --- CLASS GRID --- */}
                 <div className="px-4 md:px-8 pb-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 overflow-y-auto">
                     <Gr8LoadingOverlay isLoading={isFetchingClasses} message="Updating list..." />
+
+                    {!isFetchingClasses && classesList.length === 0 && (
+                        <div className="col-span-full flex justify-center items-center py-10">
+                            <span className="text-[#666] font-bold text-lg">No results found</span>
+                        </div>
+                    )}
 
                     {!isFetchingClasses && classesList.map((cls) => (
                         <Link

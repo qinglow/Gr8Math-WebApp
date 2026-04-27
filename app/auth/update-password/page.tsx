@@ -189,7 +189,7 @@ export default function UpdatePasswordPage() {
 
     if (!newPassword || !confirmPassword) {
       setPasswordError(true);
-      setPasswordErrorMessage("Please enter your new password credentials.");
+      setPasswordErrorMessage("Please enter a password.");
       return;
     }
 
@@ -371,6 +371,8 @@ export default function UpdatePasswordPage() {
               errorMessage={passwordErrorMessage}
               activeField={activeField}
               setActiveField={setActiveField}
+
+              disabled={loading || !newPassword || !confirmPassword || newPassword !== confirmPassword}
             />
           )}
         </div>

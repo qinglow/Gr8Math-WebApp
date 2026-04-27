@@ -17,7 +17,7 @@ const AutoResizeTextarea = ({ value, onChange, placeholder, minHeight = '120px' 
         const textarea = textareaRef.current;
         if (textarea) {
             textarea.style.height = 'auto';
-            textarea.style.height = `${textarea.scrollHeight}px`; 
+            textarea.style.height = `${textarea.scrollHeight}px`;
         }
     };
 
@@ -56,7 +56,7 @@ export const Gr8DllEditor: React.FC<Gr8DllEditorProps> = ({ onBack, onSaveComple
     const [currentPart, setCurrentPart] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
     const [isDiscardModalOpen, setIsDiscardModalOpen] = useState(false);
-    const [isReviewModalOpen, setIsReviewModalOpen] = useState(false); 
+    const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
 
     // --- SEPARATE TOGGLE STATES FOR CS & PS ---
     const [isCsWeekly, setIsCsWeekly] = useState(false);
@@ -115,7 +115,7 @@ export const Gr8DllEditor: React.FC<Gr8DllEditorProps> = ({ onBack, onSaveComple
     ];
 
     const hasUnsavedChanges = () => {
-        const p1p2Changed = days.some(day => 
+        const p1p2Changed = days.some(day =>
             contentStandards[day].trim() !== '' || performanceStandards[day].trim() !== '' || learningCompetencies[day].trim() !== '' ||
             content[day].trim() !== '' || teacherGuide[day].trim() !== '' || learnerMaterials[day].trim() !== '' ||
             textbookPages[day].trim() !== '' || additionalMaterials[day].trim() !== '' || otherReferences[day].trim() !== ''
@@ -128,7 +128,7 @@ export const Gr8DllEditor: React.FC<Gr8DllEditorProps> = ({ onBack, onSaveComple
 
     const handleBackClick = () => {
         if (currentPart > 1) {
-            window.scrollTo({ top: 0, behavior: 'instant' }); 
+            window.scrollTo({ top: 0, behavior: 'instant' });
             setCurrentPart(currentPart - 1);
         } else if (hasUnsavedChanges()) {
             setIsDiscardModalOpen(true);
@@ -138,7 +138,7 @@ export const Gr8DllEditor: React.FC<Gr8DllEditorProps> = ({ onBack, onSaveComple
     };
 
     const handleNextPart = () => {
-        window.scrollTo({ top: 0, behavior: 'instant' }); 
+        window.scrollTo({ top: 0, behavior: 'instant' });
         setIsLoading(true);
         setTimeout(() => {
             setIsLoading(false);
@@ -194,10 +194,10 @@ export const Gr8DllEditor: React.FC<Gr8DllEditorProps> = ({ onBack, onSaveComple
                 {/* CONDITIONAL RENDER: 1 Col (Weekly) vs 5 Cols (Daily) */}
                 {isCsWeekly ? (
                     <td colSpan={5} className="border-b border-[#B0B8C1] align-top p-0 focus-within:bg-[#FFFDF5] focus-within:ring-2 focus-within:ring-inset focus-within:ring-[#EFBD31] focus-within:relative z-10 transition-colors">
-                        <AutoResizeTextarea 
-                            value={contentStandards.monday} 
-                            onChange={(val) => setContentStandards(prev => ({ ...prev, monday: val }))} 
-                            placeholder="Type weekly content standard here..." 
+                        <AutoResizeTextarea
+                            value={contentStandards.monday}
+                            onChange={(val) => setContentStandards(prev => ({ ...prev, monday: val }))}
+                            placeholder="Type weekly content standard here..."
                         />
                     </td>
                 ) : (
@@ -219,10 +219,10 @@ export const Gr8DllEditor: React.FC<Gr8DllEditorProps> = ({ onBack, onSaveComple
                 {/* CONDITIONAL RENDER: 1 Col (Weekly) vs 5 Cols (Daily) */}
                 {isPsWeekly ? (
                     <td colSpan={5} className="border-b border-[#B0B8C1] align-top p-0 focus-within:bg-[#FFFDF5] focus-within:ring-2 focus-within:ring-inset focus-within:ring-[#EFBD31] focus-within:relative z-10 transition-colors">
-                        <AutoResizeTextarea 
-                            value={performanceStandards.monday} 
-                            onChange={(val) => setPerformanceStandards(prev => ({ ...prev, monday: val }))} 
-                            placeholder="Type weekly performance standard here..." 
+                        <AutoResizeTextarea
+                            value={performanceStandards.monday}
+                            onChange={(val) => setPerformanceStandards(prev => ({ ...prev, monday: val }))}
+                            placeholder="Type weekly performance standard here..."
                         />
                     </td>
                 ) : (
@@ -235,7 +235,7 @@ export const Gr8DllEditor: React.FC<Gr8DllEditorProps> = ({ onBack, onSaveComple
             </tr>
             <tr>
                 <td className="p-3 border-b border-r border-[#B0B8C1] align-top font-bold text-[#222] text-[13px] leading-snug">
-                    C. <span className="ml-2">Learning</span><br/>competencies<br/>(Write the LC<br/>code for each)
+                    C. <span className="ml-2">Learning</span><br />competencies<br />(Write the LC<br />code for each)
                 </td>
                 {days.map(day => (
                     <td key={`lc-${day}`} className="border-b border-r border-[#B0B8C1] align-top p-0 focus-within:bg-[#FFFDF5] focus-within:ring-2 focus-within:ring-inset focus-within:ring-[#EFBD31] focus-within:relative z-10 transition-colors">
@@ -259,12 +259,12 @@ export const Gr8DllEditor: React.FC<Gr8DllEditorProps> = ({ onBack, onSaveComple
                 ))}
             </tr>
             <tr>
-                <td className="p-3 border-b border-r border-[#B0B8C1] font-black text-[#222] text-[13px] text-center">III. Learning<br/>Resources</td>
+                <td className="p-3 border-b border-r border-[#B0B8C1] font-black text-[#222] text-[13px] text-center">III. Learning<br />Resources</td>
                 <td colSpan={5} className="border-b border-[#B0B8C1]"></td>
             </tr>
             <tr>
                 <td className="p-3 border-b border-r border-[#B0B8C1] align-middle font-bold text-[#222] text-[12px] leading-snug text-center">
-                    1. Teacher's<br/>Guide pages
+                    1. Teacher's<br />Guide pages
                 </td>
                 {days.map(day => (
                     <td key={`tg-${day}`} className="border-b border-r border-[#B0B8C1] align-top p-0 focus-within:bg-[#FFFDF5] focus-within:ring-2 focus-within:ring-inset focus-within:ring-[#EFBD31] focus-within:relative z-10 transition-colors">
@@ -274,7 +274,7 @@ export const Gr8DllEditor: React.FC<Gr8DllEditorProps> = ({ onBack, onSaveComple
             </tr>
             <tr>
                 <td className="p-3 border-b border-r border-[#B0B8C1] align-middle font-bold text-[#222] text-[12px] leading-snug text-center">
-                    2. Learner's<br/>Materials' pages
+                    2. Learner's<br />Materials' pages
                 </td>
                 {days.map(day => (
                     <td key={`lm-${day}`} className="border-b border-r border-[#B0B8C1] align-top p-0 focus-within:bg-[#FFFDF5] focus-within:ring-2 focus-within:ring-inset focus-within:ring-[#EFBD31] focus-within:relative z-10 transition-colors">
@@ -294,7 +294,7 @@ export const Gr8DllEditor: React.FC<Gr8DllEditorProps> = ({ onBack, onSaveComple
             </tr>
             <tr>
                 <td className="px-2 py-3 border-b border-r border-[#B0B8C1] align-middle font-bold text-[#222] text-[11px] leading-tight text-center">
-                    4. Additional Materials<br/>from Learning<br/>Resource Portal
+                    4. Additional Materials<br />from Learning<br />Resource Portal
                 </td>
                 {days.map(day => (
                     <td key={`am-${day}`} className="border-b border-r border-[#B0B8C1] align-top p-0 focus-within:bg-[#FFFDF5] focus-within:ring-2 focus-within:ring-inset focus-within:ring-[#EFBD31] focus-within:relative z-10 transition-colors">
@@ -328,14 +328,14 @@ export const Gr8DllEditor: React.FC<Gr8DllEditorProps> = ({ onBack, onSaveComple
                     </td>
                     {days.map(day => (
                         <td key={`proc-${proc.key}-${day}`} className="border-b border-r border-[#B0B8C1] align-top p-0 focus-within:bg-[#FFFDF5] focus-within:ring-2 focus-within:ring-inset focus-within:ring-[#EFBD31] focus-within:relative z-10 transition-colors">
-                            <AutoResizeTextarea 
+                            <AutoResizeTextarea
                                 minHeight="140px"
-                                value={procedures[proc.key][day]} 
+                                value={procedures[proc.key][day]}
                                 onChange={(val) => setProcedures(prev => ({
                                     ...prev,
                                     [proc.key]: { ...prev[proc.key], [day]: val }
-                                }))} 
-                                placeholder="" 
+                                }))}
+                                placeholder=""
                             />
                         </td>
                     ))}
@@ -366,7 +366,7 @@ export const Gr8DllEditor: React.FC<Gr8DllEditorProps> = ({ onBack, onSaveComple
                         {ref.label}
                     </td>
                     <td colSpan={5} className="border-b border-[#B0B8C1] align-top p-0 focus-within:bg-[#FFFDF5] focus-within:ring-2 focus-within:ring-inset focus-within:ring-[#EFBD31] focus-within:relative z-10 transition-colors">
-                        <AutoResizeTextarea value={reflection[ref.key]} onChange={(val) => setReflection(prev => ({...prev, [ref.key]: val}))} placeholder="Reflection" minHeight="60px" />
+                        <AutoResizeTextarea value={reflection[ref.key]} onChange={(val) => setReflection(prev => ({ ...prev, [ref.key]: val }))} placeholder="Reflection" minHeight="60px" />
                     </td>
                 </tr>
             ))}
@@ -375,7 +375,7 @@ export const Gr8DllEditor: React.FC<Gr8DllEditorProps> = ({ onBack, onSaveComple
 
     return (
         <div className="flex-1 w-full max-w-[1200px] mx-auto px-4 md:px-8 py-8 animate-in fade-in duration-500 relative">
-            
+
             <Gr8LoadingOverlay isLoading={isLoading} message="Loading..." />
 
             <div className="flex items-center gap-x-3 mb-8">
@@ -458,16 +458,20 @@ export const Gr8DllEditor: React.FC<Gr8DllEditorProps> = ({ onBack, onSaveComple
                                             {ref.label}
                                         </td>
                                         <td colSpan={5} className="border-b border-[#B0B8C1] align-top p-0 focus-within:bg-[#FFFDF5] focus-within:ring-2 focus-within:ring-inset focus-within:ring-[#EFBD31] focus-within:relative z-10 transition-colors">
-                                            <AutoResizeTextarea value={reflection[ref.key]} onChange={(val) => setReflection(prev => ({...prev, [ref.key]: val}))} placeholder="Reflection" minHeight="60px" />
+                                            <AutoResizeTextarea value={reflection[ref.key]} onChange={(val) => setReflection(prev => ({ ...prev, [ref.key]: val }))} placeholder="Reflection" minHeight="60px" />
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
-                    
+
                     <div className="flex justify-end mt-8">
-                        <button onClick={() => setIsReviewModalOpen(true)} className="bg-[#1A4C8B] text-white px-20 py-3 rounded-lg font-black text-[14px] hover:bg-[#153a6b] transition-all shadow-md hover:shadow-lg outline-none tracking-wide">
+                        <button
+                            type="button" // <-- ADD THIS
+                            onClick={() => setIsReviewModalOpen(true)}
+                            className="bg-[#1A4C8B] text-white px-20 py-3 rounded-lg font-black text-[14px] hover:bg-[#153a6b] transition-all shadow-md hover:shadow-lg outline-none tracking-wide"
+                        >
                             Save
                         </button>
                     </div>
@@ -488,9 +492,24 @@ export const Gr8DllEditor: React.FC<Gr8DllEditorProps> = ({ onBack, onSaveComple
                             </tbody>
                         </table>
                     </div>
-                    <div className="flex justify-end mt-8">
-                        <button onClick={executeSave} className="bg-[#1A4C8B] text-white px-20 py-3 rounded-lg font-black text-[14px] hover:bg-[#153a6b] transition-all shadow-md hover:shadow-lg outline-none tracking-wide">
-                            Save
+                    <div className="flex justify-end items-center mt-8 gap-x-6">
+                        <button 
+                            type="button" 
+                            onClick={() => {
+                                setCurrentPart(1); 
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }} 
+                            className="text-[#1A4C8B] font-black text-[14px] hover:opacity-70 transition-opacity outline-none tracking-wide"
+                        >
+                            Back to Edit
+                        </button>
+                        
+                        <button
+                            type="button"
+                            onClick={() => setIsReviewModalOpen(true)}
+                            className="bg-[#1A4C8B] text-white px-20 py-3 rounded-lg font-black text-[14px] hover:bg-[#153a6b] transition-all shadow-md hover:shadow-lg outline-none tracking-wide"
+                        >
+                            Confirm & Save
                         </button>
                     </div>
                 </div>
@@ -504,18 +523,20 @@ export const Gr8DllEditor: React.FC<Gr8DllEditorProps> = ({ onBack, onSaveComple
                             Do you want to review the daily lesson log?
                         </h2>
                         <div className="flex justify-center gap-x-12">
-                            <button 
+                            <button
+                                type="button"
                                 onClick={() => {
                                     setIsReviewModalOpen(false);
                                     setCurrentPart(5);
                                     window.scrollTo({ top: 0, behavior: 'smooth' });
-                                }} 
+                                }}
                                 className="text-[#ED1F24] font-black text-[14px] hover:opacity-70 transition-opacity outline-none"
                             >
                                 Yes
                             </button>
-                            <button 
-                                onClick={executeSave} 
+                            <button
+                                type="button"
+                                onClick={executeSave}
                                 className="text-[#ED1F24] font-black text-[14px] hover:opacity-70 transition-opacity outline-none"
                             >
                                 No
