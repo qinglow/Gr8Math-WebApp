@@ -77,8 +77,6 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
 
             // Remove the item from the screen instantly
             setCourseContent(prev => prev.filter(c => c.id !== itemToDelete.id || c.type !== itemToDelete.type));
-
-            // Show a nice success toast
             setToastMessage(`${itemToDelete.type === 'lesson' ? 'Lesson' : 'Assessment'} deleted successfully.`);
             setShowToast(true);
             setTimeout(() => setShowToast(false), 3000);

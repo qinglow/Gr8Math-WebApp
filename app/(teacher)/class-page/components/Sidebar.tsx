@@ -23,10 +23,14 @@ export function Sidebar({ isOpen, setIsOpen, activeTab, setActiveTab, title, onB
             </div>
             <div className="flex flex-col gap-y-3 px-6 pt-6 flex-1">
                 {tabs.map((tab) => (
-                    <button 
+                    <button
                         key={tab.id}
                         onClick={() => { setActiveTab(tab.id); setIsOpen(false); }}
-                        className={`flex items-center gap-x-4 px-5 py-3.5 rounded-xl font-bold transition-all border-2 outline-none ${activeTab === tab.id ? 'bg-[#EFBD31]/20 border-[#EFBD31] text-[#EFBD31] shadow-sm' : 'bg-transparent border-transparent text-[#0F8B8D] hover:bg-[#D1D8DD]/50'}`}
+                        className={`flex items-center gap-x-4 px-5 py-3.5 rounded-xl font-bold transition-all border-2 outline-none 
+        ${activeTab === tab.id
+                                ? 'bg-[#EFBD31]/10 border-[#EFBD31] text-[#EFBD31] shadow-sm'
+                                : 'bg-transparent border-transparent text-[#0F8B8D] hover:bg-[#D1D8DD]/50'
+                            }`}
                     >
                         <Image src={activeTab === tab.id ? tab.active : tab.inactive} alt={tab.label} width={24} height={24} />
                         <span className="text-[15px] tracking-wide">{tab.label}</span>
