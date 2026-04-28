@@ -195,13 +195,13 @@ export default function UpdatePasswordPage() {
 
     if (newPassword !== confirmPassword) {
       setPasswordError(true);
-      setPasswordErrorMessage("Passwords do not match. Please try again.");
+      setPasswordErrorMessage("Passwords do not match.");
       return;
     }
 
     if (!isValidPassword(newPassword)) {
       setPasswordError(true);
-      setPasswordErrorMessage("Password must have 1 Upper, 1 Lower, 1 Number, and 1 Special Char");
+      setPasswordErrorMessage("Password invalid. Please follow the requirements.");
       return;
     }
 

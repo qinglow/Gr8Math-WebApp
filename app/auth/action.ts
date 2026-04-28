@@ -358,7 +358,7 @@ export async function updatePassword(formData: FormData) {
     }
 
     await supabase.auth.signOut(); 
-    const message = encodeURIComponent("Password updated successfully");
+    const message = encodeURIComponent("Password updated successfully!");
     redirect(`/auth/login?msg=${message}`);
 }
 
