@@ -4,6 +4,7 @@ import React from 'react';
 import { useClassManager } from './use-class-page';
 import { saveDllAction } from './dll/action';
 import { prepareDllForDatabase, rebuildDllLocalState } from './dll/helper';
+import { deleteLessonAction, deleteAssessmentAction } from '@/app/service/class-page';
 
 // --- COMPONENTS ---
 import { Gr8MathHeader } from '@/components/ui/Gr8MathHeader';
@@ -36,7 +37,7 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
 
     const {
         currentView, setCurrentView, activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpen, isSaving, setIsSaving,
-        courseContent, viewingLesson, setViewingLesson, selectedParticipant, setSelectedParticipant, selectedAssessmentResult, setSelectedAssessmentResult,
+        courseContent, setCourseContent, viewingLesson, setViewingLesson, selectedParticipant, setSelectedParticipant, selectedAssessmentResult, setSelectedAssessmentResult,
         showQuarterlyReport, setShowQuarterlyReport, isAddModalOpen, setIsAddModalOpen, addStep, setAddStep, selectedAddOption, setSelectedAddOption,
         lessonContent, setLessonContent, weekNumber, setWeekNumber, lessonTitle, setLessonTitle, pendingMedia, setPendingMedia, isEditingLesson,
         editingLessonId, hasDetailsError, setHasDetailsError, quarterNumber, setQuarterNumber, assessmentNumber, setAssessmentNumber, assessmentTitle,
@@ -49,12 +50,48 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
         handleSetAvailableFrom, handleSetAvailableUntil, handleSetDllAvailableFrom, handleSetDllAvailableUntil, handleProceedToDetails,
         handleLessonNextDetails, handleAssessmentNextDetails, handleDllNextDetails, openAddModal, resetEditor, cancelDiscard, closeAddModal,
         onPublishAssessment, onExecuteSave, handleEditAssessment, handleEditLesson, isAssessmentFormComplete,
-        activeWarning, dismissWarning, userProfile,assessmentTimeLimit
+        activeWarning, dismissWarning, userProfile, assessmentTimeLimit
     } = useClassManager(courseId, initialFeed);
+
+    const [itemToDelete, setItemToDelete] = React.useState<ClassContentItem | null>(null);
 
     // ============================================================================
     // RENDER LOGIC
     // ============================================================================
+    // 1. Opens the confirmation dialog
+    const handleDeleteContent = (item: ClassContentItem) => {
+        setItemToDelete(item);
+    };
+
+    // 2. Executes the deletion if the user clicks "Yes"
+    const executeDelete = async () => {
+        if (!itemToDelete) return;
+        
+        setIsSaving(true);
+        try {
+            if (itemToDelete.type === 'lesson') {
+                await deleteLessonAction(itemToDelete.id);
+            } else {
+                await deleteAssessmentAction(itemToDelete.id);
+            }
+
+            // Remove the item from the screen instantly
+            setCourseContent(prev => prev.filter(c => c.id !== itemToDelete.id || c.type !== itemToDelete.type));
+
+            // Show a nice success toast
+            setToastMessage(`${itemToDelete.type === 'lesson' ? 'Lesson' : 'Assessment'} deleted successfully.`);
+            setShowToast(true);
+            setTimeout(() => setShowToast(false), 3000);
+
+        } catch (error) {
+            console.error(error);
+            alert("Failed to delete content.");
+        } finally {
+            setIsSaving(false);
+            setItemToDelete(null); // Close the modal
+        }
+    };
+
     if (currentView === 'viewer' && viewingLesson) return <LessonViewerView viewingLesson={viewingLesson} onBack={() => setCurrentView('feed')} />;
 
     if (currentView === 'editor') {
@@ -129,7 +166,7 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
 
                 <div className="flex-1 p-4 md:p-8 w-full max-w-6xl mx-auto h-full overflow-y-auto">
                     {activeTab === 'class' && (
-                        <ClassFeed courseContent={courseContent} onEdit={(item: any) => item.type === 'assessment' ? handleEditAssessment(item) : handleEditLesson(item)} onSeeMore={(item: any) => { setViewingLesson(item); setCurrentView('viewer'); }} />
+                        <ClassFeed courseContent={courseContent} onEdit={(item: any) => item.type === 'assessment' ? handleEditAssessment(item) : handleEditLesson(item)} onSeeMore={(item: any) => { setViewingLesson(item); setCurrentView('viewer'); }} onDelete={handleDeleteContent} />
                     )}
                     {activeTab === 'participants' && (
                         <ParticipantsTabContent
@@ -185,6 +222,18 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                 {isDiscardModalOpen && currentView === 'feed' && (
                     <ConfirmModal title="Discard Changes?" subtitle="You have unsaved content. If you go back, your changes will be lost." onYes={resetEditor} onNo={cancelDiscard} />
                 )}
+                {itemToDelete && (
+                    <ConfirmModal 
+                        title={`Delete ${itemToDelete.type === 'lesson' ? 'Lesson' : 'Assessment'}?`} 
+                        subtitle={
+                            itemToDelete.type === 'lesson' 
+                                ? "This action cannot be undone and will permanently remove this lesson from the class feed." 
+                                : "This action cannot be undone and will permanently erase all associated student scores and records."
+                        } 
+                        onYes={executeDelete} 
+                        onNo={() => setItemToDelete(null)} 
+                    />
+                )}
             </div>
             {showToast && <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[500] bg-[#0A7F93] text-white px-10 py-3 rounded shadow-xl font-bold uppercase">{toastMessage}</div>}
 
@@ -200,14 +249,14 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                             </svg>
                         </div>
                         <h2 className="text-2xl font-black text-[#222] mb-2">Content Removed</h2>
-                        
+
                         {/* FIX: Split the message by the pipe to extract the hidden count! */}
                         <p className="text-[#444] font-bold mb-6">
                             {activeWarning.message?.split('|')[0]}
-                            
+
                             {activeWarning.message?.includes('|') && (
                                 <>
-                                    <br /> 
+                                    <br />
                                     <span className="text-[#ED1F24]">
                                         Warning Strike: {activeWarning.message.split('|')[1]}/3
                                     </span>

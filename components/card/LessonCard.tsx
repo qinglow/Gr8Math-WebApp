@@ -1,6 +1,7 @@
 import React from 'react';
 import Image from 'next/image';
-import editIcon from '@/app/(teacher)/class-page/photos/edit.png';
+import editIcon from '@/app/(teacher)/class-page/photos/edit.svg';
+import trashIcon from '@/app/(teacher)/class-page/photos/trash.svg';
 
 interface LessonCardProps {
   week: string;
@@ -8,28 +9,24 @@ interface LessonCardProps {
   description: string;
   onEdit?: () => void;
   onSeeMore?: () => void;
+  onDelete?: () => void;
 }
 
 const cleanPreviewText = (text: string) => {
   if (!text) return '';
 
   let cleaned = text
-    // 1. Remove &nbsp; and replace it with a standard space
     .replace(/&nbsp;/g, ' ')
-    // 2. Remove any raw URLs that contain the word "tigris"
     .replace(/https?:\/\/[^\s"'<]*tigris[^\s"']*/gi, '')
-    // 3. Strip out all HTML tags (like <img src="...">) just in case
     .replace(/<[^>]*>/g, ' ')
-    // 4. Collapse multiple empty spaces, tabs, or newlines into a single space
     .replace(/\s+/g, ' ')
-    // 5. Trim leading and trailing whitespace so the first real word snaps to the front
     .trim();
 
   return cleaned;
 };
 
-export const LessonCard: React.FC<LessonCardProps> = ({ week, title, description, onEdit, onSeeMore }) => {
-  
+export const LessonCard: React.FC<LessonCardProps> = ({ week, title, description, onEdit, onSeeMore, onDelete }) => {
+
   const previewText = cleanPreviewText(description);
 
   return (
@@ -40,7 +37,7 @@ export const LessonCard: React.FC<LessonCardProps> = ({ week, title, description
           <h2 className="text-[24px] font-black text-[#222] mt-1 leading-none">{title}</h2>
         </div>
 
-        <div className="flex flex-col items-end gap-y-2">
+        <div className="flex items-center gap-x-1">
           <button
             aria-label="Edit lesson"
             onClick={onEdit}
@@ -54,6 +51,25 @@ export const LessonCard: React.FC<LessonCardProps> = ({ week, title, description
               className="object-contain"
             />
           </button>
+
+          {onDelete && (
+            <button
+              aria-label="Delete lesson"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              className="p-2 text-[#0A7F93] hover:bg-[#D1D8DD]/50 hover:text-[#ED1F24] rounded-full transition-colors cursor-pointer outline-none flex items-center justify-center"
+            >
+               <Image
+              src={trashIcon}
+              alt="Edit"
+              width={20}
+              height={20}
+              className="object-contain"
+            />
+            </button>
+          )}
         </div>
       </div>
 

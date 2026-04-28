@@ -237,6 +237,10 @@ export function ParticipantsTabContent({
     }
 
     if (selectedParticipant && !showQuarterlyReport) {
+        let rankBgColor = 'bg-[#0F8B8D]'; // Default Cyan
+        if (selectedParticipant.rank === 1) rankBgColor = 'bg-[#EFBD31]'; // Gold
+        else if (selectedParticipant.rank === 2) rankBgColor = 'bg-[#A8B2BC]'; // Silver
+        else if (selectedParticipant.rank === 3) rankBgColor = 'bg-[#CD7F32]'; // Bronze
         return (
             <div className="bg-[#F4EFED] rounded-[20px] p-6 md:p-10 shadow-sm flex-1 animate-in slide-in-from-right-8 duration-300 relative">
                 <button onClick={() => { setSelectedParticipant(null); setSelectedAssessmentResult(null); }} className="flex items-center gap-x-2 text-[#0F8B8D] font-bold text-[14px] mb-6 outline-none hover:opacity-70 transition-opacity">
@@ -250,7 +254,7 @@ export function ParticipantsTabContent({
                     </div>
                     <div>
                         <h1 className="text-[24px] md:text-[32px] font-black text-[#101720]">{selectedParticipant.name}</h1>
-                        <span className="bg-[#0F8B8D] text-white text-[12px] font-bold px-4 py-1.5 rounded-full mt-2 inline-block">
+                        <span className={`${rankBgColor} text-black text-[16px] font-bold px-4 py-1.5 rounded-full mt-2 inline-block`}>
                             Rank: {getOrdinal(selectedParticipant.rank)}
                         </span>
                     </div>

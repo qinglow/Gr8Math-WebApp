@@ -6,9 +6,10 @@ interface ClassFeedProps {
     courseContent: ClassContentItem[];
     onEdit: (item: ClassContentItem) => void;
     onSeeMore: (item: ClassContentItem) => void;
+    onDelete: (item: ClassContentItem) => void;
 }
 
-export function ClassFeed({ courseContent, onEdit, onSeeMore }: ClassFeedProps) {
+export function ClassFeed({ courseContent, onEdit, onSeeMore, onDelete }: ClassFeedProps) {
     if (courseContent.length === 0) return <EmptyState />;
 
     return (
@@ -22,12 +23,15 @@ export function ClassFeed({ courseContent, onEdit, onSeeMore }: ClassFeedProps) 
                         description={item.preview || ''}
                         onEdit={() => onEdit(item)}
                         onSeeMore={() => onSeeMore(item)}
+                        onDelete={() => onDelete(item)}
                     />
                 ) : (
                     <AssessmentCard
                         key={`assessment-${item.id}`}
                         title={`Assesssment ${item.assessment_number}` || 'Assessment'}
-                        onClick={() => onEdit(item)} />
+                        onEdit={() => onEdit(item)}
+                        onDelete={() => onDelete(item)}
+                    />
                 )
             ))}
         </div>

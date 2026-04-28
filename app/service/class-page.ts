@@ -1,3 +1,4 @@
+'use server'
 import { createClient } from "@/lib/supabase/server";
 
 export async function fetchClassDetails(sectionId: string) {
@@ -80,4 +81,55 @@ export async function fetchClassFeed(sectionId: string) {
     return [...lessons, ...assessments].sort((a, b) => 
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
+}
+
+export async function deleteLessonAction(lessonId: number) {
+    const supabase = await createClient();
+    try {
+        const { error } = await supabase.from('lesson').delete().eq('id', lessonId);
+        if (error) throw error;
+        
+        return { success: true };
+    } catch (error: any) {
+        console.error("Failed to delete lesson:", error.message);
+        return { success: false, error: error.message };
+    }
+}
+
+export async function deleteAssessmentAction(assessmentId: number) {
+    const supabase = await createClient();
+    try {
+        // 1. Wipe all student answers tied to this assessment
+        const { error: ansErr } = await supabase
+            .from('student_answers')
+            .delete()
+            .eq('assessment_id', assessmentId);
+        if (ansErr) throw ansErr;
+
+        // 2. Wipe all student records/scores tied to this assessment
+        const { error: recErr } = await supabase
+            .from('assessment_record')
+            .delete()
+            .eq('assessment_id', assessmentId);
+        if (recErr) throw recErr;
+
+        // 3. Wipe the assessment questions (choices should cascade automatically)
+        const { error: qErr } = await supabase
+            .from('assessment_questions')
+            .delete()
+            .eq('assessment_id', assessmentId);
+        if (qErr) throw qErr;
+
+        // 4. Finally, delete the assessment itself
+        const { error: aErr } = await supabase
+            .from('assessment_created')
+            .delete()
+            .eq('id', assessmentId);
+        if (aErr) throw aErr;
+
+        return { success: true };
+    } catch (error: any) {
+        console.error("Failed to delete assessment:", error.message);
+        return { success: false, error: error.message };
+    }
 }

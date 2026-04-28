@@ -498,7 +498,7 @@ export async function fetchPastQuestionsForWordBank() {
                 };
             });
 
-            // NEW: Check if we've seen this title before and append a number if we have
+            
             const baseTitle = ass.title;
             titleCounts[baseTitle] = (titleCounts[baseTitle] || 0) + 1;
             
