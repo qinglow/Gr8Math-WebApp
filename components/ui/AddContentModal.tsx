@@ -142,7 +142,7 @@ export function AddContentModal({
                         <p className="text-[12px] font-bold text-center text-[#222] mb-6">Please enter the needed details.</p>
 
                         <div className="flex flex-col gap-y-3 mb-8">
-                            <Gr8TextField label="Quarter Number" value={quarterNumber} onChange={onNumberChange(setQuarterNumber)} hasError={hasAssessmentDetailsError && !quarterNumber} errorMessage={hasAssessmentDetailsError && !quarterNumber ? "Please enter needed details" : ""} showTopLabel />
+                            <Gr8TextField label="Month Number" value={quarterNumber} onChange={onNumberChange(setQuarterNumber)} hasError={hasAssessmentDetailsError && !quarterNumber} errorMessage={hasAssessmentDetailsError && !quarterNumber ? "Please enter needed details" : ""} showTopLabel />
                             <Gr8TextField label="Assessment Number" value={assessmentNumber} onChange={onNumberChange(setAssessmentNumber)} hasError={hasAssessmentDetailsError && !assessmentNumber} errorMessage={hasAssessmentDetailsError && !assessmentNumber ? "Please enter needed details" : ""} showTopLabel />
                             <Gr8TextField label="Assessment Title" value={assessmentTitle} onChange={setAssessmentTitle} hasError={hasAssessmentDetailsError && !assessmentTitle} errorMessage={hasAssessmentDetailsError && !assessmentTitle ? "Please enter needed details" : ""} showTopLabel />
 
@@ -191,7 +191,7 @@ export function AddContentModal({
                         <p className="text-[12px] font-bold text-center text-[#222] mb-6">Please enter the needed details.</p>
 
                         <div className="flex flex-col gap-y-3 mb-8 text-left">
-                            <Gr8TextField label="Semester Number" value={dllSemesterNumber} onChange={onNumberChange(setDllSemesterNumber)} hasError={hasDllDetailsError && !dllSemesterNumber} errorMessage="Please enter needed details" showTopLabel />
+                            <Gr8TextField label="Month Number" value={dllSemesterNumber} onChange={onNumberChange(setDllSemesterNumber)} hasError={hasDllDetailsError && !dllSemesterNumber} errorMessage="Please enter needed details" showTopLabel />
                             <Gr8TextField label="Week Number" value={dllWeekNumber} onChange={onNumberChange(setDllWeekNumber)} hasError={hasDllDetailsError && !dllWeekNumber} errorMessage="Please enter needed details" showTopLabel />
 
                             <div className="grid grid-cols-2 gap-x-3 mt-2">

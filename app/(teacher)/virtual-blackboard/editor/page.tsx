@@ -4,6 +4,8 @@ import React, { useState, useRef, useEffect, MouseEvent as ReactMouseEvent, useC
 import { useRouter } from 'next/navigation';
 import { Gr8MathHeader } from '@/components/ui/Gr8MathHeader';
 import { fetchSingleBlackboardAction, saveBlackboardDataAction, uploadBlackboardToTigrisAction } from '@/app/(teacher)/virtual-blackboard/action';
+import { Gr8LoadingOverlay } from '@/components/ui/Gr8LoadingOverlay';
+import { useSearchParams } from 'next/navigation';
 
 // --- PIXEL CORNER DECORATIONS ---
 const BottomLeftPixels = () => (
@@ -25,6 +27,7 @@ const TopRightPixels = () => (
         <div className="flex"><div className="w-6 h-6 bg-[#E91D26]"></div></div>
     </div>
 );
+
 
 // --- COLOR MATH UTILITIES ---
 function hsvToRgb(h: number, s: number, v: number) {
@@ -53,8 +56,12 @@ const INITIAL_SAVED_COLORS = [
 
 export default function VirtualBlackboardEditor() {
     const router = useRouter();
+    const searchParams = useSearchParams(); // Get the URL parameters
+    const courseId = searchParams.get('courseId'); // Extract courseId
+
     const [boardId, setBoardId] = useState<number | null>(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [showExitModal, setShowExitModal] = useState(false);
 
     // --- BOARD STATE ---
     const [boardTitle, setBoardTitle] = useState('Untitled Board 1');
@@ -101,6 +108,50 @@ export default function VirtualBlackboardEditor() {
     const contextRef = useRef<CanvasRenderingContext2D | null>(null);
     const [undoStack, setUndoStack] = useState<string[]>([]);
     const [redoStack, setRedoStack] = useState<string[]>([]);
+    
+const handlePopStateRef = useRef<(e: PopStateEvent) => void>(undefined);
+
+    useEffect(() => {
+        window.history.pushState(null, '', window.location.href);
+
+        handlePopStateRef.current = (e: PopStateEvent) => {
+            window.history.pushState(null, '', window.location.href);
+            setShowExitModal(true);
+        };
+
+        window.addEventListener('popstate', handlePopStateRef.current);
+
+        return () => {
+            if (handlePopStateRef.current) {
+                window.removeEventListener('popstate', handlePopStateRef.current);
+            }
+        };
+    }, []);
+
+    const executeExit = () => {
+        if (handlePopStateRef.current) {
+            window.removeEventListener('popstate', handlePopStateRef.current);
+        }
+        setShowExitModal(false);
+
+        // FORCE a hard navigation to guarantee the URL is exact and state is cleared.
+        if (courseId) {
+            window.location.href = `/virtual-blackboard?courseId=${courseId}`;
+        } else {
+            window.location.href = '/virtual-blackboard';
+        }
+    };
+
+    const handleDiscardAndLeave = () => {
+        executeExit();
+    };
+
+    const handleSaveAndLeave = async () => {
+        setShowExitModal(false); // Hide the modal immediately
+        // The save function will automatically set isSaving(true) which triggers the Gr8LoadingOverlay
+        await handleSaveAndDownload(false);
+        executeExit();
+    };
 
     // --- LOAD BOARD FROM DATABASE ---
     useEffect(() => {
@@ -350,45 +401,54 @@ export default function VirtualBlackboardEditor() {
         triggerZoomIndicator();
     };
 
-    // --- SAVE---
-    const handleSaveAndDownload = async () => {
-        if (!canvasRef.current || !boardId) return;
-        setIsSaving(true);
-
-        canvasRef.current.toBlob(async (blob) => {
-            if (!blob) {
-                setIsSaving(false);
+    // --- SAVE ---
+    const handleSaveAndDownload = (shouldDownloadLocal: boolean = true): Promise<void> => {
+        return new Promise((resolve) => {
+            if (!canvasRef.current || !boardId) {
+                resolve();
                 return;
             }
+            setIsSaving(true);
 
-            const formData = new FormData();
-            formData.append('file', new File([blob], 'board.png', { type: 'image/png' }));
-            formData.append('boardId', boardId.toString());
-
-            const uploadRes = await uploadBlackboardToTigrisAction(formData);
-
-            if (uploadRes.success && uploadRes.publicUrl) {
-                // 1. Pass boardTitle here
-                const dbRes = await saveBlackboardDataAction(boardId, uploadRes.publicUrl, boardTitle);
-
-                if (dbRes.success) {
-                    const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                    setLastSaved(`Saved on ${today}`);
-
-                    // 2. Local Download
-                    const link = document.createElement('a');
-                    link.download = `${boardTitle.replace(/\s+/g, '_')}.png`;
-                    link.href = canvasRef.current!.toDataURL('image/png');
-                    link.click();
-                } else {
-                    alert("Failed to save to database.");
+            canvasRef.current.toBlob(async (blob) => {
+                if (!blob) {
+                    setIsSaving(false);
+                    resolve();
+                    return;
                 }
-            } else {
-                alert(`Tigris Upload Failed: ${uploadRes.error}`);
-            }
 
-            setIsSaving(false);
-        }, 'image/png');
+                const formData = new FormData();
+                formData.append('file', new File([blob], 'board.png', { type: 'image/png' }));
+                formData.append('boardId', boardId.toString());
+
+                const uploadRes = await uploadBlackboardToTigrisAction(formData);
+
+                if (uploadRes.success && uploadRes.publicUrl) {
+                    // 1. Pass boardTitle here
+                    const dbRes = await saveBlackboardDataAction(boardId, uploadRes.publicUrl, boardTitle);
+
+                    if (dbRes.success) {
+                        const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                        setLastSaved(`Saved on ${today}`);
+
+                        // 2. Only trigger local file download if the flag is true
+                        if (shouldDownloadLocal) {
+                            const link = document.createElement('a');
+                            link.download = `${boardTitle.replace(/\s+/g, '_')}.png`;
+                            link.href = canvasRef.current!.toDataURL('image/png');
+                            link.click();
+                        }
+                    } else {
+                        alert("Failed to save to database.");
+                    }
+                } else {
+                    alert(`Tigris Upload Failed: ${uploadRes.error}`);
+                }
+
+                setIsSaving(false);
+                resolve();
+            }, 'image/png');
+        });
     };
 
     const IconColor = (toolName: string) => activeTool === toolName ? '#EFBD31' : '#0A7F93';
@@ -396,15 +456,16 @@ export default function VirtualBlackboardEditor() {
     return (
         <div className="min-h-screen bg-[#E2E7E9] font-sans flex flex-col overflow-hidden">
             <Gr8MathHeader />
-
+            <Gr8LoadingOverlay isLoading={isSaving} message="Saving..." />
             {/* --- TOP BAR --- */}
             <div className="flex flex-col w-full max-w-[1400px] mx-auto px-6 py-6 pt-10 z-30">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
-                        <button onClick={() => router.back()} className="p-1.5 -ml-1.5 text-[#0A7F93] hover:bg-black/5 rounded-lg transition-colors outline-none cursor-pointer">
+                        <button aria-label='ariaaShow' onClick={() => setShowExitModal(true)} className="p-1.5 -ml-1.5 text-[#0A7F93] hover:bg-black/5 rounded-lg transition-colors outline-none cursor-pointer">
                             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
                         </button>
                         <input
+                        aria-label='titleAria'
                             type="text"
                             value={boardTitle}
                             onChange={(e) => setBoardTitle(e.target.value)}
@@ -467,7 +528,7 @@ export default function VirtualBlackboardEditor() {
                     {/* SAVE AND DOWNLOAD */}
                     <div className="flex justify-between items-center mt-3 z-30">
                         <span className="text-[13px] font-bold text-[#888]">{lastSaved}</span>
-                        <button onClick={handleSaveAndDownload} className="flex items-center gap-2 text-[#888] font-bold text-[14px] hover:text-[#0A7F93] transition-colors outline-none cursor-pointer">
+                        <button onClick={() => handleSaveAndDownload(true)} className="flex items-center gap-2 text-[#888] font-bold text-[14px] hover:text-[#0A7F93] transition-colors outline-none cursor-pointer">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                             Save and Download
                         </button>
@@ -477,17 +538,17 @@ export default function VirtualBlackboardEditor() {
                 {/* --- TOOLBAR --- */}
                 <div className="flex flex-col gap-3 shrink-0 relative w-[52px] z-50">
 
-                    <button onClick={() => { setActiveTool('pen'); setShowColorPicker(false); setShowBrushSizes(false); }} className={`w-12 h-12 bg-white rounded-xl shadow-sm border-2 flex items-center justify-center outline-none transition-colors ${activeTool === 'pen' ? 'border-[#EFBD31]' : 'border-[#D1D8DD]'}`}>
+                    <button aria-label='ariaPen' onClick={() => { setActiveTool('pen'); setShowColorPicker(false); setShowBrushSizes(false); }} className={`w-12 h-12 bg-white rounded-xl shadow-sm border-2 flex items-center justify-center outline-none transition-colors ${activeTool === 'pen' ? 'border-[#EFBD31]' : 'border-[#D1D8DD]'}`}>
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={IconColor('pen')} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
                     </button>
 
-                    <button onClick={() => { setActiveTool('eraser'); setShowColorPicker(false); setShowBrushSizes(false); }} className={`w-12 h-12 bg-white rounded-xl shadow-sm border-2 flex items-center justify-center outline-none transition-colors ${activeTool === 'eraser' ? 'border-[#EFBD31]' : 'border-[#D1D8DD]'}`}>
+                    <button aria-label='ariaEraser' onClick={() => { setActiveTool('eraser'); setShowColorPicker(false); setShowBrushSizes(false); }} className={`w-12 h-12 bg-white rounded-xl shadow-sm border-2 flex items-center justify-center outline-none transition-colors ${activeTool === 'eraser' ? 'border-[#EFBD31]' : 'border-[#D1D8DD]'}`}>
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={IconColor('eraser')} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 20H7L3 16C2.5 15.5 2.5 14.5 3 14L13 4C13.5 3.5 14.5 3.5 15 4L20 9C20.5 9.5 20.5 10.5 20 11L11 20"></path><line x1="17" y1="14" x2="22" y2="19"></line></svg>
                     </button>
 
                     {/* --- ADVANCED COLOR PICKER --- */}
                     <div className="relative">
-                        <button onClick={() => { setShowColorPicker(!showColorPicker); setShowBrushSizes(false); }} className="w-12 h-12 bg-white rounded-xl shadow-sm border-2 border-[#D1D8DD] flex items-center justify-center outline-none hover:border-[#EFBD31] transition-colors">
+                        <button aria-label='ariaShowColor' onClick={() => { setShowColorPicker(!showColorPicker); setShowBrushSizes(false); }} className="w-12 h-12 bg-white rounded-xl shadow-sm border-2 border-[#D1D8DD] flex items-center justify-center outline-none hover:border-[#EFBD31] transition-colors">
                             <div className="w-6 h-6 rounded-full shadow-sm" style={{ backgroundColor: hexColor }}></div>
                         </button>
 
@@ -565,7 +626,7 @@ export default function VirtualBlackboardEditor() {
                                 </div>
                                 <div className="grid grid-cols-8 gap-x-1.5 gap-y-2">
                                     {savedColors.map((c, i) => (
-                                        <button key={`${c}-${i}`} onClick={() => { const [r, g, b] = hexToRgb(c); setHsv(rgbToHsv(r, g, b)); setAlpha(100); setActiveTool('pen'); }} className={`w-6 h-6 rounded-full shadow-sm hover:scale-110 transition-transform cursor-pointer ${hexColor.toUpperCase() === c.toUpperCase() ? 'ring-2 ring-offset-1 ring-[#1A4C8B]' : ''}`} style={{ backgroundColor: c }} />
+                                        <button aria-label='ariaHex' key={`${c}-${i}`} onClick={() => { const [r, g, b] = hexToRgb(c); setHsv(rgbToHsv(r, g, b)); setAlpha(100); setActiveTool('pen'); }} className={`w-6 h-6 rounded-full shadow-sm hover:scale-110 transition-transform cursor-pointer ${hexColor.toUpperCase() === c.toUpperCase() ? 'ring-2 ring-offset-1 ring-[#1A4C8B]' : ''}`} style={{ backgroundColor: c }} />
                                     ))}
                                 </div>
                             </div>
@@ -574,14 +635,14 @@ export default function VirtualBlackboardEditor() {
 
                     {/* Brush Size Toggle */}
                     <div className="relative">
-                        <button onClick={() => { setShowBrushSizes(!showBrushSizes); setShowColorPicker(false); }} className={`w-12 h-12 bg-white rounded-xl shadow-sm border-2 flex items-center justify-center outline-none transition-colors ${showBrushSizes ? 'border-[#EFBD31]' : 'border-[#D1D8DD]'}`}>
+                        <button aria-label='ariaBrush' onClick={() => { setShowBrushSizes(!showBrushSizes); setShowColorPicker(false); }} className={`w-12 h-12 bg-white rounded-xl shadow-sm border-2 flex items-center justify-center outline-none transition-colors ${showBrushSizes ? 'border-[#EFBD31]' : 'border-[#D1D8DD]'}`}>
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={showBrushSizes ? '#EFBD31' : '#0A7F93'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="19" r="2" fill="currentColor"></circle><circle cx="12" cy="12" r="3" fill="currentColor"></circle><circle cx="19" cy="5" r="4" fill="currentColor"></circle></svg>
                         </button>
 
                         {showBrushSizes && (
                             <div className="absolute top-0 right-16 bg-white border border-[#D1D8DD] rounded-xl shadow-xl py-3 px-2 z-50 flex flex-col gap-3 items-center animate-in slide-in-from-right-2 duration-200">
                                 {[24, 16, 12, 8, 4, 2].map(size => (
-                                    <button key={size} onClick={() => { setBrushSize(size); setShowBrushSizes(false); }} className="w-10 h-10 hover:bg-gray-100 rounded-lg flex items-center justify-center transition-colors outline-none cursor-pointer">
+                                    <button aria-label='ariaSize' key={size} onClick={() => { setBrushSize(size); setShowBrushSizes(false); }} className="w-10 h-10 hover:bg-gray-100 rounded-lg flex items-center justify-center transition-colors outline-none cursor-pointer">
                                         <div className="rounded-full" style={{ width: size + 2, height: size + 2, backgroundColor: hexColor }}></div>
                                     </button>
                                 ))}
@@ -589,26 +650,67 @@ export default function VirtualBlackboardEditor() {
                         )}
                     </div>
 
-                    <button onClick={() => { setActiveTool('move'); setShowColorPicker(false); setShowBrushSizes(false); }} className={`w-12 h-12 bg-white rounded-xl shadow-sm border-2 flex items-center justify-center outline-none transition-colors ${activeTool === 'move' ? 'border-[#EFBD31]' : 'border-[#D1D8DD]'}`}>
+                    <button aria-label='ariaColorPick' onClick={() => { setActiveTool('move'); setShowColorPicker(false); setShowBrushSizes(false); }} className={`w-12 h-12 bg-white rounded-xl shadow-sm border-2 flex items-center justify-center outline-none transition-colors ${activeTool === 'move' ? 'border-[#EFBD31]' : 'border-[#D1D8DD]'}`}>
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={IconColor('move')} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="5 9 2 12 5 15"></polyline><polyline points="9 5 12 2 15 5"></polyline><polyline points="19 9 22 12 19 15"></polyline><polyline points="9 19 12 22 15 19"></polyline><line x1="2" y1="12" x2="22" y2="12"></line><line x1="12" y1="2" x2="12" y2="22"></line></svg>
                     </button>
 
-                    <button onClick={handleZoomIn} className="w-12 h-12 bg-white rounded-xl shadow-sm border-2 border-[#D1D8DD] flex items-center justify-center hover:border-[#0A7F93] transition-colors outline-none cursor-pointer">
+                    <button aria-label='ariaZoomIn' onClick={handleZoomIn} className="w-12 h-12 bg-white rounded-xl shadow-sm border-2 border-[#D1D8DD] flex items-center justify-center hover:border-[#0A7F93] transition-colors outline-none cursor-pointer">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0A7F93" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
                     </button>
-                    <button onClick={handleZoomOut} className="w-12 h-12 bg-white rounded-xl shadow-sm border-2 border-[#D1D8DD] flex items-center justify-center hover:border-[#0A7F93] transition-colors outline-none cursor-pointer">
+                    <button aria-label='ariaZoomOut' onClick={handleZoomOut} className="w-12 h-12 bg-white rounded-xl shadow-sm border-2 border-[#D1D8DD] flex items-center justify-center hover:border-[#0A7F93] transition-colors outline-none cursor-pointer">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0A7F93" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
                     </button>
 
-                    <button onClick={handleUndo} disabled={undoStack.length <= 1} className="w-12 h-12 bg-white rounded-xl shadow-sm border-2 border-[#D1D8DD] flex items-center justify-center hover:border-[#0A7F93] transition-colors outline-none cursor-pointer disabled:opacity-40 disabled:hover:border-[#D1D8DD] mt-2">
+                    <button aria-label='ariaUndo' onClick={handleUndo} disabled={undoStack.length <= 1} className="w-12 h-12 bg-white rounded-xl shadow-sm border-2 border-[#D1D8DD] flex items-center justify-center hover:border-[#0A7F93] transition-colors outline-none cursor-pointer disabled:opacity-40 disabled:hover:border-[#D1D8DD] mt-2">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0A7F93" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg>
                     </button>
-                    <button onClick={handleRedo} disabled={redoStack.length === 0} className="w-12 h-12 bg-white rounded-xl shadow-sm border-2 border-[#D1D8DD] flex items-center justify-center hover:border-[#0A7F93] transition-colors outline-none cursor-pointer disabled:opacity-40 disabled:hover:border-[#D1D8DD]">
+                    <button aria-label='ariaRedo' onClick={handleRedo} disabled={redoStack.length === 0} className="w-12 h-12 bg-white rounded-xl shadow-sm border-2 border-[#D1D8DD] flex items-center justify-center hover:border-[#0A7F93] transition-colors outline-none cursor-pointer disabled:opacity-40 disabled:hover:border-[#D1D8DD]">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0A7F93" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 7v6h-6"></path><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"></path></svg>
                     </button>
 
                 </div>
             </main>
+
+            {/* --- EXIT CONFIRMATION MODAL --- */}
+            {showExitModal && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in">
+                    <div className="bg-white rounded-2xl shadow-2xl p-8 pt-10 w-full max-w-[400px] text-center font-sans animate-in zoom-in-95 relative">
+
+                        {/* X (Cancel) Button on the Top Left */}
+                        <button
+                            onClick={() => setShowExitModal(false)}
+                            disabled={isSaving}
+                            className="absolute top-5 right-5 text-[#888] hover:text-[#222] transition-colors outline-none cursor-pointer disabled:opacity-50"
+                            aria-label="Cancel"
+                        >
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+
+                        <h2 className="text-[18px] font-extrabold text-[#222] mb-2">Leave Editor?</h2>
+                        <p className="text-[14px] text-[#666] mb-6">Do you want to save your drawing before leaving?</p>
+
+                        <div className="flex justify-center gap-x-12 mt-4">
+                            <button
+                                onClick={handleSaveAndLeave}
+                                disabled={isSaving}
+                                className="text-[#ED1F24] font-black outline-none cursor-pointer hover:opacity-70 transition-opacity disabled:opacity-50"
+                            >
+                                {"Yes"}
+                            </button>
+                            <button
+                                onClick={handleDiscardAndLeave}
+                                disabled={isSaving}
+                                className="text-[#ED1F24] font-black outline-none cursor-pointer hover:opacity-70 transition-opacity disabled:opacity-50"
+                            >
+                                No
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

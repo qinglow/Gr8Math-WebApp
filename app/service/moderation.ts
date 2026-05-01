@@ -33,7 +33,13 @@ export async function decideModeration(actionId: number, decision: 'allowed' | '
     const supabase = await createClient();
     const { data: action } = await supabase.from('moderation_actions').select('*').eq('id', actionId).single();
 
-    if (!action) return;
+    if (!action) return { error: "Violation not found." };
+
+    // --- THE SAFEGUARD: Prevent Double Processing ---
+    if (action.status !== 'pending') {
+        return { error: "Already processed in another tab." };
+    }
+    // ------------------------------------------------
 
     const table = action.content_type === 'lesson' ? 'lesson' : 'assessment_created';
 
@@ -101,6 +107,8 @@ export async function decideModeration(actionId: number, decision: 'allowed' | '
             });
         }
     }
+
+    return { success: true };
 }
 
 export async function checkAndLiftRestriction(userId: number) {

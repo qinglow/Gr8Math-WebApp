@@ -63,14 +63,14 @@ export default function VirtualBlackboardSelectionPage() {
         const res = await createBlackboardAction(courseId, newTitle);
 
         if (res.success && res.data) {
-            router.push(`/virtual-blackboard/editor?boardId=${res.data.id}&title=${encodeURIComponent(newTitle)}`);
+            router.push(`/virtual-blackboard/editor?boardId=${res.data.id}&title=${encodeURIComponent(newTitle)}&courseId=${courseId}`);
         } else {
             alert("Failed to create board.");
         }
     };
 
     const handleBoardClick = (boardId: number, boardTitle: string) => {
-        router.push(`/virtual-blackboard/editor?boardId=${boardId}&title=${encodeURIComponent(boardTitle)}`);
+        router.push(`/virtual-blackboard/editor?boardId=${boardId}&title=${encodeURIComponent(boardTitle)}&courseId=${courseId}`);
     };
 
     return (
@@ -80,8 +80,21 @@ export default function VirtualBlackboardSelectionPage() {
             <main className="flex-1 w-full max-w-7xl mx-auto px-6 md:px-12 py-8 animate-in fade-in duration-500">
 
                 <div className="flex items-center gap-3 mb-10">
-                    <button aria-label='e' onClick={() => router.back()} className="p-1.5 -ml-1.5 text-[#0A7F93] hover:bg-black/5 rounded-lg transition-colors outline-none cursor-pointer">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                    <button
+                        aria-label='back'
+                        onClick={() => {
+                            if (courseId && courseId !== 0) {
+                                // WE USE 'id' HERE BECAUSE THAT IS WHAT CLASS-PAGE EXPECTS
+                                window.location.href = `/class-page?id=${courseId}`;
+                            } else {
+                                window.location.href = '/class-manager';
+                            }
+                        }}
+                        className="p-1.5 -ml-1.5 text-[#0A7F93] hover:bg-black/5 rounded-lg transition-colors outline-none cursor-pointer"
+                    >
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
                     </button>
                     <h1 className="text-[20px] md:text-[22px] font-black text-[#222] m-0">Virtual Blackboard</h1>
                 </div>

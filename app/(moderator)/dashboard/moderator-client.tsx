@@ -91,6 +91,7 @@ export default function ModeratorDashboard({ profile }: { profile: any }) {
         }
     };
 
+
     const removeWord = async (wordToRemove: string) => {
         setLoadingMessage('Removing...');
         setIsLoading(true);
@@ -123,9 +124,21 @@ export default function ModeratorDashboard({ profile }: { profile: any }) {
         setIsLoading(true);
 
         if (selectedViolation) {
-            await decideModeration(selectedViolation.id, 'disapproved');
+            // 1. Capture the result from your updated backend
+            const result = await decideModeration(selectedViolation.id, 'disapproved');
+
+            // 2. SAFEGUARD: Check if the backend threw the race-condition error
+            if (result?.error) {
+                setIsLoading(false);
+                triggerToast('This violation no longer exists');
+                const latest = await getPendingViolations();
+                setViolations(latest);
+                setSelectedViolation(null);
+                return;
+            }
         }
 
+        // 3. Normal Success Flow (Only runs if there was no error)
         setTimeout(() => {
             setIsLoading(false);
             setViolations(violations.filter(v => v.id !== selectedViolation?.id));
@@ -140,9 +153,23 @@ export default function ModeratorDashboard({ profile }: { profile: any }) {
         setIsLoading(true);
 
         if (selectedViolation) {
-            await decideModeration(selectedViolation.id, 'allowed');
+            // 1. Capture the result from your updated backend
+            const result = await decideModeration(selectedViolation.id, 'allowed');
+
+            // 2. SAFEGUARD: Check if the backend threw the race-condition error
+            if (result?.error) {
+                setIsLoading(false);
+                triggerToast('This violation no longer exists');
+
+                // Fetch the latest list to instantly remove the "ghost" violation from the screen
+                const latest = await getPendingViolations();
+                setViolations(latest);
+                setSelectedViolation(null);
+                return;
+            }
         }
 
+        // 3. Normal Success Flow (Only runs if there was no error)
         setTimeout(() => {
             setIsLoading(false);
             setViolations(violations.filter(v => v.id !== selectedViolation?.id));
@@ -288,7 +315,7 @@ export default function ModeratorDashboard({ profile }: { profile: any }) {
                     <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.2fr] gap-6 lg:gap-8 items-start">
 
                         {/* LEFT COLUMN: VIOLATIONS */}
-                        <div className="bg-[#F4F6F8] border border-[#B0B8C1] rounded-xl p-6 md:p-8 min-h-[600px] shadow-sm">
+                        <div className="bg-[#F4F6F8] border border-[#B0B8C1] rounded-xl p-6 md:p-8 min-h-[600px] shadow-sm min-w-0">
                             <h2 className="text-[22px] font-black text-[#222] mb-6">Violations</h2>
 
                             <div className="space-y-4">
@@ -299,9 +326,9 @@ export default function ModeratorDashboard({ profile }: { profile: any }) {
                                         <div key={violation.id} className="bg-[#F4EBE6] border border-[#DCD3CC] rounded-xl p-6 relative overflow-hidden">
                                             <h3 className="text-[15px] font-bold text-[#222] mb-3">{violation.studentName}</h3>
 
-                                            {/* PREVIEW PORTION ON CARD (Uses Helper) */}
-                                            <p className="text-[13px] text-[#444] font-medium leading-relaxed mb-6 text-justify">
-                                                {getPreviewText(violation.description)?.substring(0, 100)}...
+                                            {/* PREVIEW PORTION ON CARD */}
+                                            <p className="text-[13px] text-[#444] font-medium leading-relaxed mb-6 text-left truncate block w-full">
+                                                {getPreviewText(violation.description)}
                                             </p>
 
                                             <div className="bg-[#E91D26BF] rounded-full px-5 py-3 flex justify-between items-center text-white shadow-sm">
@@ -389,7 +416,7 @@ export default function ModeratorDashboard({ profile }: { profile: any }) {
                             <h2 className="text-[18px] font-extrabold text-[#222] mb-6">Violation Details</h2>
 
                             <div className="mb-4">
-                                <span className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-1">Student Name</span>
+                                <span className="block text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-1">Offender Name</span>
                                 <span className="text-[15px] font-black text-[#222]">{selectedViolation.studentName}</span>
                             </div>
 

@@ -65,26 +65,39 @@ export default function UpdatePasswordPage() {
     router.push('/auth/login');
   };
 
-  const handleGetCode = async () => {
+ const handleGetCode = async () => {
     setEmailError(false);
     setToastError(null);
 
-    if (!email) {
+    const trimmedEmail = email ? email.trim() : '';
+
+    // 1. Check if the field is completely empty
+    if (!trimmedEmail) {
       setEmailError(true);
+      return;
+    }
+
+    // 2. ADD THIS: Check if the email format is valid right here on the frontend
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      setEmailError(true); 
       return;
     }
 
     setLoading(true);
     const formData = new FormData();
-    formData.append('email', email);
+    formData.append('email', trimmedEmail);
 
     const result = await sendResetCode(formData);
     setLoading(false);
 
     if (result?.error) {
+      setEmailError(true); 
       setToastError(result.error);
       setTimeout(() => setToastError(null), 3000);
     } else {
+      setToastError("Verification code sent successfully!");
+      setTimeout(() => setToastError(null), 3000);
       startCountdown(180);
       setStep('verify');
       setActiveField('code');
@@ -244,7 +257,7 @@ export default function UpdatePasswordPage() {
             <div className="animate-in fade-in slide-in-from-right-4 duration-500">
               <p className="text-[12px] font-semibold text-[#222] mb-4">A verification code will be sent to your email.</p>
               <div className="relative mb-2">
-                <Gr8TextField label="sample@email.com" type="email" value={email} onChange={(val) => { setEmail(val); setEmailError(false); }} isActive={activeField === 'email'} onFocus={() => setActiveField('email')} onBlur={() => setActiveField(null)} hasError={emailError} errorMessage="Please enter a valid email address." />
+                <Gr8TextField label="sample@email.com" type="email" value={email} onChange={(val) => { setEmail(val); setEmailError(false); }} isActive={activeField === 'email'} onFocus={() => setActiveField('email')} onBlur={() => setActiveField(null)} hasError={emailError} errorMessage={!email || email.trim() === '' ? "Please enter your email address" : "Please enter a valid email address."} />
                 <button type="button" onClick={handleGetCode} disabled={loading} className="absolute right-4 top-1/2 -translate-y-1/2 text-[12px] font-bold text-[#222] bg-transparent border-none cursor-pointer hover:opacity-70 disabled:opacity-50">
                   {loading ? "Sending..." : "Get Code"}
                 </button>

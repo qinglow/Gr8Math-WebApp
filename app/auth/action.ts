@@ -255,16 +255,38 @@ export async function checkAvailability(type: 'email' | 'lrn', value: string) {
 
 export async function sendResetCode(formData: FormData) {
     const supabase = await createClient();
-    const email = formData.get('email') as string;
+    
+    // 1. Get the email and trim any accidental spaces
+    const rawEmail = formData.get('email') as string;
+    const email = rawEmail ? rawEmail.trim() : '';
 
-    if (!email) return { error: "Please enter your email" };
+    // 2. Check if empty -> Custom Empty Message
+    if (!email) return { error: "Please enter your email address" };
 
+    // 3. Check format -> Custom Invalid Format Message
+    // CHANGE IS HERE: Update the string inside .email()
+    const emailSchema = z.string().email("Please enter a valid email address."); 
+    const validatedEmail = emailSchema.safeParse(email);
+
+    if (!validatedEmail.success) {
+        return { error: validatedEmail.error.issues[0].message };
+    }
+
+    // 4. Proceed with Supabase call only if the format is valid
     const { error } = await supabase.auth.resetPasswordForEmail(email);
+    
     if (error) {
         const { data: existingUser } = await AuthService.getUserProfile(email);
         const targetUserId = existingUser ? existingUser.id : null;
-        await logAuditTrail(targetUserId, 'Authentication', 'REQUEST_RESET', 'FAILED', `Failed OTP request: ${error.message}`);
-        return { error: error.message };
+        
+        // 5. Final safety net just in case Supabase throws a format error
+        let errorMessage = error.message;
+        if (errorMessage.includes("invalid format")) {
+            errorMessage = "Please enter a valid email address."; // Match your custom message
+        }
+
+        await logAuditTrail(targetUserId, 'Authentication', 'REQUEST_RESET', 'FAILED', `Failed OTP request: ${errorMessage}`);
+        return { error: errorMessage };
     }
 
     const { data: existingUser } = await AuthService.getUserProfile(email);
