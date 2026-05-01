@@ -6,6 +6,9 @@ import { Gr8MathHeader } from '@/components/ui/Gr8MathHeader';
 import { fetchSingleBlackboardAction, saveBlackboardDataAction, uploadBlackboardToTigrisAction } from '@/app/(teacher)/virtual-blackboard/action';
 import { Gr8LoadingOverlay } from '@/components/ui/Gr8LoadingOverlay';
 import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
+
+
 
 // --- PIXEL CORNER DECORATIONS ---
 const BottomLeftPixels = () => (
@@ -54,8 +57,8 @@ const INITIAL_SAVED_COLORS = [
     '#EC4899', '#E11D48', '#D946EF', '#A855F7', '#0EA5E9', '#14B8A6', '#84CC16'
 ];
 
-export default function VirtualBlackboardEditor() {
-    const router = useRouter();
+function BlackboardEditorContent() {
+     const router = useRouter();
     const searchParams = useSearchParams(); // Get the URL parameters
     const courseId = searchParams.get('courseId'); // Extract courseId
 
@@ -108,7 +111,7 @@ export default function VirtualBlackboardEditor() {
     const contextRef = useRef<CanvasRenderingContext2D | null>(null);
     const [undoStack, setUndoStack] = useState<string[]>([]);
     const [redoStack, setRedoStack] = useState<string[]>([]);
-    
+
 const handlePopStateRef = useRef<(e: PopStateEvent) => void>(undefined);
 
     useEffect(() => {
@@ -712,5 +715,13 @@ const handlePopStateRef = useRef<(e: PopStateEvent) => void>(undefined);
                 </div>
             )}
         </div>
+    );
+}
+
+export default function VirtualBlackboardEditor() {
+    return (
+        <Suspense fallback={<Gr8LoadingOverlay isLoading={true} message="Loading Blackboard..." />}>
+            <BlackboardEditorContent />
+        </Suspense>
     );
 }
