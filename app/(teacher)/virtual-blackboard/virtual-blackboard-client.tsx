@@ -1,7 +1,7 @@
 'use client';
 export const dynamic = 'force-dynamic';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Gr8MathHeader } from '@/components/ui/Gr8MathHeader';
 import { BlackboardCard, BlackboardData } from '@/components/card/BlackboardCard';
@@ -20,6 +20,8 @@ const EmptyState = () => (
 export default function VirtualBlackboardSelectionPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
+
+    const isCreatingRef = useRef(false);
 
     // We need to know which class this blackboard belongs to!
     const courseId = parseInt(searchParams.get('courseId') || '0');
@@ -50,25 +52,39 @@ export default function VirtualBlackboardSelectionPage() {
         loadBoards();
     }, [courseId]);
 
-    // --- CREATE NEW BOARD ---
+
     const handleAddBoard = async () => {
         if (courseId === 0) {
             alert("Error: Course ID is missing.");
             return;
         }
 
+        // 1. INSTANT GATEKEEPER: Check the Ref first
+        if (isCreatingRef.current || isLoading) return;
+
+        // 2. LOCK THE GATE IMMEDIATELY
+        isCreatingRef.current = true;
+        setIsLoading(true);
+
         const nextNumber = boards.length + 1;
         const newTitle = `Untitled Board ${nextNumber}`;
 
-        const res = await createBlackboardAction(courseId, newTitle);
+        try {
+            const res = await createBlackboardAction(courseId, newTitle);
 
-        if (res.success && res.data) {
-            router.push(`/virtual-blackboard/editor?boardId=${res.data.id}&title=${encodeURIComponent(newTitle)}&courseId=${courseId}`);
-        } else {
+            if (res.success && res.data) {
+                // Success: Navigate away (Ref remains true to prevent clicks during transition)
+                router.push(`/virtual-blackboard/editor?boardId=${res.data.id}&title=${encodeURIComponent(newTitle)}&courseId=${courseId}`);
+            } else {
+                throw new Error("Failed to create");
+            }
+        } catch (error) {
             alert("Failed to create board.");
+            // 3. UNLOCK only if there was an error so they can try again
+            isCreatingRef.current = false;
+            setIsLoading(false);
         }
     };
-
     const handleBoardClick = (boardId: number, boardTitle: string) => {
         router.push(`/virtual-blackboard/editor?boardId=${boardId}&title=${encodeURIComponent(boardTitle)}&courseId=${courseId}`);
     };
@@ -113,9 +129,13 @@ export default function VirtualBlackboardSelectionPage() {
             </main>
 
             <div className="fixed bottom-10 right-6 md:right-12 z-50">
-                <button onClick={handleAddBoard} className="bg-[#1A4C8B] text-white px-6 py-2.5 rounded-full font-black text-[13px] tracking-wide shadow-lg hover:shadow-xl hover:-translate-y-0.5 hover:bg-[#153a6b] transition-all flex items-center gap-x-2 outline-none cursor-pointer">
+                <button
+                    onClick={handleAddBoard}
+                    disabled={isLoading} // Prevents the browser from sending click events
+                    className={`bg-[#1A4C8B] text-white px-6 py-2.5 rounded-full font-black text-[13px] tracking-wide shadow-lg transition-all flex items-center gap-x-2 outline-none ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-xl hover:-translate-y-0.5 hover:bg-[#153a6b] cursor-pointer'}`}
+                >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                    ADD
+                    {isLoading ? 'CREATING...' : 'ADD'}
                 </button>
             </div>
         </div>
