@@ -156,13 +156,53 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
         );
     }
 
-    return (
+  return (
         <div className="flex flex-col min-h-screen bg-[#E2E7E9] font-sans">
             <div className="fixed md:relative top-0 left-0 w-full z-[100] shrink-0"><Gr8MathHeader /></div>
-            <div className="flex flex-1 relative pt-[100px] md:pt-0">
+            
+            <div className="flex flex-1 relative pt-[100px] md:pt-0 overflow-hidden">
+                
+                {/* --- 1. MOBILE BACKDROP OVERLAY --- */}
+                {isSidebarOpen && (
+                    <div
+                        className="md:hidden fixed inset-0 z-[40] bg-black/40 backdrop-blur-sm transition-opacity"
+                        onClick={() => setIsSidebarOpen(false)}
+                    />
+                )}
+
                 <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} activeTab={activeTab} setActiveTab={setActiveTab} title={sectionName} onBack={() => window.location.href = '/class-manager'} />
 
-                <div className="flex-1 p-4 md:p-8 w-full max-w-6xl mx-auto h-full overflow-y-auto">
+                <div className="flex-1 p-4 md:p-8 w-full max-w-6xl mx-auto h-full overflow-y-auto relative">
+                    
+                    {/* --- 2. MOBILE HAMBURGER & BACK BUTTON --- */}
+                    <div className="md:hidden flex items-center gap-x-3 mb-6">
+                        {/* Hamburger Icon */}
+                        <button
+                            aria-label="Toggle Menu"
+                            onClick={() => setIsSidebarOpen(true)}
+                            className="p-1.5 text-[#0A7F93] hover:text-[#EFBD31] transition-colors outline-none cursor-pointer flex items-center justify-center shrink-0"
+                        >
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="3" y1="12" x2="21" y2="12"></line>
+                                <line x1="3" y1="6" x2="21" y2="6"></line>
+                                <line x1="3" y1="18" x2="21" y2="18"></line>
+                            </svg>
+                        </button>
+                        
+                        {/* Back Arrow Icon */}
+                        <button
+                            aria-label="Go Back"
+                            onClick={() => window.location.href = '/class-manager'}
+                            className="p-1.5 -ml-1 text-[#0A7F93] hover:text-[#EFBD31] transition-colors outline-none cursor-pointer flex items-center justify-center shrink-0"
+                        >
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="15 18 9 12 15 6"></polyline>
+                            </svg>
+                        </button>
+                        <span className="font-black text-[20px] text-[#1A4C8B] truncate ml-1">{sectionName}</span>
+                    </div>
+                    {/* ------------------------------------------- */}
+
                     {activeTab === 'class' && (
                         <ClassFeed courseContent={courseContent} onEdit={(item: any) => item.type === 'assessment' ? handleEditAssessment(item) : handleEditLesson(item)} onSeeMore={(item: any) => { setViewingLesson(item); setCurrentView('viewer'); }} onDelete={handleDeleteContent} />
                     )}
@@ -248,7 +288,6 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                         </div>
                         <h2 className="text-2xl font-black text-[#222] mb-2">Content Removed</h2>
 
-                        {/* FIX: Split the message by the pipe to extract the hidden count! */}
                         <p className="text-[#444] font-bold mb-6">
                             {activeWarning.message?.split('|')[0]}
 
@@ -268,8 +307,6 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                     </div>
                 </div>
             )}
-
-
         </div>
     );
 }
