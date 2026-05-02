@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect, MouseEvent as ReactMouseEvent, useCallback } from 'react';
+import React, { useState, useRef, useEffect, MouseEvent as ReactMouseEvent, TouchEvent as ReactTouchEvent, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Gr8MathHeader } from '@/components/ui/Gr8MathHeader';
 import { fetchSingleBlackboardAction, saveBlackboardDataAction, uploadBlackboardToTigrisAction } from '@/app/(teacher)/virtual-blackboard/action';
@@ -8,7 +8,15 @@ import { Gr8LoadingOverlay } from '@/components/ui/Gr8LoadingOverlay';
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 
-
+// --- HELPER TO GET XY COORDINATES FOR BOTH MOUSE AND TOUCH ---
+const getClientXY = (e: any) => {
+    if (e.touches && e.touches.length > 0) {
+        return { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY };
+    } else if (e.changedTouches && e.changedTouches.length > 0) {
+        return { clientX: e.changedTouches[0].clientX, clientY: e.changedTouches[0].clientY };
+    }
+    return { clientX: e.clientX, clientY: e.clientY };
+};
 
 // --- PIXEL CORNER DECORATIONS ---
 const BottomLeftPixels = () => (
@@ -30,7 +38,6 @@ const TopRightPixels = () => (
         <div className="flex"><div className="w-6 h-6 bg-[#E91D26]"></div></div>
     </div>
 );
-
 
 // --- COLOR MATH UTILITIES ---
 function hsvToRgb(h: number, s: number, v: number) {
@@ -58,9 +65,9 @@ const INITIAL_SAVED_COLORS = [
 ];
 
 function BlackboardEditorContent() {
-     const router = useRouter();
-    const searchParams = useSearchParams(); // Get the URL parameters
-    const courseId = searchParams.get('courseId'); // Extract courseId
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const courseId = searchParams.get('courseId');
 
     const [boardId, setBoardId] = useState<number | null>(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -112,7 +119,7 @@ function BlackboardEditorContent() {
     const [undoStack, setUndoStack] = useState<string[]>([]);
     const [redoStack, setRedoStack] = useState<string[]>([]);
 
-const handlePopStateRef = useRef<(e: PopStateEvent) => void>(undefined);
+    const handlePopStateRef = useRef<(e: PopStateEvent) => void>(undefined);
 
     useEffect(() => {
         window.history.pushState(null, '', window.location.href);
@@ -137,7 +144,6 @@ const handlePopStateRef = useRef<(e: PopStateEvent) => void>(undefined);
         }
         setShowExitModal(false);
 
-        // FORCE a hard navigation to guarantee the URL is exact and state is cleared.
         if (courseId) {
             window.location.href = `/virtual-blackboard?courseId=${courseId}`;
         } else {
@@ -150,8 +156,7 @@ const handlePopStateRef = useRef<(e: PopStateEvent) => void>(undefined);
     };
 
     const handleSaveAndLeave = async () => {
-        setShowExitModal(false); // Hide the modal immediately
-        // The save function will automatically set isSaving(true) which triggers the Gr8LoadingOverlay
+        setShowExitModal(false);
         await handleSaveAndDownload(false);
         executeExit();
     };
@@ -193,15 +198,10 @@ const handlePopStateRef = useRef<(e: PopStateEvent) => void>(undefined);
                         const cleanUrl = dataObj.currentFrameUrl.split('?')[0];
                         img.src = `${cleanUrl}?t=${Date.now()}`;
 
-                        img.onerror = () => {
-                            // console.error('Failed to load image from:', cleanUrl);
-                            // // fallback: blank canvas or show an error message
-                        };
                         img.onload = () => {
-                            // console.log('Image loaded successfully');
                             const ctx = contextRef.current;
                             if (ctx) {
-                                ctx.clearRect(0, 0, 2400, 1600); // Clear first
+                                ctx.clearRect(0, 0, 2400, 1600);
                                 ctx.drawImage(img, 0, 0, 2400, 1600);
                                 setUndoStack([canvas.toDataURL('image/png')]);
                             }
@@ -218,85 +218,99 @@ const handlePopStateRef = useRef<(e: PopStateEvent) => void>(undefined);
         }
     }, []);
 
-    // --- GLOBAL MOUSE FIX ---
+    // --- GLOBAL MOUSE & TOUCH FIX ---
     useEffect(() => {
-        const handleGlobalMouseUp = () => {
+        const handleGlobalEnd = () => {
             if (isDrawingRef.current) finishDrawing();
             if (isPanningRef.current) isPanningRef.current = false;
         };
 
-        window.addEventListener('mouseup', handleGlobalMouseUp);
-        return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
+        window.addEventListener('mouseup', handleGlobalEnd);
+        window.addEventListener('touchend', handleGlobalEnd);
+        return () => {
+            window.removeEventListener('mouseup', handleGlobalEnd);
+            window.removeEventListener('touchend', handleGlobalEnd);
+        };
     }, []);
 
-
-    // --- CUSTOM COLOR PICKER LOGIC ---
-    const handleSVPick = useCallback((e: MouseEvent | ReactMouseEvent) => {
+    // --- CUSTOM COLOR PICKER LOGIC (UPDATED FOR TOUCH) ---
+    const handleSVPick = useCallback((e: any) => {
         if (!svBoxRef.current) return;
+        const { clientX, clientY } = getClientXY(e);
         const rect = svBoxRef.current.getBoundingClientRect();
-        const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
-        const y = Math.max(0, Math.min(e.clientY - rect.top, rect.height));
+        const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
+        const y = Math.max(0, Math.min(clientY - rect.top, rect.height));
         setHsv(prev => ({ ...prev, s: Math.round((x / rect.width) * 100), v: Math.round((1 - y / rect.height) * 100) }));
     }, []);
 
-    const handleHuePick = useCallback((e: MouseEvent | ReactMouseEvent) => {
+    const handleHuePick = useCallback((e: any) => {
         if (!hueSliderRef.current) return;
+        const { clientX } = getClientXY(e);
         const rect = hueSliderRef.current.getBoundingClientRect();
-        const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+        const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
         setHsv(prev => ({ ...prev, h: Math.round((x / rect.width) * 360) }));
     }, []);
 
-    const handleAlphaPick = useCallback((e: MouseEvent | ReactMouseEvent) => {
+    const handleAlphaPick = useCallback((e: any) => {
         if (!alphaSliderRef.current) return;
+        const { clientX } = getClientXY(e);
         const rect = alphaSliderRef.current.getBoundingClientRect();
-        const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+        const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
         setAlpha(Math.round((x / rect.width) * 100));
     }, []);
 
     useEffect(() => {
-        const handleMouseMove = (e: MouseEvent) => {
+        const handleMove = (e: MouseEvent | TouchEvent) => {
             if (isDraggingSV) handleSVPick(e);
             if (isDraggingHue) handleHuePick(e);
             if (isDraggingAlpha) handleAlphaPick(e);
 
             if (isPanningRef.current && activeTool === 'move') {
+                const { clientX, clientY } = getClientXY(e);
                 setPan({
-                    x: e.clientX - panStartRef.current.x,
-                    y: e.clientY - panStartRef.current.y
+                    x: clientX - panStartRef.current.x,
+                    y: clientY - panStartRef.current.y
                 });
             }
         };
-        const handleMouseUp = () => {
+        const handleEnd = () => {
             setIsDraggingSV(false);
             setIsDraggingHue(false);
             setIsDraggingAlpha(false);
             isPanningRef.current = false;
         };
 
-        window.addEventListener('mousemove', handleMouseMove);
-        window.addEventListener('mouseup', handleMouseUp);
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('touchmove', handleMove);
+        window.addEventListener('mouseup', handleEnd);
+        window.addEventListener('touchend', handleEnd);
         return () => {
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mouseup', handleMouseUp);
+            window.removeEventListener('mousemove', handleMove);
+            window.removeEventListener('touchmove', handleMove);
+            window.removeEventListener('mouseup', handleEnd);
+            window.removeEventListener('touchend', handleEnd);
         };
     }, [isDraggingSV, isDraggingHue, isDraggingAlpha, handleSVPick, handleHuePick, handleAlphaPick, activeTool]);
 
 
-    // --- DRAWING & PANNING HANDLERS ---
-    const getCoordinates = (e: ReactMouseEvent<HTMLCanvasElement>) => {
+    // --- DRAWING & PANNING HANDLERS (UPDATED FOR TOUCH) ---
+    const getCoordinates = (e: ReactMouseEvent<HTMLCanvasElement> | ReactTouchEvent<HTMLCanvasElement>) => {
         const canvas = canvasRef.current;
         if (!canvas) return { x: 0, y: 0 };
         const rect = canvas.getBoundingClientRect();
+        const { clientX, clientY } = getClientXY(e);
         return {
-            x: (e.clientX - rect.left) / scale,
-            y: (e.clientY - rect.top) / scale
+            x: (clientX - rect.left) / scale,
+            y: (clientY - rect.top) / scale
         };
     };
 
-    const startInteraction = (e: ReactMouseEvent<HTMLCanvasElement>) => {
+    const startInteraction = (e: ReactMouseEvent<HTMLCanvasElement> | ReactTouchEvent<HTMLCanvasElement>) => {
+        const { clientX, clientY } = getClientXY(e);
+
         if (activeTool === 'move') {
             isPanningRef.current = true;
-            panStartRef.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
+            panStartRef.current = { x: clientX - pan.x, y: clientY - pan.y };
             return;
         }
 
@@ -310,11 +324,13 @@ const handlePopStateRef = useRef<(e: PopStateEvent) => void>(undefined);
         setShowBrushSizes(false);
     };
 
-    const drawOrPan = (e: ReactMouseEvent<HTMLCanvasElement>) => {
+    const drawOrPan = (e: ReactMouseEvent<HTMLCanvasElement> | ReactTouchEvent<HTMLCanvasElement>) => {
+        const { clientX, clientY } = getClientXY(e);
+
         if (activeTool === 'move' && isPanningRef.current) {
             setPan({
-                x: e.clientX - panStartRef.current.x,
-                y: e.clientY - panStartRef.current.y
+                x: clientX - panStartRef.current.x,
+                y: clientY - panStartRef.current.y
             });
             return;
         }
@@ -391,7 +407,7 @@ const handlePopStateRef = useRef<(e: PopStateEvent) => void>(undefined);
         if (zoomTimeoutRef.current) clearTimeout(zoomTimeoutRef.current);
         zoomTimeoutRef.current = setTimeout(() => {
             setShowZoomIndicator(false);
-        }, 1500); // Fades away after 1.5 seconds
+        }, 1500);
     };
 
     const handleZoomIn = () => {
@@ -427,14 +443,12 @@ const handlePopStateRef = useRef<(e: PopStateEvent) => void>(undefined);
                 const uploadRes = await uploadBlackboardToTigrisAction(formData);
 
                 if (uploadRes.success && uploadRes.publicUrl) {
-                    // 1. Pass boardTitle here
                     const dbRes = await saveBlackboardDataAction(boardId, uploadRes.publicUrl, boardTitle);
 
                     if (dbRes.success) {
                         const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
                         setLastSaved(`Saved on ${today}`);
 
-                        // 2. Only trigger local file download if the flag is true
                         if (shouldDownloadLocal) {
                             const link = document.createElement('a');
                             link.download = `${boardTitle.replace(/\s+/g, '_')}.png`;
@@ -484,21 +498,17 @@ const handlePopStateRef = useRef<(e: PopStateEvent) => void>(undefined);
                 {/* CANVAS AREA CONTAINER */}
                 <div className="flex-1 flex flex-col h-[70vh] min-h-[500px] relative">
 
-                    {/* The clipping window for the canvas */}
                     <div
                         className="flex-1 w-full bg-[#E9EEF0] border-2 border-[#D1D8DD] rounded-xl relative overflow-hidden shadow-inner"
                         style={{ backgroundImage: 'radial-gradient(#C8D0D5 1px, transparent 1px)', backgroundSize: '24px 24px' }}
                     >
-                        {/* FLOATING ZOOM INDICATOR - Fades in/out automatically! */}
                         <div className={`absolute top-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-sm border border-[#D1D8DD] z-30 text-[12px] font-extrabold text-[#444] pointer-events-none transition-opacity duration-300 ${showZoomIndicator ? 'opacity-100' : 'opacity-0'}`}>
                             Zoom: {Math.round(scale * 100)}%
                         </div>
 
-                        {/* Pixel decorations */}
                         <TopRightPixels />
                         <BottomLeftPixels />
 
-                        {/* The Actual Giant Canvas Container */}
                         <div
                             className="absolute bg-[#F8F5EF] shadow-[0_0_50px_rgba(0,0,0,0.1)] border border-[#C0C8CF] transition-transform duration-75 origin-center"
                             style={{
@@ -515,13 +525,16 @@ const handlePopStateRef = useRef<(e: PopStateEvent) => void>(undefined);
                                 <h2 className="text-2xl font-black text-[#1A4C8B]">Gr8 Math Learning Management System</h2>
                             </div>
 
-                            {/* ADDED MISSING onMouseUp and onMouseLeave HERE to fix the hover bug! */}
                             <canvas
                                 ref={canvasRef}
                                 onMouseDown={startInteraction}
                                 onMouseMove={drawOrPan}
                                 onMouseUp={finishDrawing}
                                 onMouseLeave={finishDrawing}
+                                onTouchStart={startInteraction}
+                                onTouchMove={drawOrPan}
+                                onTouchEnd={finishDrawing}
+                                onTouchCancel={finishDrawing}
                                 className={`w-full h-full relative z-10 ${activeTool === 'move' ? (isPanningRef.current ? 'cursor-grabbing' : 'cursor-grab') : activeTool === 'eraser' ? 'cursor-crosshair' : 'cursor-default'}`}
                                 style={{ touchAction: 'none' }}
                             />
@@ -561,7 +574,8 @@ const handlePopStateRef = useRef<(e: PopStateEvent) => void>(undefined);
                                 <div
                                     ref={svBoxRef}
                                     onMouseDown={(e) => { setIsDraggingSV(true); handleSVPick(e); }}
-                                    className="w-full h-32 rounded-lg relative overflow-hidden mb-3 cursor-crosshair"
+                                    onTouchStart={(e) => { setIsDraggingSV(true); handleSVPick(e); }}
+                                    className="w-full h-32 rounded-lg relative overflow-hidden mb-3 cursor-crosshair touch-none"
                                     style={{ backgroundColor: hueColorString }}
                                 >
                                     <div className="absolute inset-0 bg-gradient-to-r from-white to-transparent pointer-events-none"></div>
@@ -573,7 +587,8 @@ const handlePopStateRef = useRef<(e: PopStateEvent) => void>(undefined);
                                 <div
                                     ref={hueSliderRef}
                                     onMouseDown={(e) => { setIsDraggingHue(true); handleHuePick(e); }}
-                                    className="w-full h-[10px] rounded-full relative mb-3 cursor-pointer"
+                                    onTouchStart={(e) => { setIsDraggingHue(true); handleHuePick(e); }}
+                                    className="w-full h-[10px] rounded-full relative mb-3 cursor-pointer touch-none"
                                     style={{ background: 'linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%)' }}
                                 >
                                     <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-[2.5px] border-white shadow-sm pointer-events-none -ml-2" style={{ left: `${(hsv.h / 360) * 100}%`, backgroundColor: hueColorString }}></div>
@@ -583,7 +598,8 @@ const handlePopStateRef = useRef<(e: PopStateEvent) => void>(undefined);
                                 <div
                                     ref={alphaSliderRef}
                                     onMouseDown={(e) => { setIsDraggingAlpha(true); handleAlphaPick(e); }}
-                                    className="w-full h-[10px] rounded-full relative mb-4 cursor-pointer"
+                                    onTouchStart={(e) => { setIsDraggingAlpha(true); handleAlphaPick(e); }}
+                                    className="w-full h-[10px] rounded-full relative mb-4 cursor-pointer touch-none"
                                     style={{ background: 'repeating-conic-gradient(#E5E7EB 0% 25%, white 0% 50%) 50% / 8px 8px' }}
                                 >
                                     <div className="absolute inset-0 rounded-full pointer-events-none" style={{ background: `linear-gradient(to right, transparent, ${hexColor})` }}></div>
