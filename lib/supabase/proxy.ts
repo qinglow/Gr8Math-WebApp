@@ -34,10 +34,13 @@ export async function updateSession(request: NextRequest) {
   const user = data?.claims;
 
   const isAuthRoute = request.nextUrl.pathname.startsWith("/auth");
+  const isLegalRoute =
+    request.nextUrl.pathname === "/privacy-policy" ||
+    request.nextUrl.pathname === "/terms-and-conditions";
   const isPublicRoute = request.nextUrl.pathname === "/";
 
-  // Only check: is the user logged in?
-  if (!user && !isPublicRoute && !isAuthRoute) {
+
+  if (!user && !isPublicRoute && !isAuthRoute && !isLegalRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";
     return NextResponse.redirect(url);

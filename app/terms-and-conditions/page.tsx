@@ -1,11 +1,15 @@
 'use client';
 
 import React from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Gr8MathHeader } from '@/components/ui/Gr8MathHeader';
 
-export default function TermsAndConditionsPage() {
+function TermsAndConditionsPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+
+    const isFromSignup = searchParams.get('source') === 'signup';
 
     return (
         <div className="min-h-screen bg-[#E2E7E9] font-sans flex flex-col">
@@ -13,15 +17,17 @@ export default function TermsAndConditionsPage() {
 
             <main className="flex-1 w-full max-w-[1000px] mx-auto px-6 py-10 animate-in fade-in duration-500">
                 <div className="flex items-center gap-3 mb-8">
-                    <button 
-                        aria-label='de'
-                        onClick={() => router.back()} 
-                        className="p-1 -ml-1 text-[#0A7F93] hover:bg-black/5 rounded-lg transition-colors outline-none cursor-pointer"
-                    >
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="15 18 9 12 15 6"></polyline>
-                        </svg>
-                    </button>
+                    {!isFromSignup && (
+                        <button
+                            aria-label='back'
+                            onClick={() => router.back()}
+                            className="p-1 -ml-1 text-[#0A7F93] hover:bg-black/5 rounded-lg transition-colors outline-none cursor-pointer"
+                        >
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="15 18 9 12 15 6"></polyline>
+                            </svg>
+                        </button>
+                    )}
                     <h1 className="text-[20px] md:text-[22px] font-bold text-[#222] m-0">
                         Terms and Conditions
                     </h1>
@@ -43,7 +49,7 @@ export default function TermsAndConditionsPage() {
                         </p>
 
                         <h3 className="text-[20px] font-bold text-[#1A4C8B] mt-8 mb-4 border-b pb-2">1. Definitions and Scope</h3>
-                        
+
                         <h4 className="text-[17px] font-semibold mt-6 mb-2">1.1. Introduction and Scope</h4>
                         <p className="text-[15px] leading-relaxed text-[#444] mb-4">
                             These T&Cs set out the general terms and conditions applicable to your use of the Gr8 Math mobile application, and all related services, content, and materials (the "Service").
@@ -61,7 +67,7 @@ export default function TermsAndConditionsPage() {
                         </ul>
 
                         <h3 className="text-[20px] font-bold text-[#1A4C8B] mt-8 mb-4 border-b pb-2">2. Access and Use of the Service</h3>
-                        
+
                         <h4 className="text-[17px] font-semibold mt-6 mb-2">2.1. Eligibility and Parental Consent</h4>
                         <p className="text-[15px] leading-relaxed text-[#444] mb-4">
                             The Service is intended for use by individuals who are 18 years of age or older ("Adult User"). If you are below 18 years of age (a "Minor User"), you may only use the Service if: a) You have the express permission and supervision of a parent or legal guardian; AND b) Your parent or legal guardian reads, understands, and agrees to these T&Cs on your behalf. Your use of the Service is deemed ratification by your parent or legal guardian of these Terms and Conditions.
@@ -82,7 +88,7 @@ export default function TermsAndConditionsPage() {
                         </p>
 
                         <h3 className="text-[20px] font-bold text-[#1A4C8B] mt-8 mb-4 border-b pb-2">3. Intellectual Property (IP) Rights and User Content</h3>
-                        
+
                         <h4 className="text-[17px] font-semibold mt-6 mb-2">3.1. Company Ownership</h4>
                         <p className="text-[15px] leading-relaxed text-[#444] mb-4">
                             The Company owns all content and materials on the Service, including the courseware, code, graphics, design, software, copyrights, trademarks, and patents. IP protection is governed primarily by the Intellectual Property Code of the Philippines (Republic Act No. 8293).
@@ -101,7 +107,7 @@ export default function TermsAndConditionsPage() {
                         </ol>
 
                         <h3 className="text-[20px] font-bold text-[#1A4C8B] mt-8 mb-4 border-b pb-2">4. Privacy, Data Protection, and Communication</h3>
-                        
+
                         <h4 className="text-[17px] font-semibold mt-6 mb-2">4.1. Privacy Policy Reference</h4>
                         <p className="text-[15px] leading-relaxed text-[#444] mb-4">
                             The Client (or the Parent/Guardian, in the case of a Minor User) explicitly consents to and confirms having read and understood the Company's separate Privacy Notice/Policy. This policy ensures compliance with the Philippines' Republic Act (R.A.) 10173 (Data Privacy Act of 2012). For Minor Users (under 18): The Company requires the verifiable consent of the Parent/Guardian to process the Minor User's personal data, in compliance with R.A. 10173.
@@ -118,7 +124,7 @@ export default function TermsAndConditionsPage() {
                         </p>
 
                         <h3 className="text-[20px] font-bold text-[#1A4C8B] mt-8 mb-4 border-b pb-2">5. Electronic Signatures and Validity</h3>
-                        
+
                         <h4 className="text-[17px] font-semibold mt-6 mb-2">5.1. Binding Effect of Electronic Signatures</h4>
                         <p className="text-[15px] leading-relaxed text-[#444] mb-4">
                             The Client irrevocably and unconditionally accepts to be bound by all relevant contracts and documents upon the Client's submission of the valid and applicable OTP or other required identification factors (Electronic Signatures).
@@ -135,7 +141,7 @@ export default function TermsAndConditionsPage() {
                         </p>
 
                         <h3 className="text-[20px] font-bold text-[#1A4C8B] mt-8 mb-4 border-b pb-2">6. Disclaimers, Liability, and Indemnification</h3>
-                        
+
                         <h4 className="text-[17px] font-semibold mt-6 mb-2">6.1. No Warranty</h4>
                         <p className="text-[15px] leading-relaxed text-[#444] mb-4">
                             The Service is provided "as is". The Company makes no warranties or representations about the quality, reliability, availability, or functionality of the Service. The user uses the Service at their own risk.
@@ -152,7 +158,7 @@ export default function TermsAndConditionsPage() {
                         </p>
 
                         <h3 className="text-[20px] font-bold text-[#1A4C8B] mt-8 mb-4 border-b pb-2">7. Dispute Resolution and Governing Law</h3>
-                        
+
                         <h4 className="text-[17px] font-semibold mt-6 mb-2">7.1. Governing Law</h4>
                         <p className="text-[15px] leading-relaxed text-[#444] mb-4">
                             The Applicable Agreement, Specific T&Cs, General T&Cs, and other documents shall be governed by the laws of the Republic of the Philippines.
@@ -188,5 +194,13 @@ export default function TermsAndConditionsPage() {
                 </div>
             </main>
         </div>
+    );
+}
+
+export default function TermsAndConditionsPageSuspense() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <TermsAndConditionsPage />
+        </Suspense>
     );
 }

@@ -1,11 +1,16 @@
 'use client';
 
 import React from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Gr8MathHeader } from '@/components/ui/Gr8MathHeader';
 
-export default function PrivacyPolicyPage() {
+
+function PrivacyPolicyPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+
+    const isFromSignup = searchParams.get('source') === 'signup';
 
     return (
         <div className="min-h-screen bg-[#E2E7E9] font-sans flex flex-col">
@@ -13,15 +18,17 @@ export default function PrivacyPolicyPage() {
 
             <main className="flex-1 w-full max-w-[1000px] mx-auto px-6 py-10 animate-in fade-in duration-500">
                 <div className="flex items-center gap-3 mb-8">
-                    <button 
-                    aria-label='ded'
-                        onClick={() => router.back()} 
-                        className="p-1 -ml-1 text-[#0A7F93] hover:bg-black/5 rounded-lg transition-colors outline-none cursor-pointer"
-                    >
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="15 18 9 12 15 6"></polyline>
-                        </svg>
-                    </button>
+                    {!isFromSignup && (
+                        <button
+                            aria-label='back'
+                            onClick={() => router.back()}
+                            className="p-1 -ml-1 text-[#0A7F93] hover:bg-black/5 rounded-lg transition-colors outline-none cursor-pointer"
+                        >
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="15 18 9 12 15 6"></polyline>
+                            </svg>
+                        </button>
+                    )}
                     <h1 className="text-[20px] md:text-[22px] font-bold text-[#222] m-0">
                         Privacy Policy
                     </h1>
@@ -38,7 +45,7 @@ export default function PrivacyPolicyPage() {
                         <p className="text-[15px] leading-relaxed text-[#444] mb-4 font-semibold">
                             Color Rush Studios (the "Company" or "PIC") is committed to protecting your Personal Data in compliance with the Philippine DPA of 2012. This Privacy Policy explains how Color Rush Studios, acting as the Personal Information Controller (PIC), collects, uses, protects, and handles your Personal Data in compliance with the Republic Act No. 10173, otherwise known as the Data Privacy Act of 2012 (DPA), and its Implementing Rules and Regulations (IRR).
                         </p>
-                        
+
                         <p className="text-[15px] leading-relaxed text-[#444] mb-8">
                             Note on Format (Layered Notice Requirement): In presenting information to you, we adopt the layered privacy notice approach, which provides key information upfront and directs you to more detailed descriptions, often using hyperlinks. For electronic processing, where the format may be limited, a link to this comprehensive notice is always readily available.
                         </p>
@@ -191,5 +198,13 @@ export default function PrivacyPolicyPage() {
                 </div>
             </main>
         </div>
+    );
+}
+
+export default function PrivacyPolicyPageSuspense() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <PrivacyPolicyPage />
+        </Suspense>
     );
 }

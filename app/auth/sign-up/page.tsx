@@ -327,11 +327,17 @@ export default function SignUpPage() {
               <input id="terms-checkbox" type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} className="mt-1 w-5 h-5 accent-[#1A4C8B] cursor-pointer" />
               <label htmlFor="terms-checkbox" className="text-[12px] font-extrabold text-[#222] leading-tight m-0 cursor-pointer">
                 By checking this box, you agree to our{' '}
-                <Link href="/terms-and-conditions" className="text-[#1A4C8B] underline hover:opacity-80" target="_blank">
+                <Link href="/terms-and-conditions?source=signup"
+                  className="text-[#1A4C8B] underline hover:opacity-80"
+                  target="_blank"
+                  rel="noopener noreferrer">
                   Terms and Conditions
                 </Link>{' '}
                 and{' '}
-                <Link href="/privacy-policy" className="text-[#1A4C8B] underline hover:opacity-80" target="_blank">
+                <Link href="/privacy-policy?source=signup"
+                  className="text-[#1A4C8B] underline hover:opacity-80"
+                  target="_blank"
+                  rel="noopener noreferrer">
                   Privacy Policy
                 </Link>.
               </label>
