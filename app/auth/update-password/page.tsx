@@ -65,7 +65,7 @@ export default function UpdatePasswordPage() {
     router.push('/auth/login');
   };
 
- const handleGetCode = async () => {
+  const handleGetCode = async () => {
     setEmailError(false);
     setToastError(null);
 
@@ -80,7 +80,7 @@ export default function UpdatePasswordPage() {
     // 2. ADD THIS: Check if the email format is valid right here on the frontend
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(trimmedEmail)) {
-      setEmailError(true); 
+      setEmailError(true);
       return;
     }
 
@@ -92,7 +92,7 @@ export default function UpdatePasswordPage() {
     setLoading(false);
 
     if (result?.error) {
-      setEmailError(true); 
+      setEmailError(true);
       setToastError(result.error);
       setTimeout(() => setToastError(null), 3000);
     } else {
@@ -207,14 +207,14 @@ export default function UpdatePasswordPage() {
     }
 
     if (newPassword !== confirmPassword) {
-      setPasswordError(true);
-      setPasswordErrorMessage("Passwords do not match.");
+      setToastError("Passwords do not match.");
+      setTimeout(() => setToastError(null), 3000);
       return;
     }
 
     if (!isValidPassword(newPassword)) {
-      setPasswordError(true);
-      setPasswordErrorMessage("Password invalid. Please follow the requirements.");
+      setToastError("Password invalid. Please follow the requirements.");
+      setTimeout(() => setToastError(null), 3000);
       return;
     }
 
