@@ -92,12 +92,12 @@ if (user.roles === 'Teacher' || user.roles === 'Admin')  {
     );
 
     if (user.roles === 'Admin') {
-        redirect('/dashboard');
+        redirect('/dashboard?login=success');
     } else if (user.roles === 'Student') {
         redirect('/auth/access-denied');
     }
 
-    redirect('/class-manager');
+    redirect('/class-manager?login=success');
 }
 
 export async function verifyMfaAction(factorId: string, code: string, isSetup: boolean = false) {
@@ -140,8 +140,8 @@ export async function verifyMfaAction(factorId: string, code: string, isSetup: b
         await logAuditTrail(profileId, 'Authentication', 'LOGIN', 'SUCCESS', 'Successful Login via MFA.');
     }
 
-    let targetUrl = '/class-manager';
-    if (userRole === 'Admin') targetUrl = '/dashboard';
+    let targetUrl = '/class-manager?login=success';
+    if (userRole === 'Admin') targetUrl = '/dashboard?login=success';
     else if (userRole === 'Student') targetUrl = '/auth/access-denied';
 
     if (isSetup && authUser) {

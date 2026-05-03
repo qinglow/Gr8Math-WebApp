@@ -1,6 +1,7 @@
 import { saveLessonWithNotifications } from '@/app/service/lesson';
 import { uploadLessonMediaToTigris } from '@/app/service/upload';
 import { updateLesson } from '@/app/service/lesson';
+import { handleActionError } from "@/lib/utils/errorHandler";
 
 interface SaveLessonParams {
     courseId: string;

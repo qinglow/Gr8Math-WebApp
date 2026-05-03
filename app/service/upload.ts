@@ -1,6 +1,7 @@
 'use server'
 
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { handleActionError } from "@/lib/utils/errorHandler";
 
 const s3Client = new S3Client({
     region: "auto",

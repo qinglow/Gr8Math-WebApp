@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { handleActionError } from "@/lib/utils/errorHandler";
 
 export async function getStudentsFromDb(classId: number) {
     const supabase = await createClient();

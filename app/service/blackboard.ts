@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { handleActionError } from "@/lib/utils/errorHandler";
 
 export async function getBlackboardsBySection(sectionId: number) {
     const supabase = await createClient();

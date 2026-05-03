@@ -12,7 +12,7 @@ import { Gr8Cache } from '@/lib/utils/cache';
 import Link from 'next/link';
 import { DllTabContent } from '../class-page/dll/DllTabContent';
 import { Gr8LoadingOverlay } from '@/components/ui/Gr8LoadingOverlay';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
 // --- SIDEBAR IMAGE IMPORTS ---
@@ -31,6 +31,7 @@ interface UserProfile {
 export default function ClassManagerClient({ profile }: { profile: UserProfile | null }) {
     // Layout State
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     // Data States
@@ -59,6 +60,18 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
     const [generatedCode, setGeneratedCode] = useState('');
 
     const [errors, setErrors] = useState<{ className?: string; numStudents?: string }>({});
+
+    useEffect(() => {
+        if (searchParams.get('login') === 'success') {
+            setToast({ isVisible: true, message: 'Login Successful' });
+            
+            setTimeout(() => {
+                setToast({ isVisible: false, message: '' });
+            }, 3000);
+
+            router.replace('/class-manager', { scroll: false }); 
+        }
+    }, [searchParams, router]);
 
     useEffect(() => {
         if (!profile?.id) return;

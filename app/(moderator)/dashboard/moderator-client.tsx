@@ -3,7 +3,7 @@
 import React, { useState, useEffect, KeyboardEvent, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Gr8MathHeader } from '@/components/ui/Gr8MathHeader';
 import { Gr8LoadingOverlay } from '@/components/ui/Gr8LoadingOverlay';
 import { getCustomBannedWords, addBannedWord, removeBannedWord, decideModeration, getPendingViolations } from '@/app/service/moderation';
@@ -28,7 +28,7 @@ const Gr8Toast = ({ isVisible, message }: { isVisible: boolean, message: string 
 
 export default function ModeratorDashboard({ profile }: { profile: any }) {
     const router = useRouter();
-
+    const searchParams = useSearchParams();
     // --- STATE FOR SIDEBAR ---
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -54,6 +54,13 @@ export default function ModeratorDashboard({ profile }: { profile: any }) {
         setToast({ isVisible: true, message: msg });
         setTimeout(() => setToast({ isVisible: false, message: '' }), 3000);
     };
+
+    useEffect(() => {
+        if (searchParams.get('login') === 'success') {
+            triggerToast('Login Successful');
+            router.replace('/dashboard', { scroll: false }); 
+        }
+    }, [searchParams, router]);
 
     const handleLogout = () => {
         router.push('/auth/login');

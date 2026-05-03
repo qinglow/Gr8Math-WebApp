@@ -2,6 +2,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { checkContentModeration } from "@/app/service/moderation";
 import { deleteMediaFromTigris } from "@/app/service/upload";
+import { handleActionError } from "@/lib/utils/errorHandler";
 
 export async function saveLessonWithNotifications(
     sectionId: number,

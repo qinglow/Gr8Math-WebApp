@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getUserProfile } from '@/app/service/auth';
 import { redirect } from 'next/navigation';
 import ClassManagerClient from './class-manager-client';
+import { Suspense } from 'react'; 
 
 export default async function ClassManagerPage() {
   const supabase = await createClient();
@@ -18,5 +19,10 @@ export default async function ClassManagerPage() {
     redirect('/auth/login?msg=Profile%20not%20found');
   }
 
-  return <ClassManagerClient profile={profile} />;
+
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#E2E7E9]" />}>
+      <ClassManagerClient profile={profile} />
+    </Suspense>
+  );
 }

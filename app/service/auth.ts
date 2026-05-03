@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { logAuditTrail } from "./audit-trails";
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
+import { handleActionError } from "@/lib/utils/errorHandler";
 
 export async function getUserProfile(email: string) {
   const supabase = await createClient();

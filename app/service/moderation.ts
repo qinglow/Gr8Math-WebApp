@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from "@/lib/supabase/server";
+import { handleActionError } from "@/lib/utils/errorHandler";
 
 export async function checkContentModeration(text: string) {
     const supabase = await createClient();
