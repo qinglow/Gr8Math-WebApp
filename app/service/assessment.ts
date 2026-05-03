@@ -1,7 +1,6 @@
 'use server'
 import { createClient } from "@/lib/supabase/server";
 import { checkContentModeration } from "@/app/service/moderation";
-import { handleActionError } from "@/lib/utils/errorHandler";
 
 export async function publishAssessmentAction(params: {
     courseId: number;
@@ -136,7 +135,8 @@ export async function publishAssessmentAction(params: {
 
         return { success: true, id: assessment.id };
     } catch (error: any) {
-        return { success: false, ...handleActionError(error) };
+        console.error("Assessment creation failed:", error.message);
+        return { success: false, error: error.message };
     }
 }
 
@@ -159,7 +159,7 @@ export async function fetchAssessmentDetails(assessmentId: number) {
         if (error) throw error;
         return { success: true, data: assessment };
     } catch (e: any) {
-        return { success: false, ...handleActionError(e) };
+        return { success: false, error: e.message };
     }
 }
 
@@ -314,7 +314,7 @@ export async function updateAssessmentAction(params: {
 
         return { success: true, id: params.assessmentId };
     } catch (error: any) {
-        return { success: false, ...handleActionError(error) };
+        return { success: false, error: error.message };
     }
 }
 
@@ -413,7 +413,7 @@ export async function fetchStudentAssessmentReview(assessmentId: number, student
         return { success: true, data: mergedData };
 
     } catch (error: any) {
-        return { success: false, ...handleActionError(error) };
+        return { success: false, error: error.message };
     }
 }
 
@@ -515,6 +515,6 @@ export async function fetchPastQuestionsForWordBank() {
         return { success: true, data: dynamicBank };
     } catch (e: any) {
         console.error("Fetch Error: ", e);
-        return { success: false, data: [], ...handleActionError(e) };
+        return { success: false, data: [] };
     }
 }
