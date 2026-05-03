@@ -34,3 +34,25 @@ export async function createClass(userId: string, className: string, size: numbe
         return { success: false, error: error.message };
     }
 }
+
+
+
+export async function editClass(classId: string, className: string, size: number, start: string, end: string) {
+    try {
+        await ClassService.updateClass(classId, className, size, start, end);
+        revalidatePath('/class-manager');
+        return { success: true };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+export async function removeClass(classId: string) {
+    try {
+        await ClassService.deleteClass(classId);
+        revalidatePath('/class-manager');
+        return { success: true };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}

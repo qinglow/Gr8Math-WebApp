@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useClassManager } from './use-class-page';
 import { saveDllAction } from './dll/action';
 import { prepareDllForDatabase, rebuildDllLocalState } from './dll/helper';
@@ -54,7 +54,56 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
     } = useClassManager(courseId, initialFeed);
 
     const [itemToDelete, setItemToDelete] = React.useState<ClassContentItem | null>(null);
+    const [isClassDeleted, setIsClassDeleted] = useState(false);
 
+    useEffect(() => {
+        const verifyClass = async () => {
+            try {
+                // If initialFeed was passed as null or empty from the server component
+                // because the class didn't exist during SSR, trigger the state.
+                if (!sectionName || sectionName === "Unknown Class") {
+                    setIsClassDeleted(true);
+                }
+            } catch (err) {
+                setIsClassDeleted(true);
+            }
+        };
+        verifyClass();
+    }, [sectionName]);
+
+    const handleActionError = (err: any) => {
+        // Check the error message string for keywords like "not found" or "foreign key"
+        // (Foreign key errors happen when you try to save a lesson to a deleted class)
+        const errorMsg = err?.message?.toLowerCase() || "";
+
+        if (errorMsg.includes('not found') || errorMsg.includes('foreign key')) {
+            setIsClassDeleted(true);
+        } else {
+            console.error(err);
+            alert("An error occurred. Please try again.");
+        }
+    };
+
+    if (isClassDeleted) {
+        return (
+            <div className="fixed inset-0 z-[2000] bg-[#E2E7E9] flex items-center justify-center p-6 text-center font-sans">
+                <div className="w-full max-w-2xl bg-white border-2 border-dashed border-gray-300 rounded-[32px] p-12 md:p-20 flex flex-col items-center shadow-sm">
+                    <h1 className="text-[24px] md:text-[28px] font-black text-[#222] mb-3 uppercase tracking-tight">
+                        CLASS NO LONGER EXISTS
+                    </h1>
+                    <p className="text-[#666] font-medium leading-relaxed max-w-md text-[16px]">
+                        This class has been deleted. Please go back to the Class Manager and refresh your list.
+                    </p>
+                    <button
+                        onClick={() => window.location.href = '/class-manager'}
+                        className="mt-10 bg-[#1A4C8B] text-white px-10 py-4 rounded-full font-black shadow-lg hover:scale-105 active:scale-95 transition-all uppercase tracking-wide cursor-pointer outline-none"
+                    >
+                        Go Back to Dashboard
+                    </button>
+                </div>
+            </div>
+        );
+    }
     // ============================================================================
     // RENDER LOGIC
     // ============================================================================
@@ -66,30 +115,27 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
     // 2. Executes the deletion if the user clicks "Yes"
     const executeDelete = async () => {
         if (!itemToDelete) return;
-        
         setIsSaving(true);
         try {
-            if (itemToDelete.type === 'lesson') {
-                await deleteLessonAction(itemToDelete.id);
+            const res = itemToDelete.type === 'lesson'
+                ? await deleteLessonAction(itemToDelete.id)
+                : await deleteAssessmentAction(itemToDelete.id);
+
+            if (res.success) {
+                setCourseContent(prev => prev.filter(c => c.id !== itemToDelete.id || c.type !== itemToDelete.type));
+                setToastMessage(`${itemToDelete.type === 'lesson' ? 'Lesson' : 'Assessment'} deleted successfully.`);
+                setShowToast(true);
+                setTimeout(() => setShowToast(false), 3000);
             } else {
-                await deleteAssessmentAction(itemToDelete.id);
+                handleActionError(new Error(res.error));
             }
-
-            // Remove the item from the screen instantly
-            setCourseContent(prev => prev.filter(c => c.id !== itemToDelete.id || c.type !== itemToDelete.type));
-            setToastMessage(`${itemToDelete.type === 'lesson' ? 'Lesson' : 'Assessment'} deleted successfully.`);
-            setShowToast(true);
-            setTimeout(() => setShowToast(false), 3000);
-
         } catch (error) {
-            console.error(error);
-            alert("Failed to delete content.");
+            handleActionError(error);
         } finally {
             setIsSaving(false);
-            setItemToDelete(null); // Close the modal
+            setItemToDelete(null);
         }
     };
-
     if (currentView === 'viewer' && viewingLesson) return <LessonViewerView viewingLesson={viewingLesson} onBack={() => setCurrentView('feed')} />;
 
     if (currentView === 'editor') {
@@ -156,12 +202,12 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
         );
     }
 
-  return (
+    return (
         <div className="flex flex-col min-h-screen bg-[#E2E7E9] font-sans">
             <div className="fixed md:relative top-0 left-0 w-full z-[100] shrink-0"><Gr8MathHeader /></div>
-            
+
             <div className="flex flex-1 relative pt-[100px] md:pt-0 overflow-hidden">
-                
+
                 {/* --- 1. MOBILE BACKDROP OVERLAY --- */}
                 {isSidebarOpen && (
                     <div
@@ -170,10 +216,19 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                     />
                 )}
 
-                <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} activeTab={activeTab} setActiveTab={setActiveTab} title={sectionName} onBack={() => window.location.href = '/class-manager'} />
+                {!isClassDeleted && (
+                    <Sidebar
+                        isOpen={isSidebarOpen}
+                        setIsOpen={setIsSidebarOpen}
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
+                        title={sectionName}
+                        onBack={() => window.location.href = '/class-manager'}
+                    />
+                )}
 
                 <div className="flex-1 p-4 md:p-8 w-full max-w-6xl mx-auto h-full overflow-y-auto relative">
-                    
+
                     {/* --- 2. MOBILE HAMBURGER & BACK BUTTON --- */}
                     <div className="md:hidden flex items-center gap-x-3 mb-6">
                         {/* Hamburger Icon */}
@@ -188,7 +243,7 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                                 <line x1="3" y1="18" x2="21" y2="18"></line>
                             </svg>
                         </button>
-                        
+
                         {/* Back Arrow Icon */}
                         <button
                             aria-label="Go Back"
@@ -227,7 +282,7 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                     )}
                 </div>
 
-                {activeTab === 'class' && (
+                {activeTab === 'class' && !isClassDeleted && (
                     <div className="fixed bottom-10 right-10 z-50">
                         <button onClick={openAddModal} className="bg-[#1A4C8B] text-white px-8 py-3.5 rounded-full font-black shadow-lg flex items-center gap-x-2 transition-transform hover:scale-105 active:scale-95 outline-none cursor-pointer">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -261,15 +316,15 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                     <ConfirmModal title="Discard Changes?" subtitle="You have unsaved content. If you go back, your changes will be lost." onYes={resetEditor} onNo={cancelDiscard} />
                 )}
                 {itemToDelete && (
-                    <ConfirmModal 
-                        title={`Delete ${itemToDelete.type === 'lesson' ? 'Lesson' : 'Assessment'}?`} 
+                    <ConfirmModal
+                        title={`Delete ${itemToDelete.type === 'lesson' ? 'Lesson' : 'Assessment'}?`}
                         subtitle={
-                            itemToDelete.type === 'lesson' 
-                                ? "This action cannot be undone and will permanently remove this lesson from the class feed." 
+                            itemToDelete.type === 'lesson'
+                                ? "This action cannot be undone and will permanently remove this lesson from the class feed."
                                 : "This action cannot be undone and will permanently erase all associated student scores and records."
-                        } 
-                        onYes={executeDelete} 
-                        onNo={() => setItemToDelete(null)} 
+                        }
+                        onYes={executeDelete}
+                        onNo={() => setItemToDelete(null)}
                     />
                 )}
             </div>

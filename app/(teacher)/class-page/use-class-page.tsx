@@ -112,7 +112,7 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
     useEffect(() => {
         const fetchUserStatus = async () => {
             const supabase = createClient();
-            
+
             // 1. Get session first (More reliable on fast production initial loads)
             const { data: { session }, error: sessionError } = await supabase.auth.getSession();
             const user = session?.user;
@@ -148,13 +148,13 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
 
                 if (notices && notices.length > 0) {
                     const flashNotice = notices.find((n: any) => n.meta?.flash_ui);
-                    
+
                     if (flashNotice) {
                         console.log("[DEBUG] Flash notice matched! Setting active warning.");
-                        setActiveWarning({ 
-                            id: flashNotice.id, 
-                            message: flashNotice.message, 
-                            count: flashNotice.meta?.warning_count 
+                        setActiveWarning({
+                            id: flashNotice.id,
+                            message: flashNotice.message,
+                            count: flashNotice.meta?.warning_count
                         });
                     } else {
                         console.log("[DEBUG] Notices exist, but none have meta.flash_ui == true");
@@ -162,7 +162,7 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
                 }
             }
         };
-        
+
         fetchUserStatus();
     }, []);
 
@@ -216,12 +216,12 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
 
     const isAssessmentFormComplete = quarterNumber.trim() !== '' && assessmentNumber.trim() !== '' && assessmentTitle.trim() !== '' && availableFrom !== '' && availableUntil !== '';
 
-   const handleProceedToDetails = () => { 
+    const handleProceedToDetails = () => {
         if (selectedAddOption === 'blackboard') {
-            setIsAddModalOpen(false); 
+            setIsAddModalOpen(false);
             window.location.href = `/virtual-blackboard?courseId=${courseId}`;
         } else if (selectedAddOption) {
-            setAddStep('details'); 
+            setAddStep('details');
         }
     };
     const handleLessonNextDetails = () => { if (!weekNumber.trim() || !lessonTitle.trim()) { setHasDetailsError(true); return; } setHasDetailsError(false); setIsAddModalOpen(false); setCurrentView('editor'); };
@@ -261,81 +261,107 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
     };
 
     const onPublishAssessment = async (questions: any[], timeLimit: number = 0) => {
-        
+
         // --- NEW: STRICT ANSWER KEY CHECK ---
         // This stops the teacher from publishing if any question is missing a correct answer
         const hasMissingKeys = questions.some(q => !q.correctAnswers || q.correctAnswers.length === 0);
         if (hasMissingKeys) {
             setToastMessage("Cannot publish: Please set an answer key for all questions.");
-            setShowToast(true); 
+            setShowToast(true);
             setTimeout(() => setShowToast(false), 3000);
             return; // Stops the function from running
         }
         // ------------------------------------
 
         setIsSaving(true);
-        const start = convertToIso(availableFrom); 
+        const start = convertToIso(availableFrom);
         const end = convertToIso(availableUntil);
-        
-        if (!start || !end) { 
-            setToastMessage("Date conversion failed."); 
-            setShowToast(true); 
-            setTimeout(() => setShowToast(false), 3000); 
-            setIsSaving(false); 
-            return; 
+
+        if (!start || !end) {
+            setToastMessage("Date conversion failed.");
+            setShowToast(true);
+            setTimeout(() => setShowToast(false), 3000);
+            setIsSaving(false);
+            return;
         }
 
         try {
-            const payload = { 
-                courseId: parseInt(courseId), 
-                title: assessmentTitle, 
-                startTime: start, 
-                endTime: end, 
+            const payload = {
+                courseId: parseInt(courseId),
+                title: assessmentTitle,
+                startTime: start,
+                endTime: end,
                 timeLimit: timeLimit,
-                assessmentNumber: parseInt(assessmentNumber), 
-                assessmentQuarter: parseInt(quarterNumber), 
-                questions 
+                assessmentNumber: parseInt(assessmentNumber),
+                assessmentQuarter: parseInt(quarterNumber),
+                questions
             };
-            
-            const res = isEditingLesson && editingLessonId 
-                ? await updateAssessmentAction({ ...payload, assessmentId: editingLessonId }) 
+
+            const res = isEditingLesson && editingLessonId
+                ? await updateAssessmentAction({ ...payload, assessmentId: editingLessonId })
                 : await publishAssessmentAction(payload);
-                
+
             if (res.success) {
-                const newItem: ClassContentItem = { 
-                    id: res.id || Date.now(), 
-                    type: 'assessment', 
-                    title: assessmentTitle, 
-                    assessment_number: parseInt(assessmentNumber) 
+                const newItem: ClassContentItem = {
+                    id: res.id || Date.now(),
+                    type: 'assessment',
+                    title: assessmentTitle,
+                    assessment_number: parseInt(assessmentNumber)
                 };
-                setCourseContent(prev => isEditingLesson 
-                    ? prev.map(a => (a.id === editingLessonId && a.type === 'assessment') ? newItem : a) 
+                setCourseContent(prev => isEditingLesson
+                    ? prev.map(a => (a.id === editingLessonId && a.type === 'assessment') ? newItem : a)
                     : [newItem, ...prev]
                 );
-                
+
                 setToastMessage(isEditingLesson ? 'Assessment Test updated!' : 'Assessment Test posted!');
                 setShowToast(true);
                 setTimeout(() => setShowToast(false), 3000);
                 resetEditor();
-            } else { 
-                alert(res.error || "Failed to publish."); 
+            } else {
+                const errorMsg = res.error?.toLowerCase() || "";
+                if (errorMsg.includes('not found') || errorMsg.includes('foreign key')) {
+                    throw new Error("CLASS_DELETED");
+                }
+                alert(res.error || "Failed to publish.");
             }
-        } catch (error) { 
-            console.error(error); 
+        } catch (error) {
+            console.error(error);
         }
         setIsSaving(false);
     };
 
     const onExecuteSave = async () => {
-        setIsSaveConfirmModalOpen(false); setIsSaving(true);
+        setIsSaveConfirmModalOpen(false);
+        setIsSaving(true);
         try {
-            const result = await handleLessonSave({ courseId, lessonContent, pendingMedia, isEditingLesson, editingLessonId, weekNumber, lessonTitle });
+            const result = await handleLessonSave({
+                courseId, lessonContent, pendingMedia,
+                isEditingLesson, editingLessonId, weekNumber, lessonTitle
+            });
+
             if (result.success) {
                 const updated = { ...result.lesson, type: 'lesson' } as ClassContentItem;
-                setCourseContent(prev => result.isEdit ? prev.map(l => (l.id === editingLessonId && l.type === 'lesson') ? updated : l) : [updated, ...prev]);
-                setToastMessage(result.isEdit ? 'Lesson edited!' : 'Lesson posted!'); resetEditor();
+                setCourseContent(prev => result.isEdit
+                    ? prev.map(l => (l.id === editingLessonId && l.type === 'lesson') ? updated : l)
+                    : [updated, ...prev]
+                );
+                setToastMessage(result.isEdit ? 'Lesson edited!' : 'Lesson posted!');
+                resetEditor();
+            } else {
+                const errorMsg = result.message?.toLowerCase() || "";
+                if (errorMsg.includes('not found') || errorMsg.includes('foreign key')) {
+                    throw new Error("CLASS_DELETED");
+                }
+                alert(result.message || "Failed to save lesson.");
             }
-        } catch (e: any) { alert(e.message); } finally { setIsSaving(false); setShowToast(true); setTimeout(() => setShowToast(false), 3000); }
+        } catch (e: any) {
+            if (e.message === "CLASS_DELETED") throw e;
+            alert(e.message);
+        } finally {
+            setIsSaving(false);
+            setShowToast(true);
+            setTimeout(() => setShowToast(false), 3000);
+        }
     };
 
     const handleEditAssessment = async (assessment: ClassContentItem) => {
@@ -345,8 +371,8 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
             const dbData = res.data;
             setAssessmentTitle(dbData.title || ''); setAssessmentNumber(dbData.assessment_number?.toString() || ''); setQuarterNumber(dbData.assessment_quarter?.toString() || '');
             setAvailableFrom(revertIsoToPicker(dbData.start_time)); setAvailableUntil(revertIsoToPicker(dbData.end_time));
-           setAssessmentTimeLimit(dbData.time_limit_minutes ?? 0);
-            
+            setAssessmentTimeLimit(dbData.time_limit_minutes ?? 0);
+
 
             const parsedQuestions = dbData.assessment_questions.map((dbQ: any) => {
                 // 1. Separate Image URL from Question Text

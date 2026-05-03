@@ -47,7 +47,7 @@ export async function fetchTeacherClasses(userId: string, searchQuery?: string) 
     let query = supabase
         .from('class')
         .select(`
-            id, class_name, arrival_time, dismissal_time, class_size, grade_level,
+            id, class_name, arrival_time, dismissal_time, class_size, grade_level, class_code,
             course_content(id, section_id)
         `)
         .eq('adviser_id', userId);
@@ -134,4 +134,34 @@ export async function insertClass(userId: string, className: string, size: numbe
     }
 
     return { data: insertedClass, classCode };
+}
+
+
+export async function updateClass(classId: string, className: string, size: number, start: string, end: string) {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from('class')
+        .update({
+            class_name: className,
+            class_size: size,
+            arrival_time: convertToDbTime(start),
+            dismissal_time: convertToDbTime(end),
+        })
+        .eq('id', classId)
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data;
+}
+
+export async function deleteClass(classId: string) {
+    const supabase = await createClient();
+    const { error } = await supabase
+        .from('class')
+        .delete()
+        .eq('id', classId);
+
+    if (error) throw error;
+    return { success: true };
 }

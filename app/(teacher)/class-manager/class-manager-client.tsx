@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { Gr8TextField } from '@/components/ui/Gr8TextField';
 import { Gr8TimePicker } from '@/components/ui/Gr8TimePicker';
 import { ClassCard } from '@/components/card/ClassCard';
-import { getTeacherClasses, getSearchHistory, saveSearchHistory, createClass } from './action';
+import { getTeacherClasses, getSearchHistory, saveSearchHistory, createClass, editClass, removeClass } from './action';
 import { formatTime } from '@/lib/utils/utils';
 import { Gr8Toast } from '@/components/ui/Gr8Toast';
 import { Gr8Cache } from '@/lib/utils/cache';
@@ -41,6 +41,11 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
     const [searchQuery, setSearchQuery] = useState('');
     const [isSearchFocused, setIsSearchFocused] = useState(false);
 
+    const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+    const [selectedClass, setSelectedClass] = useState<any>(null);
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+    const [isEditMode, setIsEditMode] = useState(false);
+
 
 
     // Modal & UI States
@@ -58,18 +63,19 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
     const [startTime, setStartTime] = useState('11:00 AM');
     const [endTime, setEndTime] = useState('12:30 PM');
     const [generatedCode, setGeneratedCode] = useState('');
+    const [isShareMode, setIsShareMode] = useState(false);
 
     const [errors, setErrors] = useState<{ className?: string; numStudents?: string }>({});
 
     useEffect(() => {
         if (searchParams.get('login') === 'success') {
             setToast({ isVisible: true, message: 'Login Successful' });
-            
+
             setTimeout(() => {
                 setToast({ isVisible: false, message: '' });
             }, 3000);
 
-            router.replace('/class-manager', { scroll: false }); 
+            router.replace('/class-manager', { scroll: false });
         }
     }, [searchParams, router]);
 
@@ -85,18 +91,14 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
             return;
         }
 
-        const delayDebounceFn = setTimeout(async () => {
-            setIsFetchingClasses(true);
-            const data = await getTeacherClasses(profile.id, searchQuery);
-
-            Gr8Cache.set('teacher-classes', data, searchQuery);
-            setClassesList(data);
-            setIsFetchingClasses(false);
+        const delayDebounceFn = setTimeout(() => {
+            refreshClasses();
 
             if (searchQuery.trim().length > 0) {
-                await saveSearchHistory(profile.id, searchQuery.trim());
-                const updatedHistory = await getSearchHistory(profile.id);
-                setSearchHistory(updatedHistory);
+                saveSearchHistory(profile.id, searchQuery.trim()).then(async () => {
+                    const updatedHistory = await getSearchHistory(profile.id);
+                    setSearchHistory(updatedHistory);
+                });
             }
         }, 300);
 
@@ -105,48 +107,93 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
 
     const validateForm = () => {
         const newErrors: { className?: string; numStudents?: string } = {};
-        if (!className.trim()) newErrors.className = 'Please enter the needed details.';
-        if (!numStudents.trim()) newErrors.numStudents = 'Please enter the needed details';
-        else if (isNaN(Number(numStudents)) || Number(numStudents) <= 0) newErrors.numStudents = 'Must be a valid positive number.';
+        const trimmedName = className.trim();
+
+        if (!trimmedName) {
+            newErrors.className = 'Please enter the needed details.';
+        } else {
+            const isDuplicate = classesList.some((cls) => {
+                const isNameSame = cls.class_name.toLowerCase() === trimmedName.toLowerCase();
+
+                if (isEditMode && selectedClass) {
+                    return isNameSame && cls.id !== selectedClass.id;
+                }
+                return isNameSame;
+            });
+
+            if (isDuplicate) {
+                newErrors.className = 'Already have a class with this name.';
+            }
+        }
+
+        if (!numStudents.trim()) {
+            newErrors.numStudents = 'Please enter the needed details';
+        } else if (isNaN(Number(numStudents)) || Number(numStudents) <= 0) {
+            newErrors.numStudents = 'Must be a valid positive number.';
+        }
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleCreateClass = async () => {
+    const handleAction = async () => {
         if (!validateForm() || !profile?.id) return;
-
-        setErrors({});
         setIsLoading(true);
 
         try {
-            const result = await createClass(
-                profile.id,
-                className,
-                Number(numStudents),
-                startTime,
-                endTime
-            );
-
-            if (result && result.error) {
-                throw new Error(result.error);
+            let result;
+            if (isEditMode && selectedClass) {
+                // EDIT LOGIC
+                result = await editClass(selectedClass.id, className, Number(numStudents), startTime, endTime);
+            } else {
+                // CREATE LOGIC
+                result = await createClass(profile.id, className, Number(numStudents), startTime, endTime);
             }
 
-            if (result && result.success) {
-                setGeneratedCode(result.classCode || '');
+            // CHECK IF THE SERVER RETURNED AN ERROR
+            if (!result.success) {
+                setErrors({ className: result.error || "Failed to save class." });
+                return; // Stop here if it failed
+            }
+
+            // SUCCESS LOGIC
+            if (!isEditMode) {
+                setGeneratedCode((result as any).classCode || '');
                 setShowSuccess(true);
-                triggerToast("Class Created Successfully!");
+            } else {
+                closeModal();
+            }
+
+            triggerToast(isEditMode ? "Class Updated!" : "Class Created!");
+            refreshClasses();
+
+        } catch (err: any) {
+            // Catch any network crashes
+            setErrors({ className: err.message || "An unexpected error occurred." });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!selectedClass) return;
+        setIsLoading(true);
+
+        try {
+            const result = await removeClass(selectedClass.id);
+
+            if (result.success) {
+                triggerToast("Class Deleted");
+                setIsDeleteConfirmOpen(false);
                 Gr8Cache.invalidate('teacher-classes');
-                const updatedClasses = await getTeacherClasses(profile.id, searchQuery);
-                setClassesList(updatedClasses);
-                Gr8Cache.set('teacher-classes', updatedClasses, searchQuery);
+                refreshClasses();
+            } else {
+
+                triggerToast(result.error || "Failed to delete class");
+                setIsDeleteConfirmOpen(false);
             }
         } catch (err: any) {
-            const errorMessage = err.message || "Failed to create class. Please try again.";
-
-            if (errorMessage.includes("already have a class")) {
-                setErrors({ className: "Already have a class with this name." });
-            }
+            triggerToast("An unexpected error occurred.");
         } finally {
             setIsLoading(false);
         }
@@ -169,21 +216,35 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
     const closeModal = () => {
         setIsModalOpen(false);
         setShowSuccess(false);
+        setIsEditMode(false);
+        setIsShareMode(false);
+        setSelectedClass(null);
         setClassName('');
         setNumStudents('');
         setErrors({});
+        setStartTime('11:00 AM');
+        setEndTime('12:30 PM');
     };
 
-   const handleLogout = async () => {
+    const handleLogout = async () => {
         try {
             Gr8Cache.clearAll();
             const supabase = createClient();
             await supabase.auth.signOut();
 
-            window.location.href = '/auth/login'; 
+            window.location.href = '/auth/login';
         } catch (error) {
             console.error("Logout failed:", error);
         }
+    };
+
+    const refreshClasses = async () => {
+        if (!profile?.id) return;
+        setIsFetchingClasses(true);
+        const data = await getTeacherClasses(profile.id, searchQuery);
+        Gr8Cache.set('teacher-classes', data, searchQuery);
+        setClassesList(data);
+        setIsFetchingClasses(false);
     };
 
     return (
@@ -300,17 +361,86 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
                     )}
 
                     {!isFetchingClasses && classesList.map((cls) => (
-                        <Link
-                            key={cls.id}
-                            href={`/class-page?id=${cls.id}`}
-                            className="block group transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98]"
-                        >
-                            <ClassCard
-                                sectionName={cls.class_name}
-                                timeRange={`${formatTime(cls.arrival_time)} - ${formatTime(cls.dismissal_time)}`}
-                                studentCount={cls.class_size}
-                            />
-                        </Link>
+                        <div key={cls.id} className="relative group">
+                            <Link
+                                href={`/class-page?id=${cls.id}`}
+                                className="block transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98]"
+                            >
+                                <ClassCard
+                                    sectionName={cls.class_name}
+                                    timeRange={`${formatTime(cls.arrival_time)} - ${formatTime(cls.dismissal_time)}`}
+                                    studentCount={cls.class_size}
+                                />
+                            </Link>
+
+                            {/* --- THREE DOTS BUTTON --- */}
+                            <button
+                                aria-label='dedfr'
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setMenuOpenId(menuOpenId === cls.id ? null : cls.id);
+                                }}
+                                className="absolute top-4 right-4 p-1 rounded-full hover:bg-black/10 transition-colors z-20"
+                            >
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#222" strokeWidth="2.5">
+                                    <circle cx="12" cy="5" r="1" />
+                                    <circle cx="12" cy="12" r="1" />
+                                    <circle cx="12" cy="19" r="1" />
+                                </svg>
+                            </button>
+
+                            {/* --- DROPDOWN MENU --- */}
+                            {menuOpenId === cls.id && (
+                                <div className="absolute top-12 right-4 w-40 bg-white border border-[#D1D8DD] rounded-lg shadow-xl z-[30] overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setGeneratedCode(cls.class_code);
+                                            setIsEditMode(false);
+                                            setIsShareMode(true);
+                                            setShowSuccess(true);
+                                            setIsModalOpen(true);
+                                            setMenuOpenId(null);
+
+                                        }}
+                                        className="w-full text-left px-4 py-2.5 text-sm font-bold text-[#444] hover:bg-[#F4F6F8] flex items-center gap-2"
+                                    >
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></svg>
+                                        Share Code
+                                    </button>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSelectedClass(cls);
+                                            setClassName(cls.class_name);
+                                            setNumStudents(cls.class_size.toString());
+                                            setStartTime(formatTime(cls.arrival_time));
+                                            setEndTime(formatTime(cls.dismissal_time));
+                                            setIsEditMode(true);
+                                            setIsModalOpen(true);
+                                            setMenuOpenId(null);
+                                        }}
+                                        className="w-full text-left px-4 py-2.5 text-sm font-bold text-[#444] hover:bg-[#F4F6F8] flex items-center gap-2"
+                                    >
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                                        Edit
+                                    </button>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSelectedClass(cls);
+                                            setIsDeleteConfirmOpen(true);
+                                            setMenuOpenId(null);
+                                        }}
+                                        className="w-full text-left px-4 py-2.5 text-sm font-bold text-[#ED1F24] hover:bg-red-50 flex items-center gap-2"
+                                    >
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>
+                                        Delete
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     ))}
 
                     <button
@@ -347,13 +477,21 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
                                     </div>
                                     <div className="flex justify-end gap-x-4 mt-8">
                                         <button onClick={closeModal} className="px-6 py-2 text-xs font-black text-[#ED1F24] uppercase">Cancel</button>
-                                        <button onClick={handleCreateClass} className="px-10 py-2.5 text-xs font-black text-white bg-[#1A4C8B] rounded uppercase">Create</button>
+                                        <button
+                                            onClick={handleAction}
+                                            className="px-10 py-2.5 text-xs font-black text-white bg-[#1A4C8B] rounded uppercase"
+                                        >
+                                            {isEditMode ? "Save" : "Create"}
+                                        </button>
                                     </div>
                                 </>
                             ) : (
                                 <div className="text-center py-4">
-                                    <h2 className="text-[22px] font-extrabold text-[#222] mb-2 uppercase">Success</h2>
-                                    <p className="text-[#666] text-sm mb-8">Class has been created</p>
+                                    <h2 className="text-[22px] font-extrabold text-[#222] mb-2 uppercase">{isShareMode ? "Share Class" : "Success"}</h2>
+                                    <p className="text-[#666] text-sm mb-8">{isShareMode
+                                        ? "Copy this code to invite your students"
+                                        : (isEditMode ? "Class has been updated" : "Class has been created")
+                                    }</p>
                                     <div className="bg-[#F4F6F8] border border-[#D1D8DD] rounded-lg p-6 mb-8">
                                         <p className="text-[10px] font-bold text-[#A0A0A0] uppercase mb-2">Class Code</p>
                                         <div className="flex items-center justify-center gap-x-4">
@@ -366,6 +504,34 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
                                     <button onClick={closeModal} className="w-full py-3 text-xs font-black text-white bg-[#1A4C8B] rounded uppercase shadow-md hover:bg-[#153a6b] transition-all">Done</button>
                                 </div>
                             )}
+                        </div>
+                    </div>
+                )}
+
+                {/* --- DELETE CONFIRMATION MODAL --- */}
+                {isDeleteConfirmOpen && (
+                    <div className="fixed inset-0 z-[600] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in">
+                        <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-[400px] text-center font-sans animate-in zoom-in-95">
+                            <h2 className="text-[18px] font-extrabold text-[#222] mb-2">Delete Class?</h2>
+
+                            <p className="text-[14px] text-[#666] mb-6">
+                                This action cannot be undone and will permanently erase all associated student scores and records.
+                            </p>
+
+                            <div className="flex justify-center gap-x-12 mt-4">
+                                <button
+                                    onClick={handleDelete}
+                                    className="text-[#ED1F24] font-black outline-none cursor-pointer hover:opacity-70 transition-opacity"
+                                >
+                                    Yes
+                                </button>
+                                <button
+                                    onClick={() => setIsDeleteConfirmOpen(false)}
+                                    className="text-[#ED1F24] font-black outline-none cursor-pointer hover:opacity-70 transition-opacity"
+                                >
+                                    No
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}
