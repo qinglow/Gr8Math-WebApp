@@ -48,7 +48,7 @@ export const Gr8Button: React.FC<Gr8ButtonProps> = ({
       // Disable click if locked or explicitly disabled
       onClick={isBtnDisabled ? undefined : onClick} 
       disabled={isBtnDisabled}
-      className={`w-full py-3 px-4 text-white border-none rounded text-sm font-semibold transition-colors ${btnBg} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+      className={`w-full py-3 px-4 text-white border-none rounded text-sm font-semibold transition-all ${btnBg} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
     >
       {text}
     </button>

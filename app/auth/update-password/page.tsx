@@ -78,7 +78,7 @@ export default function UpdatePasswordPage() {
       return;
     }
 
-    // 2. ADD THIS: Check if the email format is valid right here on the frontend
+    // 2. Check if the email format is valid right here on the frontend
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(trimmedEmail)) {
       setEmailError(true);

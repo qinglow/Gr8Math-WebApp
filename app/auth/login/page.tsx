@@ -57,6 +57,7 @@ function LoginForm() {
     setHasDownloadedCode(false);
     setEmptyError(false);
     setActiveField(null);
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -87,16 +88,18 @@ function LoginForm() {
         return;
       }
       setLoading(true);
-      const result = await verifyBackupCodeAction(backupInput);
-      if (result?.error) {
-        setToastMsg(result.error);
-        setLoading(false);
-        setTimeout(() => setToastMsg(null), 3000);
-      } else {
-        setToastMsg("MFA Reset successfully. Please log in again to configure a new Authenticator.");
-        resetForm();
-        setLoading(false);
-        setTimeout(() => setToastMsg(null), 4000);
+      try {
+        const result = await verifyBackupCodeAction(backupInput);
+        if (result?.error) {
+          setToastMsg(result.error);
+          setTimeout(() => setToastMsg(null), 3000);
+        } else {
+          setToastMsg("MFA Reset successfully. Please log in again to configure a new Authenticator.");
+          resetForm();
+          setTimeout(() => setToastMsg(null), 4000);
+        }
+      } finally {
+        setLoading(false); // <--- GUARANTEES THE BUTTON RESETS
       }
       return;
     }
@@ -108,20 +111,20 @@ function LoginForm() {
         return;
       }
       setLoading(true);
-      const isFirstSetup = mfaStep === 'setup';
+      try {
+        const isFirstSetup = mfaStep === 'setup';
+        const result = await verifyMfaAction(factorId, mfaCode, isFirstSetup);
 
-      const result = await verifyMfaAction(factorId, mfaCode, isFirstSetup);
-
-      if (result?.error) {
-        setToastMsg(result.error);
-        setLoading(false);
-        setTimeout(() => setToastMsg(null), 3000);
-      } else if (result?.backupCode) {
-        // Setup success! Show the master backup code to the user
-        setBackupCodeStr(result.backupCode);
-        setTargetRedirectUrl(result.targetUrl);
-        setMfaStep('show-backup');
-        setLoading(false);
+        if (result?.error) {
+          setToastMsg(result.error);
+          setTimeout(() => setToastMsg(null), 3000);
+        } else if (result?.backupCode) {
+          setBackupCodeStr(result.backupCode);
+          setTargetRedirectUrl(result.targetUrl);
+          setMfaStep('show-backup');
+        }
+      } finally {
+        setLoading(false); // <--- GUARANTEES THE BUTTON RESETS
       }
       return;
     }
@@ -133,26 +136,30 @@ function LoginForm() {
     }
 
     setLoading(true);
-    const formData = new FormData();
-    formData.append('email', email);
-    formData.append('password', password);
+    try {
+      const formData = new FormData();
+      formData.append('email', email);
+      formData.append('password', password);
 
-    const result = await login(formData);
+      const result = await login(formData);
 
-    if (result?.error) {
-      setToastMsg(result.error);
-      setLoading(false);
-      setTimeout(() => setToastMsg(null), 3000);
-    } else if (result?.mfaRequired) {
-      setFactorId(result.factorId!);
-      if (result.mfaType === 'setup' && result.qrCode) {
-        setQrCodeSvg(result.qrCode);
+      if (result?.error) {
+        setToastMsg(result.error);
+        setTimeout(() => setToastMsg(null), 3000);
+      } else if (result?.mfaRequired) {
+        setFactorId(result.factorId!);
+        if (result.mfaType === 'setup' && result.qrCode) {
+          setQrCodeSvg(result.qrCode);
+        }
+        setMfaStep(result.mfaType as 'setup' | 'verify');
+      } else {
+        setToastMsg("Login Successful!");
+        resetForm();
       }
-      setMfaStep(result.mfaType as 'setup' | 'verify');
+    } catch (error) {
+      throw error;
+    } finally {
       setLoading(false);
-    } else {
-      setToastMsg("Login Successful!");
-      resetForm();
     }
   };
 
@@ -161,27 +168,27 @@ function LoginForm() {
     await cancelLoginAction();
   };
 
- 
+
   const handleDownloadCode = () => {
     const element = document.createElement("a");
-    const file = new Blob([`Gr8Math Recovery Code\n\nCode: ${backupCodeStr}\n\nKeep this safe! You will need it if you lose access to your Authenticator app.`], {type: 'text/plain'});
+    const file = new Blob([`Gr8Math Recovery Code\n\nCode: ${backupCodeStr}\n\nKeep this safe! You will need it if you lose access to your Authenticator app.`], { type: 'text/plain' });
     element.href = URL.createObjectURL(file);
     element.download = "Gr8Math-Recovery-Code.txt";
-    document.body.appendChild(element); 
+    document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
-    
-    setHasDownloadedCode(true); 
+
+    setHasDownloadedCode(true);
   };
 
- 
+
   useEffect(() => {
     // 1. Catch Tab Close or Hard Refresh (F5)
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       // Only warn if on backup screen AND haven't downloaded
       if (mfaStep === 'show-backup' && !hasDownloadedCode) {
         e.preventDefault();
-        e.returnValue = ''; 
+        e.returnValue = '';
       }
     };
 
@@ -189,7 +196,7 @@ function LoginForm() {
     const handlePopState = (e: PopStateEvent) => {
       if (mfaStep === 'show-backup' && !hasDownloadedCode) {
         const confirmLeave = window.confirm("You haven't downloaded your Recovery Code yet. If you leave, you will have to log in again. Are you sure you want to go back?");
-        
+
         if (confirmLeave) {
           // They clicked 'Yes, leave' -> Wipe session and go back to login
           cancelLoginAction();
@@ -201,16 +208,16 @@ function LoginForm() {
           window.history.pushState(null, '', window.location.href);
         }
       } else if (mfaStep === 'show-backup' && hasDownloadedCode) {
-         // They downloaded it, so let them leave, but still wipe the partial session to be safe
-         cancelLoginAction();
-         resetForm();
+        // They downloaded it, so let them leave, but still wipe the partial session to be safe
+        cancelLoginAction();
+        resetForm();
       }
     };
 
     // Apply listeners if they reach the backup screen
     if (mfaStep === 'show-backup') {
       window.addEventListener('beforeunload', handleBeforeUnload);
-      
+
       // Push initial trap state for the back button
       window.history.pushState(null, '', window.location.href);
       window.addEventListener('popstate', handlePopState);
@@ -220,7 +227,7 @@ function LoginForm() {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('popstate', handlePopState);
     };
-  }, [mfaStep, hasDownloadedCode]); 
+  }, [mfaStep, hasDownloadedCode]);
 
   return (
     <div className="flex flex-col lg:flex-row min-h-screen overflow-hidden">
@@ -302,15 +309,17 @@ function LoginForm() {
                   if (!hasDownloadedCode) {
                     handleDownloadCode();
                     setLoading(true);
-                    
+
                     // Give the browser 1.5 seconds to start the download before routing
                     setTimeout(() => {
                       router.push(targetRedirectUrl);
+                      setLoading(false); // <--- ADD THIS
                     }, 1500);
                   } else {
                     // User already explicitly downloaded it, proceed instantly
                     setLoading(true);
                     router.push(targetRedirectUrl);
+                    setLoading(false); // <--- ADD THIS
                   }
                 }}
               />
@@ -451,7 +460,7 @@ function LoginForm() {
                 }
                 type="submit"
                 variant="solid"
-                disabled={loading || (mfaStep === 'verify' && ((!isUsingBackup && mfaCode.length < 6) || (isUsingBackup && backupInput.length < 14)))}
+                disabled={loading}
               />
 
               {/* Back button for MFA */}
