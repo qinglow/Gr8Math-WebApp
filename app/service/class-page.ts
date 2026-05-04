@@ -40,7 +40,7 @@ export async function fetchClassFeed(sectionId: string) {
 
     if (!bridge) {
         console.error("No course_content found for section:", numericSectionId);
-        return [];
+        return null;
     }
 
     const realCourseId = bridge.id;

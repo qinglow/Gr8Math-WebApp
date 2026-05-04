@@ -106,8 +106,15 @@ export async function saveLessonWithNotifications(
 
         return { success: true, lesson: newLesson };
     } catch (error: any) {
-        console.error("Error adding lesson:", error.message);
-        return { success: false, error: error.message };
+       if (
+            error.message?.includes('foreign key constraint') || 
+            error.message?.includes('violates') ||
+            error.message?.includes('not found')
+        ) {
+            return { success: false, error: "CLASS_DELETED_FLAG" };
+        }
+
+        return { success: false, error: error.message || "Failed to save lesson." };
     }
 }
 
@@ -119,84 +126,91 @@ export async function updateLesson(
 ) {
     const supabase = await createClient();
 
-    //  --- NEW: FETCH OLD CONTENT & DELETE ORPHANED TIGRIS FILES ---
-    const { data: oldLesson } = await supabase
-        .from('lesson')
-        .select('lesson_content')
-        .eq('id', lessonId)
-        .single();
+    try {
+        // --- FETCH OLD CONTENT & DELETE ORPHANED TIGRIS FILES ---
+        const { data: oldLesson } = await supabase
+            .from('lesson')
+            .select('lesson_content')
+            .eq('id', lessonId)
+            .single();
 
-    if (oldLesson && oldLesson.lesson_content) {
-        const urlRegex = /https:\/\/[^\s"']+\.fly\.storage\.tigris\.dev\/[^\s"']+/g;
-        
-        const oldUrls: string[] = oldLesson.lesson_content.match(urlRegex) || [];
-        const newUrls: string[] = lessonContent.match(urlRegex) || [];
+        if (oldLesson && oldLesson.lesson_content) {
+            const urlRegex = /https:\/\/[^\s"']+\.fly\.storage\.tigris\.dev\/[^\s"']+/g;
+            const oldUrls: string[] = oldLesson.lesson_content.match(urlRegex) || [];
+            const newUrls: string[] = lessonContent.match(urlRegex) || [];
+            const deletedUrls = oldUrls.filter((url: string) => !newUrls.includes(url));
 
-        // Find URLs that exist in the old content but NOT in the new content
-        const deletedUrls = oldUrls.filter((url: string) => !newUrls.includes(url));
-
-        // Delete orphaned files from Tigris cloud
-        if (deletedUrls.length > 0) {
-            for (const url of deletedUrls) {
-                // Extract just the file key from the end of the URL
-                const fileKey = url.split('.fly.storage.tigris.dev/')[1];
-                if (fileKey) {
-                    await deleteMediaFromTigris(fileKey);
+            if (deletedUrls.length > 0) {
+                for (const url of deletedUrls) {
+                    const fileKey = url.split('.fly.storage.tigris.dev/')[1];
+                    if (fileKey) await deleteMediaFromTigris(fileKey);
                 }
             }
         }
-    }
-    // ----------------------------------------------------------------
 
-    // --- MODERATION CHECK ---
-    const modCheck = await checkContentModeration(lessonTitle + " " + lessonContent);
-    const status = modCheck.isSafe ? 'approved' : 'pending';
+        // --- MODERATION CHECK ---
+        const modCheck = await checkContentModeration(lessonTitle + " " + lessonContent);
+        const status = modCheck.isSafe ? 'approved' : 'pending';
 
-    const { data, error } = await supabase
-        .from('lesson')
-        .update({
-            week_number: weekNumber,
-            lesson_title: lessonTitle,
-            lesson_content: lessonContent,
-            status: status
-        })
-        .eq('id', lessonId)
-        .select()
-        .single();
+        const { data, error } = await supabase
+            .from('lesson')
+            .update({
+                week_number: weekNumber,
+                lesson_title: lessonTitle,
+                lesson_content: lessonContent,
+                status: status
+            })
+            .eq('id', lessonId)
+            .select()
+            .single();
 
-    if (error) throw error;
+        if (error) throw error; // Caught by the catch block below
 
-    const { data: { user } } = await supabase.auth.getUser();
-    let dbUser = null;
-    if (user && user.email) {
-        const result = await supabase.from('user').select('id').eq('email_add', user.email).single();
-        dbUser = result.data;
-    }
+        const { data: { user } } = await supabase.auth.getUser();
+        let dbUser = null;
+        if (user && user.email) {
+            const result = await supabase.from('user').select('id').eq('email_add', user.email).single();
+            dbUser = result.data;
+        }
 
-    if (!modCheck.isSafe) {
-        const fullContext = `[FLAGGED ITEM: ${modCheck.offendingWord}]\n\nTITLE: ${lessonTitle}\n\nCONTENT:\n${lessonContent}`;
+        if (!modCheck.isSafe) {
+            const fullContext = `[FLAGGED ITEM: ${modCheck.offendingWord}]\n\nTITLE: ${lessonTitle}\n\nCONTENT:\n${lessonContent}`;
+            if (dbUser) {
+                await supabase.from('moderation_actions').insert({
+                    target_user_id: dbUser.id,
+                    content_type: 'lesson',
+                    content_id: lessonId,
+                    violation_details: fullContext,
+                    reason_code: modCheck.reasonCode || 'Banned Word',
+                    status: 'pending'
+                });
+            }
+            return { success: true, lesson: data, flagged: true };
+        }
+        
         if (dbUser) {
-            await supabase.from('moderation_actions').insert({
-                target_user_id: dbUser.id,
-                content_type: 'lesson',
-                content_id: lessonId,
-                violation_details: fullContext,
-                reason_code: modCheck.reasonCode || 'Banned Word',
-                status: 'pending'
+            await supabase.from('audit_trails').insert({
+                user_id: dbUser.id,
+                resource: 'Lesson',
+                action: 'UPDATE',
+                status: 'SUCCESS',
+                details: `Updated lesson: ${lessonTitle}`
             });
         }
-        return { ...data, flagged: true };
-    }
-    
-    if (dbUser) {
-        await supabase.from('audit_trails').insert({
-            user_id: dbUser.id,
-            resource: 'Lesson',
-            action: 'UPDATE',
-            status: 'SUCCESS',
-            details: `Updated lesson: ${lessonTitle}`
-        });
-    }
 
-    return data;
+        return { success: true, lesson: data };
+
+    } catch (error: any) {
+
+        // Intercept fatal class/section deletion errors
+        if (
+            error.message?.includes('foreign key constraint') || 
+            error.message?.includes('violates') ||
+            error.message?.includes('not found')
+        ) {
+            return { success: false, error: "CLASS_DELETED_FLAG" };
+        }
+
+        return { success: false, error: "An unexpected error occurred while updating." };
+    }
 }

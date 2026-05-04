@@ -66,13 +66,17 @@ export async function saveBlackboardDataAction(boardId: number, imageUrl: string
     }
 }
 
-// --- KEEP THESE EXACTLY THE SAME ---
+
 export async function fetchBlackboardsAction(sectionId: number) {
     try {
         const { data, error } = await BlackboardDB.getBlackboardsBySection(sectionId);
         if (error) throw error;
         return { success: true, data };
     } catch (error: any) {
+        // Catch foreign key or not found errors
+        if (error.message?.includes('not found') || error.message?.includes('violates')) {
+             return { success: false, error: "CLASS_DELETED_FLAG" };
+        }
         return { success: false, error: error.message };
     }
 }
@@ -83,6 +87,10 @@ export async function createBlackboardAction(sectionId: number, sessionName: str
         if (error) throw error;
         return { success: true, data };
     } catch (error: any) {
+        // Standardize the fatal flag for the frontend
+        if (error.message?.includes('foreign key constraint') || error.message?.includes('violates')) {
+            return { success: false, error: "CLASS_DELETED_FLAG" };
+        }
         return { success: false, error: error.message };
     }
 }

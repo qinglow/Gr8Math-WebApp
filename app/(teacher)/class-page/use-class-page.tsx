@@ -8,6 +8,7 @@ import { getDllsAction, saveDllAction } from './dll/action';
 import { prepareDllForDatabase, rebuildDllLocalState } from './dll/helper';
 import type { ClassContentItem } from './class-page-client';
 import { useRouter } from 'next/navigation';
+import { withNetworkSafeguard } from '@/lib/utils/api-safeguard';
 
 export function useClassManager(courseId: string, initialFeed: ClassContentItem[]) {
     const router = useRouter();
@@ -59,6 +60,11 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
     const [isRestrictedModalOpen, setIsRestrictedModalOpen] = useState(false);
     const [userProfile, setUserProfile] = useState<any>(null);
     const [assessmentTimeLimit, setAssessmentTimeLimit] = useState<number>(0);
+    const [errorModal, setErrorModal] = useState<{ isOpen: boolean, message: string, isFatal: boolean }>({
+        isOpen: false,
+        message: '',
+        isFatal: false
+    });
 
     // --- EFFECTS ---
     useEffect(() => { setCourseContent(initialFeed); }, [initialFeed]);
@@ -91,10 +97,21 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
         };
     }, [currentView, isAddModalOpen]);
 
+    // Inside useClassManager.tsx
+
     useEffect(() => {
         const loadDlls = async () => {
-            const res = await getDllsAction(courseId);
-            if (res.success && res.data) setDllRecords(res.data);
+            // --- ADDED NETWORK SAFEGUARD HERE ON THE FRONTEND ---
+            const res: any = await withNetworkSafeguard(getDllsAction(courseId));
+
+            if (res.success && res.data) {
+                setDllRecords(res.data);
+            } else if (res.error) {
+                console.error("Network issue loading DLLs:", res.error);
+                setToastMessage("Network unstable: Could not load all DLL records.");
+                setShowToast(true);
+                setTimeout(() => setShowToast(false), 3000);
+            }
         };
         loadDlls();
     }, [courseId]);
@@ -262,7 +279,7 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
 
     const onPublishAssessment = async (questions: any[], timeLimit: number = 0) => {
 
-        // --- NEW: STRICT ANSWER KEY CHECK ---
+        // --- STRICT ANSWER KEY CHECK ---
         // This stops the teacher from publishing if any question is missing a correct answer
         const hasMissingKeys = questions.some(q => !q.correctAnswers || q.correctAnswers.length === 0);
         if (hasMissingKeys) {
@@ -297,9 +314,10 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
                 questions
             };
 
+            // --- UPDATED: Wrap the API calls with our Network Safeguard ---
             const res = isEditingLesson && editingLessonId
-                ? await updateAssessmentAction({ ...payload, assessmentId: editingLessonId })
-                : await publishAssessmentAction(payload);
+                ? await withNetworkSafeguard(updateAssessmentAction({ ...payload, assessmentId: editingLessonId }))
+                : await withNetworkSafeguard(publishAssessmentAction(payload));
 
             if (res.success) {
                 const newItem: ClassContentItem = {
@@ -319,13 +337,39 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
                 resetEditor();
             } else {
                 const errorMsg = res.error?.toLowerCase() || "";
-                if (errorMsg.includes('not found') || errorMsg.includes('foreign key')) {
-                    throw new Error("CLASS_DELETED");
+
+                if (errorMsg.includes('not found') || errorMsg.includes('foreign key') || errorMsg.includes('class_deleted_flag')) {
+                    // Fatal Error
+                    setErrorModal({ isOpen: true, message: "Unable to save changes. Please try again later.", isFatal: true });
+                    setIsSaving(false);
+                    return;
                 }
-                alert(res.error || "Failed to publish.");
+
+                setErrorModal({ isOpen: true, message: "Unable to save changes. Please try again later.", isFatal: false });
+                setShowToast(true);
+                setTimeout(() => setShowToast(false), 3000);
             }
-        } catch (error) {
-            console.error(error);
+        } catch (error: any) {
+            const errorMsg = (error.message || "").toLowerCase();
+
+            if (
+                errorMsg.includes('no course_content found') ||
+                errorMsg.includes('foreign key') ||
+                errorMsg.includes('class_deleted_flag') ||
+                errorMsg.includes('not found')
+            ) {
+                setErrorModal({
+                    isOpen: true,
+                    message: "This class no longer exists. Unable to publish.",
+                    isFatal: true
+                });
+            } else {
+                setErrorModal({
+                    isOpen: true,
+                    message: "Failed to publish. Please try again.",
+                    isFatal: false
+                });
+            }
         }
         setIsSaving(false);
     };
@@ -334,10 +378,11 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
         setIsSaveConfirmModalOpen(false);
         setIsSaving(true);
         try {
-            const result = await handleLessonSave({
+            // --- ADDED NETWORK SAFEGUARD ---
+            const result: any = await withNetworkSafeguard(handleLessonSave({
                 courseId, lessonContent, pendingMedia,
                 isEditingLesson, editingLessonId, weekNumber, lessonTitle
-            });
+            }));
 
             if (result.success) {
                 const updated = { ...result.lesson, type: 'lesson' } as ClassContentItem;
@@ -348,25 +393,46 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
                 setToastMessage(result.isEdit ? 'Lesson edited!' : 'Lesson posted!');
                 resetEditor();
             } else {
-                const errorMsg = result.message?.toLowerCase() || "";
-                if (errorMsg.includes('not found') || errorMsg.includes('foreign key')) {
-                    throw new Error("CLASS_DELETED");
+                const errorMsg = (result.error || result.message || "").toLowerCase();
+
+                if (
+                    errorMsg.includes('not found') ||
+                    errorMsg.includes('foreign key') ||
+                    errorMsg.includes('class_deleted_flag') ||
+                    errorMsg.includes('no course_content found') 
+                ) {
+                    setErrorModal({
+                        isOpen: true,
+                        message: "This class no longer exists. Unable to save changes.",
+                        isFatal: true
+                    });
+                    setIsSaving(false);
+                    return;
                 }
-                alert(result.message || "Failed to save lesson.");
+
+                setErrorModal({
+                    isOpen: true,
+                    message: "Unable to save changes. Please try again later.",
+                    isFatal: false
+                });
             }
         } catch (e: any) {
-            if (e.message === "CLASS_DELETED") throw e;
-            alert(e.message);
+            const errorMsg = (e.message || "").toLowerCase();
+
+            if (errorMsg.includes('course_content') || errorMsg.includes('foreign key') || errorMsg.includes('not found')) {
+                setErrorModal({ isOpen: true, message: "Class access lost. Unable to save.", isFatal: true });
+            } else {
+                setErrorModal({ isOpen: true, message: "Unable to save changes. Try again later.", isFatal: false });
+            }
         } finally {
             setIsSaving(false);
-            setShowToast(true);
-            setTimeout(() => setShowToast(false), 3000);
         }
     };
 
     const handleEditAssessment = async (assessment: ClassContentItem) => {
         setIsEditingLesson(true); setEditingLessonId(assessment.id); setIsSaving(true);
-        const res = await fetchAssessmentDetails(assessment.id);
+        const res: any = await withNetworkSafeguard(fetchAssessmentDetails(assessment.id));
+
         if (res.success && res.data) {
             const dbData = res.data;
             setAssessmentTitle(dbData.title || ''); setAssessmentNumber(dbData.assessment_number?.toString() || ''); setQuarterNumber(dbData.assessment_quarter?.toString() || '');
@@ -415,6 +481,21 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
             });
 
             setAssessmentInitialQuestions(parsedQuestions); setSelectedAddOption('assessment'); setAddStep('details'); setIsAddModalOpen(true);
+        } else {
+            const errorMsg = (res.error || "").toLowerCase();
+
+            if (errorMsg.includes('not found') || errorMsg.includes('foreign key') || errorMsg.includes('class_deleted_flag')) {
+                // Fatal Error
+                setErrorModal({ isOpen: true, message: "Unable to save changes. Please try again later.", isFatal: true });
+                setIsSaving(false);
+                return;
+            }
+            else {
+                // Normal Error
+                setErrorModal({ isOpen: true, message: "Unable to load details. Please try again later.", isFatal: false });
+            }
+
+            setIsEditingLesson(false);
         }
         setIsSaving(false);
     };
@@ -440,6 +521,7 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
         handleSetAvailableFrom, handleSetAvailableUntil, handleSetDllAvailableFrom, handleSetDllAvailableUntil, handleProceedToDetails,
         handleLessonNextDetails, handleAssessmentNextDetails, handleDllNextDetails, openAddModal, resetEditor, cancelDiscard, closeAddModal,
         onPublishAssessment, onExecuteSave, handleEditAssessment, handleEditLesson, isAssessmentFormComplete,
-        activeWarning, dismissWarning, userProfile, assessmentTimeLimit
+        activeWarning, dismissWarning, userProfile, assessmentTimeLimit,
+        errorModal, setErrorModal
     };
 }

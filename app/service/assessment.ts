@@ -135,8 +135,15 @@ export async function publishAssessmentAction(params: {
 
         return { success: true, id: assessment.id };
     } catch (error: any) {
-        console.error("Assessment creation failed:", error.message);
-        return { success: false, error: error.message };
+        if (
+            error.message?.includes('foreign key constraint') ||
+            error.message?.includes('Could not find') ||
+            error.message?.includes('violates')
+        ) {
+            return { success: false, error: "CLASS_DELETED_FLAG" };
+        }
+
+        return { success: false, error: "An unexpected error occurred while publishing." };
     }
 }
 
@@ -159,7 +166,11 @@ export async function fetchAssessmentDetails(assessmentId: number) {
         if (error) throw error;
         return { success: true, data: assessment };
     } catch (e: any) {
-        return { success: false, error: e.message };
+        console.error("Fetch details failed:", e.message);
+        if (e.message?.includes('not found')) {
+            return { success: false, error: "CLASS_DELETED_FLAG" };
+        }
+        return { success: false, error: "Unable to load assessment details." };
     }
 }
 
@@ -192,7 +203,7 @@ export async function updateAssessmentAction(params: {
             .eq('id', params.assessmentId)
             .single();
 
-       
+
         const totalPoints = params.questions.reduce((sum, q) => {
             const pts = Number(q.points) || 1;
             if (q.type === 'Checkboxes' && q.correctAnswers && q.correctAnswers.length > 0) {
@@ -314,7 +325,15 @@ export async function updateAssessmentAction(params: {
 
         return { success: true, id: params.assessmentId };
     } catch (error: any) {
-        return { success: false, error: error.message };
+        if (
+            error.message?.includes('foreign key constraint') ||
+            error.message?.includes('not found') ||
+            error.message?.includes('violates')
+        ) {
+            return { success: false, error: "CLASS_DELETED_FLAG" };
+        }
+
+        return { success: false, error: "An unexpected error occurred while updating." };
     }
 }
 
@@ -381,21 +400,21 @@ export async function fetchStudentAssessmentReview(assessmentId: number, student
             .eq('student_id', studentId); // We are querying exactly what the URL passed
 
         if (aError) throw aError;
-        
+
         console.log(`[DEBUG] Successfully fetched ${answers?.length || 0} answers for student_id = ${studentId}`);
-        
+
         if (answers && answers.length > 0) {
             // console.log(`[DEBUG] Sample Answer Data:`, answers[0]);
         } else {
             // console.log(`[DEBUG] 🚨 WARNING: 0 answers found for student_id = ${studentId}. (Did you mean 43?)`);
-            
+
             // EMERGENCY FALLBACK CHECK: Let's see if 43 was stored under user_id by mistake
             const { data: fallbackAnswers } = await supabase
                 .from('student_answers')
                 .select('question_id')
                 .eq('assessment_id', assessmentId)
                 .limit(1);
-                
+
             if (fallbackAnswers && fallbackAnswers.length > 0) {
                 // console.log(`[DEBUG] Note: There ARE answers for this assessment in the DB, just not for student_id = ${studentId}.`);
             }
@@ -428,10 +447,10 @@ export async function fetchPastQuestionsForWordBank() {
 
         // 2. Fetch all classes taught by this teacher (Using 'class' and 'adviser_id' from your schema)
         const { data: sections } = await supabase
-            .from('class') 
+            .from('class')
             .select('id')
             .eq('adviser_id', dbUser.id);
-            
+
         const sectionIds = sections?.map(s => s.id) || [];
 
         if (sectionIds.length === 0) return { success: true, data: [] };
@@ -441,7 +460,7 @@ export async function fetchPastQuestionsForWordBank() {
             .from('course_content')
             .select('id')
             .in('section_id', sectionIds);
-            
+
         const courseContentIds = courseContents?.map(cc => cc.id) || [];
 
         if (courseContentIds.length === 0) return { success: true, data: [] };
@@ -456,7 +475,7 @@ export async function fetchPastQuestionsForWordBank() {
                     assessment_choices ( id, choice_text, is_correct )
                 )
             `)
-            .in('course_id', courseContentIds) 
+            .in('course_id', courseContentIds)
             .order('created_at', { ascending: false });
 
         if (error) throw error;
@@ -468,7 +487,7 @@ export async function fetchPastQuestionsForWordBank() {
         const dynamicBank = assessments.map(ass => {
             const mappedQuestions = ass.assessment_questions.map((dbQ: any) => {
                 let rawText = dbQ.question_text;
-                
+
                 // Strip the type out of the question text
                 const qMatch = rawText.match(/^\[(.*?)\]\s*(.*)$/);
                 const type = qMatch ? qMatch[1] : 'Multiple Choice';
@@ -481,9 +500,9 @@ export async function fetchPastQuestionsForWordBank() {
                 dbQ.assessment_choices?.forEach((dbC: any) => {
                     const cMatch = dbC.choice_text.match(/^\[(\d+(?:\.\d+)?)\s*pts\]\s*(.*)$/i);
                     let cleanChoice = dbC.choice_text;
-                    if (cMatch) { 
-                        points = parseFloat(cMatch[1]); 
-                        cleanChoice = cMatch[2].trim(); 
+                    if (cMatch) {
+                        points = parseFloat(cMatch[1]);
+                        cleanChoice = cMatch[2].trim();
                     }
                     choices.push(cleanChoice);
                     if (dbC.is_correct) correctAnswers.push(cleanChoice);
@@ -498,19 +517,19 @@ export async function fetchPastQuestionsForWordBank() {
                 };
             });
 
-            
+
             const baseTitle = ass.title;
             titleCounts[baseTitle] = (titleCounts[baseTitle] || 0) + 1;
-            
-            const displayTitle = titleCounts[baseTitle] > 1 
-                ? `${baseTitle} (${titleCounts[baseTitle]})` 
+
+            const displayTitle = titleCounts[baseTitle] > 1
+                ? `${baseTitle} (${titleCounts[baseTitle]})`
                 : baseTitle;
 
             return {
-                topic: `Past Test: ${displayTitle}`, 
+                topic: `Past Test: ${displayTitle}`,
                 questions: mappedQuestions
             };
-        }).filter(bank => bank.questions.length > 0); 
+        }).filter(bank => bank.questions.length > 0);
 
         return { success: true, data: dynamicBank };
     } catch (e: any) {

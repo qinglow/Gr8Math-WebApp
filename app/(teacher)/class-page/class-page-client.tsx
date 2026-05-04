@@ -33,7 +33,9 @@ export type ClassContentItem = {
     created_at?: string;
 };
 
-export default function ClassPageClient({ initialFeed, sectionName, courseId }: { initialFeed: ClassContentItem[], sectionName: string, courseId: string }) {
+export default function ClassPageClient({ initialFeed, sectionName, courseId }: { initialFeed: ClassContentItem[] | null, sectionName: string, courseId: string }) {
+
+    const safeFeed = initialFeed || [];
 
     const {
         currentView, setCurrentView, activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpen, isSaving, setIsSaving,
@@ -50,37 +52,27 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
         handleSetAvailableFrom, handleSetAvailableUntil, handleSetDllAvailableFrom, handleSetDllAvailableUntil, handleProceedToDetails,
         handleLessonNextDetails, handleAssessmentNextDetails, handleDllNextDetails, openAddModal, resetEditor, cancelDiscard, closeAddModal,
         onPublishAssessment, onExecuteSave, handleEditAssessment, handleEditLesson, isAssessmentFormComplete,
-        activeWarning, dismissWarning, userProfile, assessmentTimeLimit
-    } = useClassManager(courseId, initialFeed);
+        activeWarning, dismissWarning, userProfile, assessmentTimeLimit,
+        errorModal, setErrorModal
+    } = useClassManager(courseId, safeFeed); // Pass the safeFeed here
 
     const [itemToDelete, setItemToDelete] = React.useState<ClassContentItem | null>(null);
     const [isClassDeleted, setIsClassDeleted] = useState(false);
 
     useEffect(() => {
-        const verifyClass = async () => {
-            try {
-                // If initialFeed was passed as null or empty from the server component
-                // because the class didn't exist during SSR, trigger the state.
-                if (!sectionName || sectionName === "Unknown Class") {
-                    setIsClassDeleted(true);
-                }
-            } catch (err) {
-                setIsClassDeleted(true);
-            }
-        };
-        verifyClass();
-    }, [sectionName]);
+        // 2. UPDATE VERIFICATION: If initialFeed is strictly null, the backend is telling us the bridge is gone!
+        if (initialFeed === null || !sectionName || sectionName === "Unknown Class") {
+            setIsClassDeleted(true);
+        }
+    }, [sectionName, initialFeed]);
 
     const handleActionError = (err: any) => {
-        // Check the error message string for keywords like "not found" or "foreign key"
-        // (Foreign key errors happen when you try to save a lesson to a deleted class)
         const errorMsg = err?.message?.toLowerCase() || "";
-
         if (errorMsg.includes('not found') || errorMsg.includes('foreign key')) {
-            setIsClassDeleted(true);
+            setErrorModal({ isOpen: true, message: "Unable to complete action. Please try again later.", isFatal: true });
         } else {
-            console.error(err);
-            alert("An error occurred. Please try again.");
+            console.error("[DEV LOG] Deletion Error:", err);
+            setErrorModal({ isOpen: true, message: "Unable to complete action. Please try again later.", isFatal: false });
         }
     };
 
@@ -145,6 +137,23 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                 <Gr8RichTextEditor courseId={courseId} initialContent={lessonContent} onChange={setLessonContent} onSave={() => setIsSaveConfirmModalOpen(true)} onBack={() => setIsDiscardModalOpen(true)} isEditing={isEditingLesson} onMediaQueued={(id: string, file: File, url: string) => setPendingMedia(p => [...p, { id, file, url }])} />
                 {isSaveConfirmModalOpen && <ConfirmModal title={`Are you sure you want to save?`} onYes={onExecuteSave} onNo={() => setIsSaveConfirmModalOpen(false)} />}
                 {isDiscardModalOpen && <ConfirmModal title="Discard Changes?" subtitle="You have unsaved content. If you go back, your changes will be lost." onYes={resetEditor} onNo={cancelDiscard} />}
+                {errorModal.isOpen && (
+                    <ErrorModal
+                        message={errorModal.message}
+                        onOk={() => {
+                            // 1. Capture the fatal status locally so it doesn't disappear
+                            const wasFatal = errorModal.isFatal;
+
+                            // 2. Close the modal UI
+                            setErrorModal({ isOpen: false, message: '', isFatal: false });
+
+                            // 3. Trigger the full-screen "Class No Longer Exists" state
+                            if (wasFatal) {
+                                setIsClassDeleted(true);
+                            }
+                        }}
+                    />
+                )}
             </div>
         );
     }
@@ -162,6 +171,24 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                     courseId={courseId}
                 />
                 {isDiscardModalOpen && <ConfirmModal title="Discard Changes?" subtitle="You have unsaved content. If you go back, your changes will be lost." onYes={resetEditor} onNo={cancelDiscard} />}
+                {errorModal.isOpen && (
+                    <ErrorModal
+                        message={errorModal.message}
+                        onOk={() => {
+                            // 1. Capture the fatal status locally so it doesn't disappear
+                            const wasFatal = errorModal.isFatal;
+
+                            // 2. Close the modal UI
+                            setErrorModal({ isOpen: false, message: '', isFatal: false });
+
+                            // 3. Trigger the full-screen "Class No Longer Exists" state
+                            if (wasFatal) {
+                                setIsClassDeleted(true);
+                            }
+                        }}
+                    />
+                )}
+
             </div>
         );
     }
@@ -184,12 +211,35 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                             setShowToast(true); setTimeout(() => setShowToast(false), 3000);
                             setDllSemesterNumber(''); setDllWeekNumber(''); setDllAvailableFrom(''); setDllAvailableUntil('');
                         } else {
-                            alert(res.error || "Failed to save DLL");
+                            const errorMsg = (res.error || "").toLowerCase();
+                            if (errorMsg.includes('not found') || errorMsg.includes('foreign key') || errorMsg.includes('class_deleted_flag')) {
+                                setErrorModal({ isOpen: true, message: "Unable to save changes. Please try again later.", isFatal: true });
+                            } else {
+                                console.error("[DEV LOG] DLL Save Error:", res.error);
+                                setErrorModal({ isOpen: true, message: "Unable to save changes. Please try again later.", isFatal: false });
+                            }
                         }
                         setIsSaving(false);
                     }}
                 />
                 {isDiscardModalOpen && <ConfirmModal title="Discard Changes?" subtitle="You have unsaved content. If you go back, your changes will be lost." onYes={resetEditor} onNo={cancelDiscard} />}
+                {errorModal.isOpen && (
+                    <ErrorModal
+                        message={errorModal.message}
+                        onOk={() => {
+                            // 1. Capture the fatal status locally so it doesn't disappear
+                            const wasFatal = errorModal.isFatal;
+
+                            // 2. Close the modal UI
+                            setErrorModal({ isOpen: false, message: '', isFatal: false });
+
+                            // 3. Trigger the full-screen "Class No Longer Exists" state
+                            if (wasFatal) {
+                                setIsClassDeleted(true);
+                            }
+                        }}
+                    />
+                )}
             </div>
         );
     }
@@ -328,6 +378,20 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
                     />
                 )}
             </div>
+            {errorModal.isOpen && (
+                <ErrorModal
+                    message={errorModal.message}
+                    onOk={() => {
+                        // 1. Close the dialog
+                        setErrorModal({ isOpen: false, message: '', isFatal: false });
+
+                        // 2. If it was a deleted class error, trigger the massive overlay!
+                        if (errorModal.isFatal) {
+                            setIsClassDeleted(true);
+                        }
+                    }}
+                />
+            )}
             {showToast && <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[500] bg-[#0A7F93] text-white px-10 py-3 rounded shadow-xl font-bold uppercase">{toastMessage}</div>}
 
             {/* --- FLASH WARNING UI --- */}
@@ -374,6 +438,25 @@ const ConfirmModal = ({ title, subtitle, onYes, onNo }: { title: string, subtitl
             <div className="flex justify-center gap-x-12 mt-4">
                 <button onClick={onYes} className="text-[#ED1F24] font-black outline-none cursor-pointer hover:opacity-70 transition-opacity">Yes</button>
                 <button onClick={onNo} className="text-[#ED1F24] font-black outline-none cursor-pointer hover:opacity-70 transition-opacity">No</button>
+            </div>
+        </div>
+    </div>
+);
+
+const ErrorModal = ({ message, onOk }: { message: string, onOk: () => void }) => (
+    <div className="fixed inset-0 z-[4000] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-[400px] text-center font-sans animate-in zoom-in-95">
+            <h2 className="text-[18px] font-extrabold text-[#222] mb-2">Error</h2>
+            <p className="text-[14px] text-[#666] mb-6">
+                {message}
+            </p>
+            <div className="flex justify-center mt-4">
+                <button
+                    onClick={onOk}
+                    className="text-[#ED1F24] font-black outline-none cursor-pointer hover:opacity-70 transition-opacity"
+                >
+                    OK
+                </button>
             </div>
         </div>
     </div>
