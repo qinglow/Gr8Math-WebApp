@@ -4,7 +4,8 @@
 import React from 'react';
 
 interface Gr8ButtonProps {
-  text: string;
+  // Change string to React.ReactNode to allow text OR components (like LoadingDots)
+  text: React.ReactNode; 
   onClick?: () => void;
   variant?: 'solid' | 'link';
   type?: 'button' | 'submit';
@@ -18,13 +19,18 @@ export const Gr8Button: React.FC<Gr8ButtonProps> = ({
   variant = 'solid',
   type = 'button',
   isLocked = false,
+  disabled = false, // Added default for the existing prop
 }) => {
+  // Use either the explicit disabled prop or the isLocked state
+  const isBtnDisabled = disabled || isLocked;
+
   if (variant === 'link') {
     return (
       <button
         type={type}
         onClick={onClick}
-        className="bg-transparent border-none text-[#1A4C8B] text-[10px] font-semibold p-0 cursor-pointer hover:underline"
+        disabled={isBtnDisabled}
+        className="bg-transparent border-none text-[#1A4C8B] text-[10px] font-semibold p-0 cursor-pointer hover:underline disabled:opacity-50 disabled:no-underline"
       >
         {text}
       </button>
@@ -39,8 +45,10 @@ export const Gr8Button: React.FC<Gr8ButtonProps> = ({
   return (
     <button
       type={type}
-      onClick={isLocked ? undefined : onClick} // Disable click if locked
-      className={`w-full py-3 px-4 text-white border-none rounded text-sm font-semibold transition-colors ${btnBg}`}
+      // Disable click if locked or explicitly disabled
+      onClick={isBtnDisabled ? undefined : onClick} 
+      disabled={isBtnDisabled}
+      className={`w-full py-3 px-4 text-white border-none rounded text-sm font-semibold transition-colors ${btnBg} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
     >
       {text}
     </button>

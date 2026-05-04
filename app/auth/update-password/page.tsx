@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { LoadingDots } from '@/components/ui/LoadingDots';
 
 import logo from '../photos/logo.png';
 import backArrowIcon from '../photos/back-arrow.png';
@@ -296,7 +297,7 @@ export default function UpdatePasswordPage() {
               <div className="mt-6">
                 <Gr8Button
                   type="button"
-                  text={loading ? "Verifying..." : "Verify"}
+                  text={loading ? <LoadingDots /> : "Verify"}
                   onClick={handleVerifyCode}
                   variant="solid"
                   disabled={loading || !code || code === failedCode || timeLeft === 0}
@@ -363,7 +364,7 @@ export default function UpdatePasswordPage() {
               <div className="mt-6">
                 <Gr8Button
                   type="button"
-                  text={loading ? "Verifying..." : "Verify"}
+                  text={loading ? <LoadingDots /> : "Verify"}
                   onClick={handleVerifyMfaCode}
                   disabled={loading || (!isUsingBackup && mfaCode.length < 6) || (isUsingBackup && backupInput.length < 14)}
                 />

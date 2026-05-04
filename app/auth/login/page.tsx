@@ -9,6 +9,7 @@ import { Gr8TextField } from '../../../components/ui/Gr8TextField';
 import { Gr8Button } from '../../../components/ui/Gr8Button';
 import { Gr8Toast } from '@/components/ui/Gr8Toast';
 import { login, verifyMfaAction, verifyBackupCodeAction, cancelLoginAction } from '../action';
+import { LoadingDots } from '@/components/ui/LoadingDots';
 
 export default function LoginPage() {
   return (
@@ -293,7 +294,7 @@ function LoginForm() {
 
               {/* CONTINUE BUTTON WITH STRICT AUTO-DOWNLOAD LOGIC */}
               <Gr8Button
-                text={loading ? "Loading..." : "Continue"}
+                text={loading ? <LoadingDots /> : "Continue"}
                 type="button"
                 variant="solid"
                 disabled={loading}
@@ -445,7 +446,7 @@ function LoginForm() {
 
               <Gr8Button
                 text={loading
-                  ? (mfaStep === 'none' ? "Logging in..." : "Verifying...")
+                  ? (mfaStep === 'none' ? <LoadingDots /> : <LoadingDots />)
                   : (mfaStep === 'none' ? "Login" : "Verify")
                 }
                 type="submit"
