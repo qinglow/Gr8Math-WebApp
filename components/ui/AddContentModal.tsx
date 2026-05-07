@@ -7,6 +7,42 @@ import { Gr8DllDatePicker } from '@/components/dll/Gr8DllDatePicker';
 import { pickerToDate } from '@/lib/utils/utils';
 import { checkAndLiftRestriction } from '@/app/service/moderation';
 
+// --- ADD THIS HELPER COMPONENT ---
+const Gr8MonthSelect = ({ label, value, onChange, hasError, errorMessage }: any) => {
+    const months = [
+        { value: '1', label: 'January' }, { value: '2', label: 'February' },
+        { value: '3', label: 'March' }, { value: '4', label: 'April' },
+        { value: '5', label: 'May' }, { value: '6', label: 'June' },
+        { value: '7', label: 'July' }, { value: '8', label: 'August' },
+        { value: '9', label: 'September' }, { value: '10', label: 'October' },
+        { value: '11', label: 'November' }, { value: '12', label: 'December' }
+    ];
+
+    return (
+        <div className="flex flex-col text-left">
+            <label className="text-[12px] font-bold text-[#222] mb-1">{label}</label>
+            <div className="relative">
+                <select
+                    aria-label='hii'
+                    value={value || ''}
+                    onChange={(e) => onChange(e.target.value)}
+                    className={`w-full p-3 bg-transparent text-[#222] border rounded-lg text-[13px] font-medium outline-none appearance-none cursor-pointer transition-colors ${hasError ? 'border-[#ED1F24]' : 'border-[#D1D8DD] hover:border-[#1A4C8B] focus:border-[#1A4C8B]'
+                        }`}
+                >
+                    <option value="" disabled hidden>Select Month</option>
+                    {months.map(m => (
+                        <option key={m.value} value={m.value}>{m.label}</option>
+                    ))}
+                </select>
+                <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+            </div>
+            {hasError && <span className="text-[11px] font-bold text-[#ED1F24] mt-1">{errorMessage}</span>}
+        </div>
+    );
+};
+
 export function AddContentModal({
     isEditingLesson, closeAddModal, addStep, setAddStep, selectedAddOption, setSelectedAddOption,
     handleProceedToDetails, handleAssessmentNextDetails, isAssessmentFormComplete, quarterNumber, setQuarterNumber,
@@ -142,7 +178,7 @@ export function AddContentModal({
                         <p className="text-[12px] font-bold text-center text-[#222] mb-6">Please enter the needed details.</p>
 
                         <div className="flex flex-col gap-y-3 mb-8">
-                            <Gr8TextField label="Month Number" value={quarterNumber} onChange={onNumberChange(setQuarterNumber)} hasError={hasAssessmentDetailsError && !quarterNumber} errorMessage={hasAssessmentDetailsError && !quarterNumber ? "Please enter needed details" : ""} showTopLabel />
+                            <Gr8MonthSelect label="Month" value={quarterNumber} onChange={setQuarterNumber} hasError={hasAssessmentDetailsError && !quarterNumber} errorMessage={hasAssessmentDetailsError && !quarterNumber ? "Please enter needed details" : ""} />
                             <Gr8TextField label="Assessment Number" value={assessmentNumber} onChange={onNumberChange(setAssessmentNumber)} hasError={hasAssessmentDetailsError && !assessmentNumber} errorMessage={hasAssessmentDetailsError && !assessmentNumber ? "Please enter needed details" : ""} showTopLabel />
                             <Gr8TextField label="Assessment Title" value={assessmentTitle} onChange={setAssessmentTitle} hasError={hasAssessmentDetailsError && !assessmentTitle} errorMessage={hasAssessmentDetailsError && !assessmentTitle ? "Please enter needed details" : ""} showTopLabel />
 
@@ -191,7 +227,7 @@ export function AddContentModal({
                         <p className="text-[12px] font-bold text-center text-[#222] mb-6">Please enter the needed details.</p>
 
                         <div className="flex flex-col gap-y-3 mb-8 text-left">
-                            <Gr8TextField label="Month Number" value={dllSemesterNumber} onChange={onNumberChange(setDllSemesterNumber)} hasError={hasDllDetailsError && !dllSemesterNumber} errorMessage="Please enter needed details" showTopLabel />
+                            <Gr8MonthSelect label="Month" value={quarterNumber} onChange={setQuarterNumber} hasError={hasAssessmentDetailsError && !quarterNumber} errorMessage={hasAssessmentDetailsError && !quarterNumber ? "Please enter needed details" : ""} />
                             <Gr8TextField label="Week Number" value={dllWeekNumber} onChange={onNumberChange(setDllWeekNumber)} hasError={hasDllDetailsError && !dllWeekNumber} errorMessage="Please enter needed details" showTopLabel />
 
                             <div className="grid grid-cols-2 gap-x-3 mt-2">
