@@ -148,18 +148,20 @@ export const Gr8DllEditor: React.FC<Gr8DllEditorProps> = ({ onBack, onSaveComple
 
     const executeSave = () => {
         setIsReviewModalOpen(false);
-        setIsLoading(true);
+        setIsLoading(true); // 1. Immediately show the loading overlay to block the editor
+
+        // 2. Use a tiny, unnoticeable delay (300ms) to ensure the loading screen renders 
+        // before the parent component takes over and transitions to the preview card.
         setTimeout(() => {
-            setIsLoading(false);
             onSaveComplete({
-                toggles: { isCsWeekly, isPsWeekly }, // Save toggle states for the viewer
+                toggles: { isCsWeekly, isPsWeekly },
                 objectives: { contentStandards, performanceStandards, learningCompetencies },
                 resources: { content, teacherGuide, learnerMaterials, textbookPages, additionalMaterials, otherReferences },
                 procedures,
                 remarks,
                 reflection
             });
-        }, 1500);
+        }, 300);
     };
 
     const tableHeader = (
@@ -492,24 +494,13 @@ export const Gr8DllEditor: React.FC<Gr8DllEditorProps> = ({ onBack, onSaveComple
                             </tbody>
                         </table>
                     </div>
-                    <div className="flex justify-end items-center mt-8 gap-x-6">
-                        <button 
-                            type="button" 
-                            onClick={() => {
-                                setCurrentPart(1); 
-                                window.scrollTo({ top: 0, behavior: 'smooth' });
-                            }} 
-                            className="text-[#1A4C8B] font-black text-[14px] hover:opacity-70 transition-opacity outline-none tracking-wide"
-                        >
-                            Back to Edit
-                        </button>
-                        
+                    <div className="flex justify-end items-center mt-8">
                         <button
                             type="button"
-                            onClick={() => setIsReviewModalOpen(true)}
+                            onClick={executeSave}
                             className="bg-[#1A4C8B] text-white px-20 py-3 rounded-lg font-black text-[14px] hover:bg-[#153a6b] transition-all shadow-md hover:shadow-lg outline-none tracking-wide"
                         >
-                            Confirm & Save
+                            Save
                         </button>
                     </div>
                 </div>

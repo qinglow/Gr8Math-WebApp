@@ -165,7 +165,7 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
             }
 
             triggerToast(isEditMode ? "Class Updated!" : "Class Created!");
-            refreshClasses();
+            refreshClasses(true);
 
         } catch (err: any) {
             // Catch any network crashes
@@ -186,7 +186,7 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
                 triggerToast("Class Deleted");
                 setIsDeleteConfirmOpen(false);
                 Gr8Cache.invalidate('teacher-classes');
-                refreshClasses();
+                refreshClasses(true);
             } else {
 
                 triggerToast(result.error || "Failed to delete class");
@@ -238,13 +238,17 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
         }
     };
 
-    const refreshClasses = async () => {
+    const refreshClasses = async (silent = false) => {
         if (!profile?.id) return;
-        setIsFetchingClasses(true);
+
+        // Only show the loading screen if we aren't doing a silent refresh
+        if (!silent) setIsFetchingClasses(true);
+
         const data = await getTeacherClasses(profile.id, searchQuery);
         Gr8Cache.set('teacher-classes', data, searchQuery);
         setClassesList(data);
-        setIsFetchingClasses(false);
+
+        if (!silent) setIsFetchingClasses(false);
     };
 
     return (
@@ -303,7 +307,14 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
                 {/* --- TOP HEADER --- */}
                 <div className="p-4 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                     <div className="flex items-center gap-x-4">
-                        <button aria-label='header' onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-1.5 rounded hover:bg-black/5 transition-colors cursor-pointer outline-none">
+                        <button
+                            aria-label='header'
+                            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                            className={`p-1.5 transition-all cursor-pointer outline-none rounded-lg ${isSidebarOpen
+                                    ? 'border-2 border-[#0A7F93]'
+                                    : 'border-2 border-transparent hover:bg-black/5'
+                                }`}
+                        >
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0A7F93" strokeWidth="2.5" strokeLinecap="round">
                                 <line x1="3" y1="12" x2="21" y2="12"></line>
                                 <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -461,7 +472,10 @@ export default function ClassManagerClient({ profile }: { profile: UserProfile |
                         <div className="bg-white rounded-xl shadow-2xl p-6 md:p-8 w-full max-w-[420px] relative">
                             {!showSuccess ? (
                                 <>
-                                    <Gr8LoadingOverlay isLoading={isLoading} message="Creating Class..." />
+                                    <Gr8LoadingOverlay
+                                        isLoading={isLoading}
+                                        message={isEditMode ? "Saving Class..." : "Creating Class..."}
+                                    />
                                     <h2 className="text-[20px] font-extrabold text-[#222] mb-6">Add Classes</h2>
                                     <div className="flex flex-col gap-y-1">
                                         <Gr8TextField label="Class Name" value={className} onChange={setClassName} hasError={!!errors.className} errorMessage={errors.className} showTopLabel />
