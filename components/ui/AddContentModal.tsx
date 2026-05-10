@@ -227,7 +227,7 @@ export function AddContentModal({
                         <p className="text-[12px] font-bold text-center text-[#222] mb-6">Please enter the needed details.</p>
 
                         <div className="flex flex-col gap-y-3 mb-8 text-left">
-                            <Gr8MonthSelect label="Month" value={quarterNumber} onChange={setQuarterNumber} hasError={hasAssessmentDetailsError && !quarterNumber} errorMessage={hasAssessmentDetailsError && !quarterNumber ? "Please enter needed details" : ""} />
+                           <Gr8MonthSelect label="Month" value={dllSemesterNumber} onChange={setDllSemesterNumber} hasError={hasDllDetailsError && !dllSemesterNumber} errorMessage={hasDllDetailsError && !dllSemesterNumber ? "Please enter needed details" : ""} />
                             <Gr8TextField label="Week Number" value={dllWeekNumber} onChange={onNumberChange(setDllWeekNumber)} hasError={hasDllDetailsError && !dllWeekNumber} errorMessage="Please enter needed details" showTopLabel />
 
                             <div className="grid grid-cols-2 gap-x-3 mt-2">

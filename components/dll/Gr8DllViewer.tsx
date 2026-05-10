@@ -1,10 +1,13 @@
 'use client';
 
 import React, { useRef } from 'react';
+import schoolLogo from '@/app/(teacher)/class-page/photos/benigno.png';
+import depedLogo from '@/app/(teacher)/class-page/photos/Seal_of_the_Department_of_Education_of_the_Philippines.png';
 
 interface Gr8DllViewerProps {
     record: any;
     onBack: () => void;
+    userName?: string;
 }
 
 // --- HELPER COMPONENT: Strictly locked to #ECF1F4 ---
@@ -17,15 +20,41 @@ const ViewerTd = ({ content, hasRightBorder = true, colSpan = 1 }: { content?: s
     </td>
 );
 
+const formatToDisplayDate = (raw?: string) => {
+    if (!raw) return '';
+
+    // 1) Try parsing the whole string directly
+    let date = new Date(raw);
+    if (!isNaN(date.getTime())) {
+        return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    }
+
+    // 2) If that fails, extract the date part: either "Month DD, YYYY" or "YYYY-MM-DD"
+    //    This handles strings like "May 18, 2026 08:00am" or "2026-05-18 08:00:00"
+    const dateOnlyMatch = raw.match(/^[A-Z][a-z]+\s\d{1,2},?\s\d{4}/)   // May 18, 2026
+        || raw.match(/^\d{4}-\d{2}-\d{2}/);               // 2026-05-18
+
+    if (dateOnlyMatch) {
+        date = new Date(dateOnlyMatch[0]);
+        if (!isNaN(date.getTime())) {
+            return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+        }
+    }
+
+    // 3) Ultimate fallback – just return the raw string (unlikely to be reached)
+    return raw;
+};
+
 const printStyles = `
   @media print {
     @page { size: landscape; margin: 10mm; }
     body { background-color: white !important; }
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    tr { page-break-inside: avoid !important; } /* Prevents rows from cutting in half */
   }
 `;
 
-export const Gr8DllViewer: React.FC<Gr8DllViewerProps> = ({ record, onBack }) => {
+export const Gr8DllViewer: React.FC<Gr8DllViewerProps> = ({ record, onBack, userName }) => {
     const printRef = useRef<HTMLDivElement>(null);
 
     const handleDownload = async () => {
@@ -46,7 +75,8 @@ export const Gr8DllViewer: React.FC<Gr8DllViewerProps> = ({ record, onBack }) =>
             filename: fileName,
             image: { type: 'jpeg' as 'jpeg', quality: 0.98 },
             html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' as 'landscape' }
+            jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' as 'landscape' },
+            pagebreak: { avoid: 'tr' } // Prevents rows from being cut in half
         };
 
         html2pdf().set(opt).from(element).save().then(() => {
@@ -54,6 +84,7 @@ export const Gr8DllViewer: React.FC<Gr8DllViewerProps> = ({ record, onBack }) =>
             element.style.display = 'none';
         });
     };
+
     if (!record || !record.data) return null;
 
     const data = record.data;
@@ -211,65 +242,170 @@ export const Gr8DllViewer: React.FC<Gr8DllViewerProps> = ({ record, onBack }) =>
 
             {/* --- HIDDEN SIMPLE PDF TABLE --- */}
             <div className="hidden">
-                <div id="simple-dll-pdf-container" className="p-8 bg-white text-black font-sans">
-                    <div className="mb-6 border-b-2 border-black pb-2">
-                        <h1 className="text-2xl font-bold">DAILY LESSON LOG</h1>
-                        <p className="text-sm">Generated on: {new Date().toLocaleDateString()}</p>
-                    </div>
+                <div id="simple-dll-pdf-container" className="p-4 bg-white text-black font-sans w-full">
 
-                    <table className="w-full border-collapse border border-black text-[10px]">
-                        <thead>
-                            <tr className="bg-gray-100">
-                                <th className="border border-black p-2 w-[15%]"></th>
-                                <th className="border border-black p-2">Monday</th>
-                                <th className="border border-black p-2">Tuesday</th>
-                                <th className="border border-black p-2">Wednesday</th>
-                                <th className="border border-black p-2">Thursday</th>
-                                <th className="border border-black p-2">Friday</th>
-                            </tr>
-                        </thead>
+                    {/* Header Grid Table */}
+                    <table className="w-full border-collapse border border-black text-[10px]" style={{ tableLayout: 'fixed' }}>
                         <tbody>
-                            {/* Objectives */}
-                            <tr className="bg-gray-50"><td colSpan={6} className="border border-black p-1 font-bold">I. OBJECTIVES</td></tr>
                             <tr>
-                                <td className="border border-black p-2 font-bold">Content Standards</td>
-                                {days.map(day => <td key={day} className="border border-black p-2">{data.objectives?.contentStandards?.[day]}</td>)}
+                                <td rowSpan={3} className="border border-black p-2 w-[25%] text-center align-middle">
+                                    <div className="flex items-center justify-center gap-2">
+                                        <img src={depedLogo.src} alt="DepEd Logo" className="w-9 h-9 object-contain" />
+                                        <img src={schoolLogo.src} alt="School Logo" className="w-9 h-9 object-contain" />
+                                        <div className="text-left font-bold text-[10px] leading-tight">
+                                            <p>MATATAG K TO 10 CURRICULUM</p>
+                                            <p>DAILY LESSON LOG</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td className="border border-black p-1 bg-[#e5e7eb] font-bold text-right pr-2 w-[15%]">School:</td>
+                                <td className="border border-black p-1 pl-2 w-[25%]">Benigno &quot;Ninoy&quot; S. Aquino High School</td>
+                                <td className="border border-black p-1 bg-[#e5e7eb] font-bold text-right pr-2 w-[15%]">Grade Level:</td>
+                                <td className="border border-black p-1 pl-2 w-[20%]">8</td>
                             </tr>
                             <tr>
-                                <td className="border border-black p-2 font-bold">Performance Standards</td>
-                                {days.map(day => <td key={day} className="border border-black p-2">{data.objectives?.performanceStandards?.[day]}</td>)}
+                                <td className="border border-black p-1 bg-[#e5e7eb] font-bold text-right pr-2">Teacher:</td>
+                                <td className="border border-black p-1 pl-2 capitalize">
+                                    {userName && userName !== 'Teacher' ? userName : ''}
+                                </td>
+                                <td className="border border-black p-1 bg-[#e5e7eb] font-bold text-right pr-2">Learning Area:</td>
+                                <td className="border border-black p-1 pl-2">Mathematics</td>
+                            </tr>
+                            <tr>
+                                <td className="border border-black p-1 bg-[#e5e7eb] font-bold text-right pr-2">Teaching Dates:</td>
+                                <td colSpan={3} className="border border-black p-1 pl-2" style={{ minWidth: '200px', whiteSpace: 'nowrap' }}>
+                                    {record.from && record.to
+                                        ? `${formatToDisplayDate(record.from)} - ${formatToDisplayDate(record.to)}`
+                                        : ''}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    {/* Main Content Table */}
+                    <table className="w-full border-collapse border border-black text-[9px]">
+                        <tbody>
+                            {/* Days Row Header */}
+                            <tr className="bg-[#e5e7eb] font-bold text-center">
+                                <td className="border border-black p-2 text-left w-[20%]"></td>
+                                <td className="border border-black p-2 w-[16%]">Monday</td>
+                                <td className="border border-black p-2 w-[16%]">Tuesday</td>
+                                <td className="border border-black p-2 w-[16%]">Wednesday</td>
+                                <td className="border border-black p-2 w-[16%]">Thursday</td>
+                                <td className="border border-black p-2 w-[16%]">Friday</td>
                             </tr>
 
-                            {/* Content */}
-                            <tr className="bg-gray-50"><td colSpan={6} className="border border-black p-1 font-bold">II. CONTENT</td></tr>
                             <tr>
-                                <td className="border border-black p-2 font-bold">Subject Matter</td>
-                                {days.map(day => <td key={day} className="border border-black p-2">{data.resources?.content?.[day]}</td>)}
+                                <td className="border border-black p-2 bg-[#e5e7eb] font-bold">I. OBJECTIVES</td>
+                                <td colSpan={5} className="border border-black p-2"></td>
+                            </tr>
+                            <tr>
+                                <td className="border border-black p-2 bg-[#e5e7eb]">A. Content Standards</td>
+                                {days.map(day => <td key={`cs-${day}`} className="border border-black p-2 align-top">{data.objectives?.contentStandards?.[day]}</td>)}
+                            </tr>
+                            <tr>
+                                <td className="border border-black p-2 bg-[#e5e7eb]">B. Performance Standards</td>
+                                {days.map(day => <td key={`ps-${day}`} className="border border-black p-2 align-top">{data.objectives?.performanceStandards?.[day]}</td>)}
+                            </tr>
+                            <tr>
+                                <td className="border border-black p-2 bg-[#e5e7eb]">C. Learning Competencies/ Objectives<br />Write the LC Code for each.</td>
+                                {days.map(day => <td key={`lc-${day}`} className="border border-black p-2 align-top">{data.objectives?.learningCompetencies?.[day]}</td>)}
+                            </tr>
+
+                            {/* Content Section */}
+                            <tr>
+                                <td className="border border-black p-2 bg-[#e5e7eb] font-bold">II. CONTENT</td>
+                                {days.map(day => <td key={`co-${day}`} className="border border-black p-2 font-bold text-center align-top">{data.resources?.content?.[day]}</td>)}
+                            </tr>
+
+                            {/* Learning Resources */}
+                            <tr className="bg-[#e5e7eb] font-bold">
+                                <td colSpan={6} className="border border-black p-2">III. LEARNING RESOURCES</td>
+                            </tr>
+                            <tr>
+                                <td className="border border-black p-2 bg-[#e5e7eb] pl-4">A. References</td>
+                                <td colSpan={5} className="border border-black p-2"></td>
+                            </tr>
+                            <tr>
+                                <td className="border border-black p-2 bg-[#e5e7eb] pl-6">1. Teacher's Guide pages</td>
+                                {days.map(day => <td key={`tg-${day}`} className="border border-black p-2 align-top">{data.resources?.teacherGuide?.[day]}</td>)}
+                            </tr>
+                            <tr>
+                                <td className="border border-black p-2 bg-[#e5e7eb] pl-6">2. Learner's Material pages</td>
+                                {days.map(day => <td key={`lm-${day}`} className="border border-black p-2 align-top">{data.resources?.learnerMaterials?.[day]}</td>)}
+                            </tr>
+                            <tr>
+                                <td className="border border-black p-2 bg-[#e5e7eb] pl-6">3. Textbook pages</td>
+                                {days.map(day => <td key={`tb-${day}`} className="border border-black p-2 align-top">{data.resources?.textbookPages?.[day]}</td>)}
+                            </tr>
+                            <tr>
+                                <td className="border border-black p-2 bg-[#e5e7eb] pl-6">4. Additional Materials from Learning Resource LR portal</td>
+                                {days.map(day => <td key={`am-${day}`} className="border border-black p-2 align-top">{data.resources?.additionalMaterials?.[day]}</td>)}
+                            </tr>
+                            <tr>
+                                <td className="border border-black p-2 bg-[#e5e7eb] pl-4">B. Other Learning Resources</td>
+                                {days.map(day => <td key={`or-${day}`} className="border border-black p-2 align-top">{data.resources?.otherReferences?.[day]}</td>)}
                             </tr>
 
                             {/* Procedures */}
-                            <tr className="bg-gray-50"><td colSpan={6} className="border border-black p-1 font-bold">IV. PROCEDURES</td></tr>
+                            <tr className="bg-[#e5e7eb] font-bold">
+                                <td colSpan={6} className="border border-black p-2">IV. PROCEDURES</td>
+                            </tr>
                             {procedureLabels.map((proc) => (
-                                <tr key={proc.key}>
-                                    <td className="border border-black p-2 font-bold text-[9px]">{proc.label}</td>
+                                <tr key={`proc-row-${proc.key}`}>
+                                    <td className="border border-black p-2 bg-[#e5e7eb]">{proc.label}</td>
                                     {days.map(day => (
-                                        <td key={day} className="border border-black p-2">{data.procedures?.[proc.key]?.[day]}</td>
+                                        <td key={`proc-${proc.key}-${day}`} className="border border-black p-2 align-top whitespace-pre-wrap">{data.procedures?.[proc.key]?.[day]}</td>
                                     ))}
                                 </tr>
                             ))}
 
                             {/* Remarks & Reflection */}
-                            <tr className="bg-gray-50"><td colSpan={6} className="border border-black p-1 font-bold">V. REMARKS & VI. REFLECTION</td></tr>
+                            <tr className="bg-[#e5e7eb] font-bold">
+                                <td colSpan={6} className="border border-black p-2">V. REMARKS</td>
+                            </tr>
                             <tr>
-                                <td className="border border-black p-2 font-bold">Remarks</td>
-                                <td colSpan={5} className="border border-black p-2">{data.remarks}</td>
+                                <td className="border border-black p-2 bg-[#e5e7eb]">Remarks</td>
+                                <td colSpan={5} className="border border-black p-2 align-top">{data.remarks}</td>
+                            </tr>
+
+                            <tr className="bg-[#e5e7eb] font-bold">
+                                <td colSpan={6} className="border border-black p-2">VI. REFLECTION</td>
                             </tr>
                             {reflectionLabels.map(ref => (
-                                <tr key={ref.key}>
-                                    <td className="border border-black p-2 font-bold text-[9px]">{ref.label}</td> {/* Shows full text */}
-                                    <td colSpan={5} className="border border-black p-2">{data.reflection?.[ref.key]}</td>
+                                <tr key={`ref-${ref.key}`}>
+                                    <td className="border border-black p-2 bg-[#e5e7eb]">{ref.label}</td>
+                                    <td colSpan={5} className="border border-black p-2 align-top">{data.reflection?.[ref.key]}</td>
                                 </tr>
                             ))}
+
+                            {/* SIGNATURES SECTION */}
+                            <tr className="bg-[#e5e7eb] font-bold">
+                                <td colSpan={6} className="border border-black p-2">SIGNATURES</td>
+                            </tr>
+                            <tr>
+                                <td colSpan={3} className="border border-black p-2 align-top h-24 relative">
+                                    <div className="w-full h-full flex flex-col justify-between items-center pt-2">
+                                        <span className="text-[9px]">Prepared by:</span>
+                                        <div className="w-[80%] text-center">
+                                            <div className="border-b border-black w-full pb-1 capitalize font-bold text-[10px] min-h-[16px]">
+                                                {userName && userName !== 'Teacher' ? userName : ''}
+                                            </div>
+                                            <span className="text-[9px]">Teacher</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td colSpan={3} className="border border-black p-2 align-top h-24 relative">
+                                    <div className="w-full h-full flex flex-col justify-between items-center pt-2">
+                                        <span className="text-[9px]">Checked by:</span>
+                                        <div className="w-[80%] text-center">
+                                            <div className="border-b border-black w-full pb-1 uppercase font-bold text-[10px] min-h-[16px]"></div>
+                                            <span className="text-[9px]">School Head</span>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+
                         </tbody>
                     </table>
                 </div>

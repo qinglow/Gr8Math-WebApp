@@ -104,7 +104,7 @@ export async function decideModeration(actionId: number, decision: 'allowed' | '
                 resource: 'Moderation',
                 action: decision === 'allowed' ? 'APPROVE' : 'DISAPPROVE',
                 status: 'SUCCESS',
-                details: `Moderator ${decision} a flagged ${action.content_type} (Action ID: ${actionId})`
+                details: `Moderator ${decision} a flagged ${action.content_type}`
             });
         }
     }

@@ -9,7 +9,7 @@ import { Gr8LoadingOverlay } from '@/components/ui/Gr8LoadingOverlay';
 import { getCustomBannedWords, addBannedWord, removeBannedWord, decideModeration, getPendingViolations } from '@/app/service/moderation';
 
 // --- SIDEBAR ASSET IMPORTS ---
-import profileIcon from '@/app/(teacher)/class-manager/photos/DefaultTemporaryProfile.png';
+import profileIcon from '@/app/(teacher)/class-page/photos/profile.svg';
 import termsIcon from '@/app/(teacher)/class-manager/photos/TermsAndCondition.png';
 import privacyIcon from '@/app/(teacher)/class-manager/photos/PrivacyPolicy.png';
 import logoutIcon from '@/app/(teacher)/class-manager/photos/Logout.png';
@@ -58,7 +58,7 @@ export default function ModeratorDashboard({ profile }: { profile: any }) {
     useEffect(() => {
         if (searchParams.get('login') === 'success') {
             triggerToast('Login Successful');
-            router.replace('/dashboard', { scroll: false }); 
+            router.replace('/dashboard', { scroll: false });
         }
     }, [searchParams, router]);
 
@@ -275,6 +275,13 @@ export default function ModeratorDashboard({ profile }: { profile: any }) {
 
                     <div className="flex-1 flex flex-col gap-y-8 pt-10 px-8">
                         <Link
+                            href="/account-settings"
+                            className="flex items-center justify-start w-full gap-x-4 text-[16px] font-bold text-[#222] transition-all hover:drop-shadow-lg bg-transparent border-none cursor-pointer p-0 text-left"
+                        >
+                            <Image src={profileIcon} alt="Account Settings" width={24} height={24} className="object-cover rounded-full shrink-0" />
+                            <span className="leading-tight">Account Settings</span>
+                        </Link>
+                        <Link
                             href="/terms-and-conditions"
                             className="flex items-center justify-start w-full gap-x-4 text-[16px] font-bold text-[#222] transition-all hover:drop-shadow-lg bg-transparent border-none cursor-pointer p-0 text-left"
                         >
@@ -302,18 +309,21 @@ export default function ModeratorDashboard({ profile }: { profile: any }) {
             <div className="flex-1 flex flex-col overflow-y-auto relative">
                 <Gr8MathHeader />
 
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24 md:pt-12 w-full">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-28 md:pt-16 w-full">
 
                     {/* DARK CYAN HAMBURGER - TOGGLES SIDEBAR */}
-                    <div className="mb-6 flex items-center gap-3">
+                    <div className="mb-6">
                         <button
-                            aria-label='de'
+                            aria-label='header'
                             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                            className="text-[#008B8B] hover:opacity-80 transition-opacity outline-none cursor-pointer block"
+                            className={`p-1.5 transition-all cursor-pointer outline-none rounded-lg ${isSidebarOpen
+                                ? 'border-2 border-[#0A7F93]'
+                                : 'border-2 border-transparent hover:bg-black/5'
+                                }`}
                         >
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round">
-                                <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0A7F93" strokeWidth="2.5" strokeLinecap="round">
                                 <line x1="3" y1="12" x2="21" y2="12"></line>
+                                <line x1="3" y1="6" x2="21" y2="6"></line>
                                 <line x1="3" y1="18" x2="21" y2="18"></line>
                             </svg>
                         </button>

@@ -60,3 +60,29 @@ export async function deleteMediaFromTigris(fileKey: string) {
         return { success: false, error: error.message };
     }
 }
+
+export async function uploadProfileImageToTigris(file: File) {
+    try {
+        if (!file) throw new Error("No file provided");
+
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const fileName = `profile_${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+        const filePath = `profiles/${fileName}`;
+        const bucketName = process.env.TIGRIS_BUCKET_NAME;
+
+        const command = new PutObjectCommand({
+            Bucket: bucketName,
+            Key: filePath,
+            Body: buffer,
+            ContentType: file.type,
+        });
+
+        await s3Client.send(command);
+
+        const publicUrl = `https://${bucketName}.fly.storage.tigris.dev/${filePath}`;
+        return { success: true, publicUrl };
+    } catch (error: any) {
+        console.error("Tigris Profile Upload Error:", error);
+        return { success: false, error: error.message };
+    }
+}

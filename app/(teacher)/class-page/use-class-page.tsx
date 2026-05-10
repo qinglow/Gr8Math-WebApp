@@ -144,7 +144,7 @@ export function useClassManager(courseId: string, initialFeed: ClassContentItem[
             // 2. Fetch User Profile
             const { data: dbUser, error: userError } = await supabase
                 .from('user')
-                .select('id, is_restricted, warning_count')
+                .select('id, is_restricted, warning_count, first_name, last_name')
                 .eq('email_add', user.email)
                 .single();
 

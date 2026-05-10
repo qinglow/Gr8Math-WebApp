@@ -87,9 +87,32 @@ export async function fetchClassFeed(sectionId: string) {
 export async function deleteLessonAction(lessonId: number) {
     const supabase = await createClient();
     try {
+        // 1. Fetch the user for the audit trail
+        const { data: { user } } = await supabase.auth.getUser();
+        const { data: dbUser } = await supabase.from('user').select('id').eq('email_add', user?.email).single();
+
+        // 2. Fetch the lesson title BEFORE deleting it so we can log it
+        const { data: oldLesson } = await supabase
+            .from('lesson')
+            .select('lesson_title')
+            .eq('id', lessonId)
+            .single();
+
+        // 3. Delete the lesson
         const { error } = await supabase.from('lesson').delete().eq('id', lessonId);
         if (error) throw error;
         
+        // 4. Log to Audit Trails
+        if (dbUser && oldLesson) {
+            await supabase.from('audit_trails').insert({
+                user_id: dbUser.id,
+                resource: 'Lesson',
+                action: 'DELETE',
+                status: 'SUCCESS',
+                details: `Deleted lesson: ${oldLesson.lesson_title}`
+            });
+        }
+
         return { success: true };
     } catch (error: any) {
         console.error("Failed to delete lesson:", error.message);
@@ -100,33 +123,55 @@ export async function deleteLessonAction(lessonId: number) {
 export async function deleteAssessmentAction(assessmentId: number) {
     const supabase = await createClient();
     try {
-        // 1. Wipe all student answers tied to this assessment
+        // 1. Fetch the user for the audit trail
+        const { data: { user } } = await supabase.auth.getUser();
+        const { data: dbUser } = await supabase.from('user').select('id').eq('email_add', user?.email).single();
+
+        // 2. Fetch the assessment title BEFORE deleting it so we can log it
+        const { data: oldAssessment } = await supabase
+            .from('assessment_created')
+            .select('title')
+            .eq('id', assessmentId)
+            .single();
+
+        // 3. Wipe all student answers tied to this assessment
         const { error: ansErr } = await supabase
             .from('student_answers')
             .delete()
             .eq('assessment_id', assessmentId);
         if (ansErr) throw ansErr;
 
-        // 2. Wipe all student records/scores tied to this assessment
+        // 4. Wipe all student records/scores tied to this assessment
         const { error: recErr } = await supabase
             .from('assessment_record')
             .delete()
             .eq('assessment_id', assessmentId);
         if (recErr) throw recErr;
 
-        // 3. Wipe the assessment questions (choices should cascade automatically)
+        // 5. Wipe the assessment questions (choices should cascade automatically)
         const { error: qErr } = await supabase
             .from('assessment_questions')
             .delete()
             .eq('assessment_id', assessmentId);
         if (qErr) throw qErr;
 
-        // 4. Finally, delete the assessment itself
+        // 6. Finally, delete the assessment itself
         const { error: aErr } = await supabase
             .from('assessment_created')
             .delete()
             .eq('id', assessmentId);
         if (aErr) throw aErr;
+
+        // 7. Log to Audit Trails
+        if (dbUser && oldAssessment) {
+            await supabase.from('audit_trails').insert({
+                user_id: dbUser.id,
+                resource: 'Assessment',
+                action: 'DELETE',
+                status: 'SUCCESS',
+                details: `Deleted assessment: ${oldAssessment.title}`
+            });
+        }
 
         return { success: true };
     } catch (error: any) {

@@ -244,10 +244,15 @@ export default function ClassPageClient({ initialFeed, sectionName, courseId }: 
         );
     }
 
-    if (currentView === 'dll-viewer' && viewingDll) {
+   if (currentView === 'dll-viewer' && viewingDll) {
         return (
             <div className="flex flex-col min-h-screen bg-[#E2E7E9] font-sans relative">
-                <Gr8MathHeader /> <Gr8DllViewer record={viewingDll} onBack={() => { setViewingDll(null); setCurrentView('feed'); }} />
+                <Gr8MathHeader /> 
+                <Gr8DllViewer 
+                    record={viewingDll} 
+                    onBack={() => { setViewingDll(null); setCurrentView('feed'); }} 
+                    userName={userProfile?.first_name ? `${userProfile.first_name} ${userProfile.last_name || ''}` : 'Teacher'} 
+                />
             </div>
         );
     }
