@@ -333,7 +333,7 @@ function AccountSettingsContent() {
 
 export default function AccountSettingsPage() {
     return (
-        <Suspense fallback={<Gr8LoadingOverlay isLoading={true} message="Preparing Profile..." />}>
+        <Suspense fallback={<Gr8LoadingOverlay isLoading={true} message="Loading..." />}>
             <AccountSettingsContent />
         </Suspense>
     );
