@@ -30,6 +30,7 @@ A modern, full-featured educational platform built with Next.js and Supabase, de
 
 - **Frontend**: [Next.js](https://nextjs.org/) 15+ with App Router
 - **Database & Auth**: [Supabase](https://supabase.com/)
+- **Object Storage**: [AWS Tigris](https://www.tigrisdata.com/)
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/)
 - **UI Components**: [shadcn/ui](https://ui.shadcn.com/)
 - **Language**: [TypeScript](https://www.typescriptlang.org/)
