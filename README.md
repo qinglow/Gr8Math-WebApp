@@ -8,7 +8,7 @@ A modern, full-featured educational platform built with Next.js and Supabase, de
 - **Class Management** - Create, organize, and manage multiple classes
 - **Virtual Blackboard** - Interactive whiteboard for real-time drawing and explanations
 - **Lesson Planning** - Create and organize structured lessons with multimedia support
-- **DLL (Detailed Lesson Log)** - Comprehensive lesson documentation with date tracking
+- **DLL (Daily Lesson Log)** - Comprehensive lesson documentation with date tracking
 - **Assessments** - Create and manage student assessments with various question types
 - **Participant Management** - Track student progress and participation
 - **Content Upload** - Upload photos and media assets for lessons
@@ -115,7 +115,7 @@ gr8-math/
 │   │   │   ├── lesson/          # Lesson management
 │   │   │   ├── assesssment-view/# Assessment creation
 │   │   │   ├── participants/    # Student management
-│   │   │   └── dll/             # Detailed lesson logs
+│   │   │   └── dll/             # Daily lesson logs
 │   │   └── virtual-blackboard/  # Interactive whiteboard
 │   ├── auth/                    # Authentication pages
 │   │   ├── login/               # Login page
