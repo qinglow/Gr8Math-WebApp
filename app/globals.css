@@ -62,8 +62,22 @@
   * {
     @apply border-border;
   }
+  
   body {
     @apply bg-background text-foreground;
+    
+    /* Optional: Prevents highlighting text */
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* Prevents dragging anything in the app */
+  body * {
+    -webkit-user-drag: none; 
+    -khtml-user-drag: none;  
+    -moz-user-drag: none;    
+    -o-user-drag: none;      
+    user-drag: none;         
   }
 }
 
@@ -87,3 +101,4 @@
     100% { content: ''; }
   }
 }
+
