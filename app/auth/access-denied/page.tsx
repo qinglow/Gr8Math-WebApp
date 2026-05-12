@@ -56,9 +56,8 @@ export default function AccessDeniedPage() {
 
           {/* 3. NEW UNIFIED DOWNLOAD BOX (Clickable Button) */}
           <Link
-            href="https://your-website.com/app.apk"
+            href="https://gr8-math.vercel.app"
             target="_blank"
-            download
             className="w-full"
           >
             {/* This is the visual "box" described: blue background, bold border */}
