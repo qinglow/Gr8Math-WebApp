@@ -16,9 +16,20 @@ const cleanPreviewText = (text: string) => {
   if (!text) return '';
 
   let cleaned = text
-    .replace(/&nbsp;/g, ' ')
-    .replace(/https?:\/\/[^\s"'<]*tigris[^\s"']*/gi, '')
+    // 1. Destroy <script> and <style> tags AND their contents, even if truncated
+    // [\s\S]*? matches everything including newlines. (?:<\/script>|$) handles truncation.
+    .replace(/<script\b[^>]*>[\s\S]*?(?:<\/script>|$)/gi, '')
+    .replace(/<style\b[^>]*>[\s\S]*?(?:<\/style>|$)/gi, '')
+    
+    // 2. Nuclear failsafe: Wipe the rich-text editor boilerplate if it still leaks
+    .replace(/var\s+editor\s*=\s*document.*/gi, '')
+
+    // 3. Now it's safe to strip the remaining standard HTML tags
     .replace(/<[^>]*>/g, ' ')
+
+    // 4. Remove image URLs and cleanup formatting
+    .replace(/https?:\/\/[^\s"'<]*tigris[^\s"']*/gi, '')
+    .replace(/&nbsp;/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 

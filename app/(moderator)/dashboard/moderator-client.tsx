@@ -187,12 +187,24 @@ export default function ModeratorDashboard({ profile }: { profile: any }) {
 
     // --- FORMATTING HELPERS ---
 
+    const cleanContent = (text: string) => {
+        if (!text) return '';
+        return text
+            .replace(/<script\b[^>]*>[\s\S]*?(?:<\/script>|$)/gi, '')
+            .replace(/<style\b[^>]*>[\s\S]*?(?:<\/style>|$)/gi, '')
+            .replace(/var\s+editor\s*=\s*document.*/gi, '')
+            .replace(/<[^>]*>/g, ' ')
+            .replace(/&nbsp;/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+    };
+
     // 1. Cleans the string for the Preview Card (Shows ONLY content)
     const getPreviewText = (fullText: string) => {
         if (!fullText) return '';
-        // Extract everything after "CONTENT:"
         const contentMatch = fullText.match(/CONTENT:\s*([\s\S]*)/i);
-        return contentMatch ? contentMatch[1].trim() : fullText;
+        const rawContent = contentMatch ? contentMatch[1] : fullText;
+        return cleanContent(rawContent); // <-- Apply the cleaner here
     };
 
     const renderHighlightedText = (fullText: string, offendingWord: string) => {
@@ -202,8 +214,9 @@ export default function ModeratorDashboard({ profile }: { profile: any }) {
         const flaggedMatch = fullText.match(/\[FLAGGED ITEM:(.*?)\]/i);
         const flaggedItem = flaggedMatch ? flaggedMatch[1].trim() : offendingWord;
 
-        // 2. Remove the flagged item bracket from the string so we are left with just TITLE and CONTENT
-        const cleanText = fullText.replace(/\[FLAGGED ITEM:.*?\]\s*/i, '');
+        // 2. Remove the flagged item bracket AND strip all HTML/Script tags
+        let cleanText = fullText.replace(/\[FLAGGED ITEM:.*?\]\s*/i, '');
+        cleanText = cleanContent(cleanText); // <-- Apply the cleaner here!
 
         // 3. Split the text into layout sections using "TITLE:" and "CONTENT:"
         const parts = cleanText.split(/(TITLE:|CONTENT:)/g);
@@ -232,7 +245,6 @@ export default function ModeratorDashboard({ profile }: { profile: any }) {
                     if (!flaggedItem) return <span key={index} className="text-[14px] text-[#222] font-medium leading-relaxed">{part}</span>;
 
                     // Otherwise, highlight the offending word/link anywhere it appears in the text
-                    // We escape the flaggedItem just in case it's a URL with special regex characters
                     const escapedWord = flaggedItem.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
                     const wordRegex = new RegExp(`(${escapedWord})`, 'gi');
                     const textChunks = part.split(wordRegex);
