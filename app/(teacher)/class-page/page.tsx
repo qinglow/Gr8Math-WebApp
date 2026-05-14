@@ -7,12 +7,18 @@ import { getClassFeed, getClassDetails } from "./action";
 import ClassPageClient from "./class-page-client";
 import { Gr8LoadingOverlay } from "@/components/ui/Gr8LoadingOverlay";
 
-export default async function Page({ 
-    searchParams 
-}: { 
-    searchParams: Promise<{ id?: string }> 
-}) {
+export default async function Page({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
     const { id } = await searchParams;
+    const supabase = await createClient();
+
+    // 1. ADD THE BOUNCER: Check for session first
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    // If testing for NFT-SEC-01 (Strict 401), use unauthorized()
+    // If testing for general UX, use redirect('/auth/login')
+    if (!user) {
+        redirect('/auth/login'); 
+    }
 
     if (!id) {
         redirect('/class-manager');
@@ -24,7 +30,6 @@ export default async function Page({
         </Suspense>
     );
 }
-
 async function ClassContentLoader({ courseId }: { courseId: string }) {
     const [feed, details] = await Promise.all([
         getClassFeed(courseId),
